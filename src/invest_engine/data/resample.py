@@ -6,7 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Iterable
+from typing import Iterable, Literal
 
 from invest_engine.data.calendar import SessionCalendar, TradingSession
 from invest_engine.domain.errors import InvalidEvent, UnsupportedData
@@ -21,6 +21,15 @@ class _BucketKey:
     start: datetime
     end: datetime
     source: str
+
+
+def _price(payload: MarketPayload, field: Literal["open", "high", "low", "close"]) -> Decimal:
+    if isinstance(payload, TradeTick):
+        return payload.price
+    if isinstance(payload, Bar):
+        return {"open": payload.open, "high": payload.high,
+                "low": payload.low, "close": payload.close}[field]
+    raise UnsupportedData("unsupported aggregation price payload")
 
 
 def _bucket(session: TradingSession, instant: datetime, duration: timedelta) -> tuple[datetime, datetime]:
@@ -111,18 +120,10 @@ def resample_time_bars(
             elif isinstance(payload, Bar):
                 # Preserve each source bar's intrabar extrema separately below.
                 volume += payload.volume
-        first = observations[0].payload
-        last = observations[-1].payload
-        open_price = first.open if isinstance(first, Bar) else first.price
-        close_price = last.close if isinstance(last, Bar) else last.price
-        high_price = max(
-            payload.high if isinstance(payload, Bar) else payload.price
-            for payload in (event.payload for event in observations)
-        )
-        low_price = min(
-            payload.low if isinstance(payload, Bar) else payload.price
-            for payload in (event.payload for event in observations)
-        )
+        open_price = _price(observations[0].payload, "open")
+        close_price = _price(observations[-1].payload, "close")
+        high_price = max(_price(event.payload, "high") for event in observations)
+        low_price = min(_price(event.payload, "low") for event in observations)
         bar = Bar(
             start=key.start, end=key.end, open=open_price, high=high_price,
             low=low_price, close=close_price, volume=volume,
