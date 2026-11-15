@@ -21,19 +21,22 @@
 
 ## 2. 단계별 계획
 
-### E0 — Foundation & Contracts [현재 첫 구현 대상]
+### E0 — Foundation & Contracts [VERIFIED: PR #11, CI GREEN]
 **목표:** 외부 브로커 없이 순수 엔진의 타입·시간·결정론 계약 수립.
 
 **작업:**
-- [ ] pyproject/uv 또는 표준 빌드, Python 3.12+, src layout, Ruff, mypy, pytest, CI
-- [ ] InstrumentId, Money, Quantity, Timestamp, Market, EventEnvelope 정의
-- [ ] TradeTick / QuoteTick / OrderBook / Bar / MarketStatus 이벤트 타입, 스키마 버전
-- [ ] Trading Clock(UTC 내부 + 거래소 캘린더 주입), 순서/중복 정책
-- [ ] 이벤트 처리 API, typed Result(UnsupportedData, StaleData, InvalidEvent)
-- [ ] Synthetic fixtures + replay test harness + 로그 레이아웃
-- [ ] API 키/비밀정보 탐지·gitignore 설정
+- [x] pyproject/표준 패키징, Python 3.12+, src layout, Ruff, mypy, pytest, GitHub Actions CI — run 43708153842
+- [x] InstrumentId, Money, Quantity, UTC Timestamp, Market, EventEnvelope 정의 — PR #11 local test
+- [x] TradeTick / QuoteTick / OrderBook / Bar / MarketStatus 이벤트 타입, 스키마 버전 — PR #11 local test
+- [x] Trading Clock(UTC 내부 + 거래소 캘린더 주입), 순서/중복 정책 — PR #11 local test
+- [x] 이벤트 유효성 검사 + typed exceptions(UnsupportedData, StaleData, InvalidEvent) — PR #11 local test. Result 래퍼/운영 상태 전이는 E2.
+- [x] Synthetic fixtures + replay hash verifier + CLI; durable journal/production logs are E2 — PR #11 local test
+- [x] API 키/비밀정보 기본 패턴 검사 스크립트·기존 gitignore 연동 — CI run 43708153842. (완전한 secret scanner가 아님)
 
 **DoD:** 합성 입력 100~1,000개에 대해 같은 정렬/계산/상태 해시 재현; UTC/타임존 경계 테스트, 잘못된 이벤트 거절, 외부 의존성·실거래 없음.
+
+
+**증거:** [PR #11](https://github.com/ByeonDoHyeon06/invest-engine/pull/11) · [CI run 43708153842](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842). Python 3.12/3.13 각 37개 테스트·Ruff·mypy·기본 secret guard 통과. E0는 기초 데이터/이벤트 검증기만 완료했고 실제 Trading Core/Backtest는 E2~E5.
 
 ### E1 — Market Data, Resolution & PIT
 **의존성:** E0.
