@@ -4,7 +4,7 @@
 
 국내·미국 주식 대상으로 시장 데이터, 전략, 위험관리, 주문·체결, 포트폴리오, 연구·자기개선을 분리한 독립형 적응형 트레이딩 엔진.
 
-**현재 상태:** PLANNING (2026-11-15). 실거래 기능 없음. 개인용·headless·검증 우선.
+**현재 상태:** E0 FOUNDATION VERIFIED (PR #11, 2026-11-15). 실거래 기능 없음. 다음 단계 E1 데이터 계약/정규화. 개인용·headless·검증 우선.
 
 ## 설계 원칙
 - 해상도 비종속: Tick/Quote/OrderBook/Bar/재무·공시 이벤트를 각각 정확한 타입으로 처리한다. 1분봉은 전략 설정이지 엔진 제한이 아니다.
@@ -38,7 +38,7 @@ E0 기초 계약 → E1 데이터 → E2 이벤트 코어 → E3 모의 주문·
 
 **보안:** API key/secret/token, 계좌정보, 비공개 시세 원본은 저장소에 커밋하지 않는다. 공개/배포 권리가 있는 데이터 또는 합성 테스트 데이터만 사용한다.
 
-## E0 — 오프라인 이벤트 검증기 (PR #11, 병합 전)
+## E0 — 오프라인 이벤트 검증기 (PR #11)
 
 이 단계에는 **시장 데이터 수신·전략·백테스트·주문 기능이 없다**. 순수 합성 데이터의 이벤트 정렬·검증·결정론적 결과 해시만 제공한다.
 
@@ -54,3 +54,5 @@ invest-engine replay-synthetic --count 1000 --market US
 정상적인 실행에서는 거래 0건, API 호출 0건이며 JSON에 count, events_by_type, state_hash가 출력된다. 해시의 같음은 **입력 이벤트의 정합/재현성**을 의미하지 매매 수익성을 의미하지 않는다. 
 
 [구현 PR #11](https://github.com/ByeonDoHyeon06/invest-engine/pull/11) · [E0 Epic #1](https://github.com/ByeonDoHyeon06/invest-engine/issues/1)
+
+**E0 CI 증거:** [Actions run 43708153842](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842) — Python 3.12/3.13 각각 37 tests, Ruff/mypy/secret guard 통과.
