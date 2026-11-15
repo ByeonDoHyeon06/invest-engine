@@ -1,6 +1,6 @@
 # E1.2 — Trading Sessions & Resolution-Agnostic Resampling
 
-**Status:** Implemented in [PR #13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13), review/CI required before marking verified.
+**Status:** Implemented, verified and merged in [PR #13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13), [CI passed](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43713285009) for Python 3.12 and 3.13.
 
 ## Scope
 
