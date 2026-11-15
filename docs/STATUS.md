@@ -2,7 +2,7 @@
 
 **기준일:** 2026-11-15
 **현재:** 설계/로드맵 초기화. 실거래 없음. 구현 시작 전.
-**현재 Stage:** E0 Foundation (NEXT)
+**현재 Stage:** [E0 Foundation — Issue #1](https://github.com/ByeonDoHyeon06/invest-engine/issues/1) (NEXT)
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 가장 먼저 할 일 (순서 고정)
@@ -22,6 +22,19 @@
 | ORM/DB/메시징/모델 | 미확정 | 필요 시 ADR |
 | 실제 토스 API 계약·Rate limit 상세 | 검증 필요 | INTEGRATIONS.md |
 | 주문 실거래 허용 | 미승인 | E8 Gate |
+
+
+## GitHub Epic 추적
+- [E0 — Issue #1](https://github.com/ByeonDoHyeon06/invest-engine/issues/1)
+- [E1 — Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2)
+- [E2 — Issue #3](https://github.com/ByeonDoHyeon06/invest-engine/issues/3)
+- [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4)
+- [E4 — Issue #5](https://github.com/ByeonDoHyeon06/invest-engine/issues/5)
+- [E5 — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6)
+- [E6 — Issue #7](https://github.com/ByeonDoHyeon06/invest-engine/issues/7)
+- [E7 — Issue #8](https://github.com/ByeonDoHyeon06/invest-engine/issues/8)
+- [E8 — Issue #9](https://github.com/ByeonDoHyeon06/invest-engine/issues/9)
+- [E9 — Issue #10](https://github.com/ByeonDoHyeon06/invest-engine/issues/10)
 
 ## 변경 기록
 - 2026-11-15: 빈 저장소에서 비전/계획 문서 작성, E0 진입 예정.
