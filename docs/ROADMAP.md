@@ -45,12 +45,12 @@
 - [x] DataProvider Protocol, Normalizer, Validation, 품질 플래그 — [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12), CI [43712325371](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43712325371)
 - [x] Event-time / Available-at / Received-at 모델과 in-memory watermark/late quarantine policy — E1.1, durable state는 E2
 - [ ] 원본과 정규화 데이터의 분리 저장(Parquet + manifest/해시/라이선스 출처)
-- [~] Tick→Time Bar(임의 positive timedelta), Bar→상위 Time Bar — [E1.2 PR #13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13) CI/리뷰 검증 중
-- [~] 세션 anchor, DST, 명시적 조기폐장, 결측 거부, finalized bar — E1.2 PR #13. 실제 거래소 공식 캘린더/stream finalization은 후속
+- [x] Tick→Time Bar(임의 positive timedelta), Bar→상위 Time Bar — [E1.2 PR #13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13), [CI 43713285009](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43713285009)
+- [x] 주입형 세션 anchor, DST, 명시적 조기폐장, 결측 거부, finalized bar의 offline aggregation — E1.2 PR #13. 공식 거래소 캘린더 공급자와 실시간 finalization은 후속
 - [ ] Volume/Dollar/Tick bars는 기본 계약 설계, 구현은 후속 단계 가능
 - [ ] Capability 협상: 하위 분봉/호가를 가짜 복원하지 않고 거부
 
-**부분 진행:** [E1.1 수집/품질 계약](DATA_INGESTION.md) 구현·검증 완료. E1.2 aggregation은 PR #13 검증 중; E1.3 persistence/manifest는 미구현.
+**부분 진행:** [E1.1 수집/품질 계약](DATA_INGESTION.md) 구현·검증 완료. E1.2 offline aggregation 검증 완료; E1.3 persistence/manifest는 미구현. E1 Epic 전체 완료 아님.
 
 **DoD:** 합성 ticks와 동일한 기댓값으로 1m/30m 바 생성; 집계 경계, 중복·지연·갭·분할/수정주가 정책 테스트; 30m→1m 요청 명시적 실패.
 
