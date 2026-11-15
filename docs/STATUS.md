@@ -1,19 +1,20 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-15
-**현재:** E0 코드 및 GitHub CI 검증 성공, PR #11 병합 준비. 실거래 기능 없음.
-**현재 Stage:** E0 VERIFIED (CI 통과), [PR #11](https://github.com/ByeonDoHyeon06/invest-engine/pull/11) 병합 후 E1 시작.
+**현재:** E0 완료·PR #11 main 병합·Issue #1 종료. E1 준비 중. 실거래 기능 없음.
+**현재 Stage:** [E1 — Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2) (NEXT, NOT STARTED). E0 VERIFIED + MERGED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0와 다음 실행 지점 (2026-11-15)
 
-- E0 Epic: https://github.com/ByeonDoHyeon06/invest-engine/issues/1
-- 구현 PR: https://github.com/ByeonDoHyeon06/invest-engine/pull/11
+- E0 Epic: https://github.com/ByeonDoHyeon06/invest-engine/issues/1 (CLOSED)
+- 병합 PR: https://github.com/ByeonDoHyeon06/invest-engine/pull/11
+- Squash merge: https://github.com/ByeonDoHyeon06/invest-engine/commit/aae7bf7838c0abe8eeea6363461a358cb70db974
 - **검증된 구현:** Python 패키지/CLI, InstrumentId·Money·Price·Quantity, MarketEvent 타입, UTC Clock, deterministic synthetic Replay, 기본 secret guard.
 - **GitHub CI:** https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842 — Python 3.12 및 3.13 **각 37 passed**; Ruff / mypy / credential guard 통과.
 - E0 범위: **계좌/주문/위험·거래전략/백테스트 없음**. Replay는 이벤트의 일관된 해시를 검증할 뿐 실제 체결 시뮬레이터가 아님.
 - 로컬: Python 3.13에서 36 passed + Hypothesis 미설치로 1 skipped. CI는 Hypothesis 포함 37 passed.
-- **다음 단일 작업:** PR #11 병합/Issue #1 정리 후 [E1 Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2)의 DataProvider/Normalizer/Quality contract를 먼저 구현. 임의 집계·세션/DST는 작은 PR로 분할.
+- **다음 단일 작업:** [E1 Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2)를 DataProvider/Normalizer/Quality 검증 계약부터 작은 PR로 구현. 집계·세션/DST는 후속 PR로 분할.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -44,7 +45,8 @@
 ## 변경 기록
 - 2026-11-15: 빈 저장소에서 비전/계획 문서 작성, E0 진입 예정.
 - 2026-11-15: E0 도메인/이벤트/결정론적 replay 코드·CLI·테스트·CI 초안, Draft PR #11 (로컬 36 passed, 1 skipped).
-- 2026-11-15: [CI run 43708153842](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842)에서 Python 3.12/3.13 각 37 passed 및 Ruff/mypy/secret 검사 성공. E0 검증 통과.
+- 2026-11-15: [CI run 43708332491](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708332491)에서 Python 3.12/3.13 각 37 passed 및 Ruff/mypy/secret 검사 성공. E0 검증 통과.
+- 2026-11-15: PR #11 squash merged (aae7bf7); Issue #1 closed. E1 Issue #2가 다음 작업.
 
 ## 회차 종료·재개 기록 템플릿
 - 날짜:
