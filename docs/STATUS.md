@@ -1,20 +1,21 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-15
-**현재:** E0 코드 초안 구현, Draft PR #11 리뷰/CI 검증 중. 실거래 기능 없음.
-**현재 Stage:** [E0 Foundation — Issue #1](https://github.com/ByeonDoHyeon06/invest-engine/issues/1) (IN REVIEW, NOT DONE)
+**현재:** E0 코드 및 GitHub CI 검증 성공, PR #11 병합 준비. 실거래 기능 없음.
+**현재 Stage:** E0 VERIFIED (CI 통과), [PR #11](https://github.com/ByeonDoHyeon06/invest-engine/pull/11) 병합 후 E1 시작.
 **실거래 승인 상태:** NOT AUTHORIZED
 
-## E0 재개 지점 / 다음 작업 (2026-11-15)
+## 완료된 E0와 다음 실행 지점 (2026-11-15)
 
-- 구현 브랜치: `feat/e0-foundation-contracts`
-- Draft PR: https://github.com/ByeonDoHyeon06/invest-engine/pull/11
-- 코드 최초 반영 커밋: `643605f532003a56a046a9d83b94b04206c1ca1d`
-- 로컬 결과: Python 3.13에서 `PYTHONPATH=src python -m pytest -q` → **36 passed, 1 skipped** (Hypothesis 미설치). `compileall`, offline editable install, synthetic CLI 1000 events 실행 확인.
-- **미검증:** Ruff / mypy / Hypothesis가 로컬 네트워크 제한으로 설치 불가. GitHub Actions 결과 확인 필요. Python 3.12 런타임은 CI에서 확인.
-- **다음 단일 작업:** PR #11의 GitHub CI 실패 항목 분석/수정 → 통과 확인 → 안전성 리뷰 → 병합 → E0 DoD 갱신.
-- **E1은 PR #11이 검증·병합되기 전 착수 금지.**
-- LIVE: NOT AUTHORIZED, Adapter/Order submission 없음.
+- E0 Epic: https://github.com/ByeonDoHyeon06/invest-engine/issues/1
+- 구현 PR: https://github.com/ByeonDoHyeon06/invest-engine/pull/11
+- **검증된 구현:** Python 패키지/CLI, InstrumentId·Money·Price·Quantity, MarketEvent 타입, UTC Clock, deterministic synthetic Replay, 기본 secret guard.
+- **GitHub CI:** https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842 — Python 3.12 및 3.13 **각 37 passed**; Ruff / mypy / credential guard 통과.
+- E0 범위: **계좌/주문/위험·거래전략/백테스트 없음**. Replay는 이벤트의 일관된 해시를 검증할 뿐 실제 체결 시뮬레이터가 아님.
+- 로컬: Python 3.13에서 36 passed + Hypothesis 미설치로 1 skipped. CI는 Hypothesis 포함 37 passed.
+- **다음 단일 작업:** PR #11 병합/Issue #1 정리 후 [E1 Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2)의 DataProvider/Normalizer/Quality contract를 먼저 구현. 임의 집계·세션/DST는 작은 PR로 분할.
+- 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
+- LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
 ## 기술 선택 상태
 | 주제 | 상태 | 출처 |
@@ -43,6 +44,7 @@
 ## 변경 기록
 - 2026-11-15: 빈 저장소에서 비전/계획 문서 작성, E0 진입 예정.
 - 2026-11-15: E0 도메인/이벤트/결정론적 replay 코드·CLI·테스트·CI 초안, Draft PR #11 (로컬 36 passed, 1 skipped).
+- 2026-11-15: [CI run 43708153842](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842)에서 Python 3.12/3.13 각 37 passed 및 Ruff/mypy/secret 검사 성공. E0 검증 통과.
 
 ## 회차 종료·재개 기록 템플릿
 - 날짜:
