@@ -1,6 +1,6 @@
 # E1.1 — Provider contracts, normalization, quality and as-of visibility
 
-**Status:** Implemented in [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12); await full CI and review before considering validated.
+**Status:** Implemented and merged in [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12); Python 3.12/3.13 CI [passed](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43712325371).
 
 ## Scope
 
