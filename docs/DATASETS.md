@@ -1,6 +1,6 @@
 # E1.3 — Immutable Market Dataset Packages
 
-**Status:** PR #14 review/CI pending. Not live-broker functionality.
+**Status:** PR #14 verified and merged; [CI run 43714655109](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43714655109) passes Python 3.12/3.13 tests. Not live-broker functionality.
 
 ## Goals
 E1 normalized market observations must be replayable and auditable. Every dataset package records provenance and preserves original/normalized information as two independent Parquet artifacts.
