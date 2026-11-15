@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-15
-**현재:** E0 VERIFIED; E1.1 merged (#12). E1.2 시간봉 집계·세션/DST 완료 (PR #13 merged). 실거래 기능 없음.
-**현재 Stage:** [E1 — Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2) (IN PROGRESS: E1.3 NEXT; E1.1/E1.2 VERIFIED). E0 VERIFIED + MERGED.
+**현재:** E0 VERIFIED; E1.1 #12 merged; E1.2 #13 merged. E1.3 Parquet/manifest 검증 중 (PR #14), 실거래 기능 없음.
+**현재 Stage:** [E1 — Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2) (IN PROGRESS: E1.3 PR #14, E1.1/E1.2 VERIFIED). E0 VERIFIED + MERGED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0와 다음 실행 지점 (2026-11-15)
@@ -16,7 +16,8 @@
 - 로컬: Python 3.13에서 36 passed + Hypothesis 미설치로 1 skipped. CI는 Hypothesis 포함 37 passed.
 - **진행 중:** [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12) — DataProvider/Normalizer/Quality/PIT 계약. GitHub CI [run 43712325371](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43712325371): Python 3.12/3.13 Ruff/mypy/pytest/secret guard 전부 통과; PR #12 merged (13cb52d).
 - **검증 완료:** [PR #13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13), squash [1d8756c](https://github.com/ByeonDoHyeon06/invest-engine/commit/1d8756c6ae13fffdb79d39ecf33fdc0f9d443611). [GitHub CI 43713285009](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43713285009): Python 3.12/3.13 Ruff/mypy/pytest/secret guard 통과. 로컬 66 passed, 1 skipped(로컬 Hypothesis 미설치).
-- **다음 단일 작업:** E1.3 Issue #2 하위 PR로 시작 — 데이터셋 Manifest/라이선스/sha256, 원본·정규화 Parquet 저장, 수정 이력·결측정책 및 Round-trip 테스트. 실제 공식 거래 캘린더 연동은 별도 검증 항목.
+- **진행 중:** [PR #14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14) — 데이터셋 Manifest/라이선스/sha256, 원본·정규화 Parquet 저장, 수정 버전/결측 정책 및 Round-trip 테스트. 로컬 73 passed, 3 skipped (Hypothesis 및 pyarrow 미설치); **CI 미통과 시 완료로 표기 금지.**
+- **다음 단일 작업:** PR #14의 Python 3.12/3.13 CI·테스트/타입 오류 수정, 검증 후 병합. E1 전체 게이트 통과 시 Issue #2 종료 및 E2 진입.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -45,6 +46,7 @@
 - [E9 — Issue #10](https://github.com/ByeonDoHyeon06/invest-engine/issues/10)
 
 ## 변경 기록
+- 2026-11-15: E1.3 PR #14 생성; immutable Parquet raw/normalized datasets, SHA256 및 provenance 명세. CI 검증 중.
 - 2026-11-15: E1.2 PR #13 squash merged (1d8756c), GitHub CI 43713285009 양쪽 Python 버전 통과. E1.3 next.
 - 2026-11-15: E1.2 PR #13 구현 중. 세션 기준 시간봉 재구성과 미국 DST/조기폐장 검증(로컬 66 passed + Hypothesis 미설치 1 skipped).
 - 2026-11-15: E1.1 PR #12 squash merged (13cb52d), CI run 43712325371 양쪽 Python 버전 정상. E1.2가 다음 작업.
