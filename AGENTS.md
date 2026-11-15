@@ -34,4 +34,4 @@
 - 계약 변경은 ADR 추가/기존 ADR 상태 변경. 주요 버전 반영.
 - Live credential을 요청하거나 commit하지 않는다.
 
-**현재 단계:** E0 기반 타입/Replay 검증 완료, E1 시장 데이터 정규화·집계가 다음 구현 단계. 현재 Trading/Order/Strategy/Backtesting 기능은 아직 없음. 먼저 STATUS와 열린 PR/CI 확인.
+**현재 단계:** E0 검증 완료. E1.1 정규화/품질(합병 #12), E1.2 세션 기반 시간봉 집계(합병 #13) 검증 완료. **다음 단일 작업은 E1.3 dataset manifest / 원본·정규화 Parquet 저장·integrity·revision 검증.** E1 Epic #2는 열려 있음. Trader/Order/Strategy/Backtesting 기능 아직 없음. 먼저 STATUS와 열린 PR/CI를 확인.
