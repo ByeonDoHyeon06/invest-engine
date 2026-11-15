@@ -1,16 +1,20 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-15
-**현재:** 설계/로드맵 초기화. 실거래 없음. 구현 시작 전.
-**현재 Stage:** [E0 Foundation — Issue #1](https://github.com/ByeonDoHyeon06/invest-engine/issues/1) (NEXT)
+**현재:** E0 코드 초안 구현, Draft PR #11 리뷰/CI 검증 중. 실거래 기능 없음.
+**현재 Stage:** [E0 Foundation — Issue #1](https://github.com/ByeonDoHyeon06/invest-engine/issues/1) (IN REVIEW, NOT DONE)
 **실거래 승인 상태:** NOT AUTHORIZED
 
-## 가장 먼저 할 일 (순서 고정)
-1. ROADMAP.md E0를 읽고 E0 작업을 독립된 PR 크기로 분할한다.
-2. src-layout Python 3.12+ 프로젝트·pytest·Ruff·mypy·CI 초기화.
-3. DOMAIN.md에 따른 EventEnvelope, InstrumentId, Money, UTC Clock을 구현한다.
-4. synthetic fixtures로 결정론적 이벤트 재생 테스트를 만든다.
-5. E0 DoD 증거(테스트 로그/PR 링크)를 이 문서에 반영한다.
+## E0 재개 지점 / 다음 작업 (2026-11-15)
+
+- 구현 브랜치: `feat/e0-foundation-contracts`
+- Draft PR: https://github.com/ByeonDoHyeon06/invest-engine/pull/11
+- 코드 최초 반영 커밋: `643605f532003a56a046a9d83b94b04206c1ca1d`
+- 로컬 결과: Python 3.13에서 `PYTHONPATH=src python -m pytest -q` → **36 passed, 1 skipped** (Hypothesis 미설치). `compileall`, offline editable install, synthetic CLI 1000 events 실행 확인.
+- **미검증:** Ruff / mypy / Hypothesis가 로컬 네트워크 제한으로 설치 불가. GitHub Actions 결과 확인 필요. Python 3.12 런타임은 CI에서 확인.
+- **다음 단일 작업:** PR #11의 GitHub CI 실패 항목 분석/수정 → 통과 확인 → 안전성 리뷰 → 병합 → E0 DoD 갱신.
+- **E1은 PR #11이 검증·병합되기 전 착수 금지.**
+- LIVE: NOT AUTHORIZED, Adapter/Order submission 없음.
 
 ## 기술 선택 상태
 | 주제 | 상태 | 출처 |
@@ -38,6 +42,7 @@
 
 ## 변경 기록
 - 2026-11-15: 빈 저장소에서 비전/계획 문서 작성, E0 진입 예정.
+- 2026-11-15: E0 도메인/이벤트/결정론적 replay 코드·CLI·테스트·CI 초안, Draft PR #11 (로컬 36 passed, 1 skipped).
 
 ## 회차 종료·재개 기록 템플릿
 - 날짜:
