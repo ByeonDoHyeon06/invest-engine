@@ -13,7 +13,7 @@
 - 1분 OHLCV는 코어 제한이 아니다: TradeTick, QuoteTick, Bar(임의 주기), 기업·공시·거시 관측까지 타입 안전하게 받아야 한다.
 - 엔진 먼저: UI/SaaS보다 정확한 이벤트/자금/주문/백테스트 및 몇 주 Forward Paper를 우선.
 - 국내·미국 주식, 초기 Long only/day trading, ORB는 최초 전략 실험용이며 수익이 검증된 전략이 아님.
-- Tossspecific 구현은 독립 어댑터로; API key 없이 코어와 시뮬레이션을 구현.
+- Toss-specific 구현은 독립 어댑터로; API key 없이 코어와 시뮬레이션을 구현.
 - Adaptive 연구는 설계 핵심이나, 모델의 자율 실거래 변경·코드 수정·위험한도 완화 금지.
 - 공시/재무정보는 선택적인 Feature Provider이며 Point-in-Time 필수.
 - 개인용 headless 시작. SaaS 상용화·시세 재배포는 별도 라이선스/금융법 검토가 끝나기 전 추진하지 않음.
