@@ -21,7 +21,7 @@
 
 ## 2. 단계별 계획
 
-### E0 — Foundation & Contracts [VERIFIED: PR #11, CI GREEN]
+### E0 — Foundation & Contracts [VERIFIED, MERGED: PR #11]
 **목표:** 외부 브로커 없이 순수 엔진의 타입·시간·결정론 계약 수립.
 
 **작업:**
@@ -38,7 +38,7 @@
 
 **증거:** [PR #11](https://github.com/ByeonDoHyeon06/invest-engine/pull/11) · [CI run 43708153842](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842). Python 3.12/3.13 각 37개 테스트·Ruff·mypy·기본 secret guard 통과. E0는 기초 데이터/이벤트 검증기만 완료했고 실제 Trading Core/Backtest는 E2~E5.
 
-### E1 — Market Data, Resolution & PIT
+### E1 — Market Data, Resolution & PIT [NEXT: Issue #2]
 **의존성:** E0.
 
 **작업:**
