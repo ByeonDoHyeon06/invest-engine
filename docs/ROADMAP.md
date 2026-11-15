@@ -38,21 +38,21 @@
 
 **증거:** [PR #11](https://github.com/ByeonDoHyeon06/invest-engine/pull/11) · [CI run 43708153842](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842). Python 3.12/3.13 각 37개 테스트·Ruff·mypy·기본 secret guard 통과. E0는 기초 데이터/이벤트 검증기만 완료했고 실제 Trading Core/Backtest는 E2~E5.
 
-### E1 — Market Data, Resolution & PIT [IN PROGRESS: Issue #2, E1.1 merged]
+### E1 — Market Data, Resolution & PIT [VERIFIED, MERGED: PR #12–#14]
 **의존성:** E0.
 
 **작업:**
 - [x] DataProvider Protocol, Normalizer, Validation, 품질 플래그 — [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12), CI [43712325371](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43712325371)
 - [x] Event-time / Available-at / Received-at 모델과 in-memory watermark/late quarantine policy — E1.1, durable state는 E2
-- [~] 원본과 정규화 데이터의 분리 저장(Parquet + manifest/해시/라이선스 출처) — [E1.3 PR #14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14) 검증 중
+- [x] 원본과 정규화 데이터의 분리 저장(Parquet + manifest/해시/라이선스 출처) — [E1.3 PR #14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14), [CI 43714655109](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43714655109)
 - [x] Tick→Time Bar(임의 positive timedelta), Bar→상위 Time Bar — [E1.2 PR #13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13), [CI 43713285009](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43713285009)
 - [x] 주입형 세션 anchor, DST, 명시적 조기폐장, 결측 거부, finalized bar의 offline aggregation — E1.2 PR #13. 공식 거래소 캘린더 공급자와 실시간 finalization은 후속
-- [ ] Volume/Dollar/Tick bars는 기본 계약 설계, 구현은 후속 단계 가능
-- [ ] Capability 협상: 하위 분봉/호가를 가짜 복원하지 않고 거부
+- [x] Volume/Dollar/Tick bars는 E0 BarKind 기본 타입으로 확장 지점 정의. 실제 집계 알고리즘은 후속 ADR/실험 단계에서 구현
+- [x] DataCapability/DataRequest.require_capability 및 resampler의 하위 분봉·호가 허위 복원 거부 — PR #12/#13
 
-**부분 진행:** [E1.1 수집/품질 계약](DATA_INGESTION.md) 구현·검증 완료. E1.2 offline aggregation 검증 완료; E1.3 persistence/manifest PR #14 검증 중, 아직 미완료. E1 Epic 전체 완료 아님.
+**검증 결과:** [E1.1](DATA_INGESTION.md), [E1.2](RESAMPLING.md), [E1.3](DATASETS.md) 구현·검증 완료. [CI 43714655109](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43714655109): Python 3.12/3.13 각 76 passed + Ruff/mypy/secrets guard. 실제 거래소 캘린더 자동수집, 실시간 finalization, 기업행동 수정주가 적용 엔진은 이번 범위가 아니며 뒤 단계에서 별도 검증 필요.
 
-**DoD:** 합성 ticks와 동일한 기댓값으로 1m/30m 바 생성; 집계 경계, 중복·지연·갭·분할/수정주가 정책 테스트; 30m→1m 요청 명시적 실패.
+**DoD:** 합성 Tick에서 1m/30m 바 생성, 거래소 세션/DST, 데이터 중복·지연·갭, 수정주가 정책의 데이터셋 메타데이터 보존(기업행동 변환 자체는 추후), 30m→1m 요청 거부, Parquet 재생·checksum 테스트 통과. [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12) / [#13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13) / [#14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14).
 
 ### E2 — Deterministic Event Runtime
 **의존성:** E1.
