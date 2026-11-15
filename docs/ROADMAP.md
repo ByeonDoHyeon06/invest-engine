@@ -38,19 +38,19 @@
 
 **증거:** [PR #11](https://github.com/ByeonDoHyeon06/invest-engine/pull/11) · [CI run 43708153842](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842). Python 3.12/3.13 각 37개 테스트·Ruff·mypy·기본 secret guard 통과. E0는 기초 데이터/이벤트 검증기만 완료했고 실제 Trading Core/Backtest는 E2~E5.
 
-### E1 — Market Data, Resolution & PIT [IN PROGRESS: Issue #2, PR #12]
+### E1 — Market Data, Resolution & PIT [IN PROGRESS: Issue #2, E1.1 merged]
 **의존성:** E0.
 
 **작업:**
-- [~] DataProvider Protocol, Normalizer, Validation, 품질 플래그 — [E1.1 Draft PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12); CI/리뷰 완료 전 [x] 아님
-- [~] Event-time / Available-at / Received-at 모델과 watermark/late policy — E1.1 QualityGate에 구현, durable state는 E2
+- [x] DataProvider Protocol, Normalizer, Validation, 품질 플래그 — [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12), CI [43712325371](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43712325371)
+- [x] Event-time / Available-at / Received-at 모델과 in-memory watermark/late quarantine policy — E1.1, durable state는 E2
 - [ ] 원본과 정규화 데이터의 분리 저장(Parquet + manifest/해시/라이선스 출처)
 - [ ] Tick→Time Bar(10s/1m/5m/30m/임의 기간), Bar→상위 Time Bar
 - [ ] 세션 anchor, DST, 조기폐장, 결측, incomplete/finalized bar
 - [ ] Volume/Dollar/Tick bars는 기본 계약 설계, 구현은 후속 단계 가능
 - [ ] Capability 협상: 하위 분봉/호가를 가짜 복원하지 않고 거부
 
-**부분 진행:** [E1.1 수집/품질 계약](DATA_INGESTION.md) 구현 중. E1.2 aggregation, E1.3 persistence/manifest는 아직 미구현.
+**부분 진행:** [E1.1 수집/품질 계약](DATA_INGESTION.md) 구현·검증 완료. E1.2 aggregation, E1.3 persistence/manifest는 아직 미구현.
 
 **DoD:** 합성 ticks와 동일한 기댓값으로 1m/30m 바 생성; 집계 경계, 중복·지연·갭·분할/수정주가 정책 테스트; 30m→1m 요청 명시적 실패.
 
