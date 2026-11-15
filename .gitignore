@@ -1,0 +1,35 @@
+# Credentials and personal data
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+credentials/
+accounts/
+broker-logs/
+# Market data may be proprietary
+data/
+datasets/
+artifacts/
+experiments/
+reports/
+logs/
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.coverage
+htmlcov/
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
