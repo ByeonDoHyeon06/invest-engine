@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "invest-engine"
 version = "0.0.1"
-description = "Broker-independent event-driven trading engine (E0 foundations only)"
+description = "Broker-independent market data and event-driven trading foundations (no live orders)"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [{name = "invest-engine contributors"}]
@@ -13,6 +13,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "hypothesis>=6,<7", "ruff>=0.8,<1", "mypy>=1.13,<2"]
+data = ["pyarrow>=18,<40"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
