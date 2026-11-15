@@ -168,7 +168,12 @@ def test_writer_rejects_unmatched_ids_or_wrong_provider(
     with pytest.raises(InvalidEvent, match="matching"):
         write_dataset(tmp_path, spec(), raw, (replace(accepted[0], event_id="unknown"),))
     with pytest.raises(InvalidEvent, match="source provider"):
-        write_dataset(tmp_path, spec(), raw, (replace(accepted[0], source="incorrect"),))
+        write_dataset(tmp_path, spec(), (replace(raw[0], source="incorrect"),), ())
+    with pytest.raises(InvalidEvent, match="normalized event disagrees"):
+        alternate = replace(kr_instrument, identifier="DIFFERENT")
+        write_dataset(tmp_path, spec(), raw, (replace(accepted[0], instrument_id=alternate),))
+    with pytest.raises(InvalidEvent, match="normalized event disagrees"):
+        write_dataset(tmp_path, spec(), raw, (replace(accepted[0], available_at=AT),))
     with pytest.raises(InvalidEvent, match="coverage"):
         write_dataset(tmp_path, spec(), (replace(raw[0], event_time=AT-timedelta(days=1)),), ())
 

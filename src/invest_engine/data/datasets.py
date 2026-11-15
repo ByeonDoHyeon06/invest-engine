@@ -268,14 +268,41 @@ def write_dataset(
     normal = tuple(normalized_events)
     if len({x.event_id for x in raw}) != len(raw) or len({x.event_id for x in normal}) != len(normal):
         raise InvalidEvent("duplicate dataset event identity")
-    if not {x.event_id for x in normal}.issubset({x.event_id for x in raw}):
+    by_id = {item.event_id: item for item in raw}
+    if not {x.event_id for x in normal}.issubset(by_id):
         raise InvalidEvent("normalized event without matching raw source")
-    for item in (*raw, *normal):
-        if item.source != spec.provider:
+    expected_kind = {
+        "trade": "market.trade", "quote": "market.quote",
+        "book": "market.order_book_snapshot", "bar": "market.bar",
+        "status": "market.status",
+    }
+    for event in normal:
+        origin = by_id[event.event_id]
+        if (
+            event.event_type != expected_kind[origin.kind]
+            or event.instrument_id != origin.instrument_id
+            or event.event_time != origin.event_time
+            or event.available_at != origin.available_at
+            or event.received_at != origin.received_at
+            or event.ingest_ordinal != origin.ingest_ordinal
+            or event.quality_flags
+        ):
+            raise InvalidEvent("normalized event disagrees with raw identity or timestamps")
+    for source_record in raw:
+        if source_record.source != spec.provider:
             raise InvalidEvent("source provider differs from dataset provenance")
-        if item.instrument_id is not None and item.instrument_id.market != spec.market:
+        if (source_record.instrument_id is not None
+                and source_record.instrument_id.market != spec.market):
             raise InvalidEvent("mixed market dataset is prohibited")
-        if not spec.coverage_start <= item.event_time < spec.coverage_end:
+        if not spec.coverage_start <= source_record.event_time < spec.coverage_end:
+            raise InvalidEvent("observation outside declared dataset coverage")
+    for normalized_record in normal:
+        if normalized_record.source != spec.provider:
+            raise InvalidEvent("source provider differs from dataset provenance")
+        if (normalized_record.instrument_id is not None
+                and normalized_record.instrument_id.market != spec.market):
+            raise InvalidEvent("mixed market dataset is prohibited")
+        if not spec.coverage_start <= normalized_record.event_time < spec.coverage_end:
             raise InvalidEvent("observation outside declared dataset coverage")
     for item in raw:
         if item.kind != spec.event_kind:
