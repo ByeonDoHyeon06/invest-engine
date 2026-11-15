@@ -34,4 +34,4 @@
 - 계약 변경은 ADR 추가/기존 ADR 상태 변경. 주요 버전 반영.
 - Live credential을 요청하거나 commit하지 않는다.
 
-**현재 초기 단계:** E0. 실제 엔진 코드 없음. 자동매매 기능이 있다고 주장하지 말 것.
+**현재 단계:** E0 기반 타입/Replay 검증 완료, E1 시장 데이터 정규화·집계가 다음 구현 단계. 현재 Trading/Order/Strategy/Backtesting 기능은 아직 없음. 먼저 STATUS와 열린 PR/CI 확인.
