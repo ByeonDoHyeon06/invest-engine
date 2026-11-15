@@ -1,11 +1,11 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-15
-**현재:** E0 VERIFIED; E1.1 #12 merged; E1.2 #13 merged. E1.3 Parquet/manifest 검증 중 (PR #14), 실거래 기능 없음.
-**현재 Stage:** [E1 — Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2) (IN PROGRESS: E1.3 PR #14, E1.1/E1.2 VERIFIED). E0 VERIFIED + MERGED.
+**현재:** E0 VERIFIED; E1.1 PR #12, E1.2 PR #13, E1.3 PR #14 모두 main 병합·검증 완료. E2 결정론적 이벤트 런타임 진입 예정. 실거래·주문 기능 없음.
+**현재 Stage:** [E2 — Issue #3](https://github.com/ByeonDoHyeon06/invest-engine/issues/3) (NEXT, NOT STARTED). E0/E1 VERIFIED + MERGED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
-## 완료된 E0와 다음 실행 지점 (2026-11-15)
+## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
 
 - E0 Epic: https://github.com/ByeonDoHyeon06/invest-engine/issues/1 (CLOSED)
 - 병합 PR: https://github.com/ByeonDoHyeon06/invest-engine/pull/11
@@ -14,10 +14,10 @@
 - **GitHub CI:** https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43708153842 — Python 3.12 및 3.13 **각 37 passed**; Ruff / mypy / credential guard 통과.
 - E0 범위: **계좌/주문/위험·거래전략/백테스트 없음**. Replay는 이벤트의 일관된 해시를 검증할 뿐 실제 체결 시뮬레이터가 아님.
 - 로컬: Python 3.13에서 36 passed + Hypothesis 미설치로 1 skipped. CI는 Hypothesis 포함 37 passed.
-- **진행 중:** [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12) — DataProvider/Normalizer/Quality/PIT 계약. GitHub CI [run 43712325371](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43712325371): Python 3.12/3.13 Ruff/mypy/pytest/secret guard 전부 통과; PR #12 merged (13cb52d).
+- **검증 완료:** [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12) — DataProvider/Normalizer/Quality/PIT 계약. GitHub CI [run 43712325371](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43712325371): Python 3.12/3.13 Ruff/mypy/pytest/secret guard 전부 통과; PR #12 merged (13cb52d).
 - **검증 완료:** [PR #13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13), squash [1d8756c](https://github.com/ByeonDoHyeon06/invest-engine/commit/1d8756c6ae13fffdb79d39ecf33fdc0f9d443611). [GitHub CI 43713285009](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43713285009): Python 3.12/3.13 Ruff/mypy/pytest/secret guard 통과. 로컬 66 passed, 1 skipped(로컬 Hypothesis 미설치).
-- **진행 중:** [PR #14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14) — 데이터셋 Manifest/라이선스/sha256, 원본·정규화 Parquet 저장, 수정 버전/결측 정책 및 Round-trip 테스트. 로컬 73 passed, 3 skipped (Hypothesis 및 pyarrow 미설치); **CI 미통과 시 완료로 표기 금지.**
-- **다음 단일 작업:** PR #14의 Python 3.12/3.13 CI·테스트/타입 오류 수정, 검증 후 병합. E1 전체 게이트 통과 시 Issue #2 종료 및 E2 진입.
+- **검증 완료:** [PR #14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14), squash [77e7aab](https://github.com/ByeonDoHyeon06/invest-engine/commit/77e7aab5fb9433edbe53f084d800e52dd051cae2). [CI 43714655109](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43714655109): Python 3.12/3.13 각각 76 passed + Ruff/mypy/secret guard. 로컬 73 passed, 3 skipped(로컬 의존성 미설치). Parquet 실제 저장/복원 테스트는 CI에서 실행됨.
+- **다음 단일 작업:** [E2 Issue #3](https://github.com/ByeonDoHyeon06/invest-engine/issues/3)에서 immutable State + Event/Command reducer 계약과 single-writer replay runtime 첫 PR 구현. Event Journal 및 Snapshot/Restart는 후속 E2 하위 PR. E1 테스트 회귀 유지.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -46,6 +46,7 @@
 - [E9 — Issue #10](https://github.com/ByeonDoHyeon06/invest-engine/issues/10)
 
 ## 변경 기록
+- 2026-11-15: E1.3 PR #14 squash merged (77e7aab), [CI 43714655109](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43714655109) Python 3.12/3.13 각각 76 passed. E1 전체 데이터 기반 검증, Issue #2 종료 및 E2 next.
 - 2026-11-15: E1.3 PR #14 생성; immutable Parquet raw/normalized datasets, SHA256 및 provenance 명세. CI 검증 중.
 - 2026-11-15: E1.2 PR #13 squash merged (1d8756c), GitHub CI 43713285009 양쪽 Python 버전 통과. E1.3 next.
 - 2026-11-15: E1.2 PR #13 구현 중. 세션 기준 시간봉 재구성과 미국 DST/조기폐장 검증(로컬 66 passed + Hypothesis 미설치 1 skipped).
