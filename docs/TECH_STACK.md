@@ -1,6 +1,6 @@
 # 기술 스택 및 도입 결정 — Engineering Plan
 
-**상태:** 계획. 아래 기술이 설치되었거나 테스트되었다는 뜻은 아니다. 실제 패키지 버전은 E0 lockfile과 CI에서 고정한다.
+**상태:** E0/E1 Python 3.12/3.13 GitHub CI 검증. PyArrow는 optional `data` extra로 포함, 테스트에서 실제 Parquet 저장/복원 확인. 나머지 기술은 계획/후보이며 lockfile은 아직 미도입.
 
 ## 1. 처음 구현하는 기술 (R0~R1)
 
@@ -45,12 +45,12 @@
 
 이 인터페이스가 유지되면 특정 시장 데이터/브로커/ML 구현 교체가 가능하다.
 
-## 5. E0에서 확정해야 할 개발 도구
-- [ ] 실제 Python/min supported version 및 dependency lock
-- [ ] formatter/linter/type-checker 설정
-- [ ] CI matrix(가능한 OS, Python), test commands
-- [ ] semantic versioning 및 architecture/ADR migration process
-- [ ] synthetic fixtures를 이용한 deterministic test
-- [ ] security secret scan / ignore policy
+## 5. 현재 구현된 개발 도구
+- [x] Python >=3.12, Python 3.12/3.13 CI. (완전한 의존성 lockfile은 향후 도입)
+- [x] Ruff/mypy/pytest/Hypothesis 설정 및 CI
+- [x] synthetic fixtures 기반 E0 deterministic replay와 E1 data tests
+- [x] 기본 credential pattern guard 및 gitignore (정식 secret scanner는 별도)
+- [x] optional PyArrow dataset extra와 Parquet round-trip 테스트 (E1.3)
+- [ ] 공식 SemVer/의존성 lockfile, 실거래용 안전/관측 체계는 향후 단계
 
 **원칙:** 테스트를 실행해 확인하기 전까지 지원한다고 쓰지 않는다.
