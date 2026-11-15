@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-15
-**현재:** E0 VERIFIED. E1.1 데이터 계약·정규화·품질 게이트 완료 (PR #12 merged). 실거래 기능 없음.
-**현재 Stage:** [E1 — Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2) (IN PROGRESS: E1.2 NEXT, E1.1 VERIFIED). E0 VERIFIED + MERGED.
+**현재:** E0 VERIFIED; E1.1 merged (#12). E1.2 시간봉 집계·세션/DST 구현 중 (PR #13). 실거래 기능 없음.
+**현재 Stage:** [E1 — Issue #2](https://github.com/ByeonDoHyeon06/invest-engine/issues/2) (IN PROGRESS: E1.2 PR #13, E1.1 VERIFIED). E0 VERIFIED + MERGED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0와 다음 실행 지점 (2026-11-15)
@@ -15,7 +15,8 @@
 - E0 범위: **계좌/주문/위험·거래전략/백테스트 없음**. Replay는 이벤트의 일관된 해시를 검증할 뿐 실제 체결 시뮬레이터가 아님.
 - 로컬: Python 3.13에서 36 passed + Hypothesis 미설치로 1 skipped. CI는 Hypothesis 포함 37 passed.
 - **진행 중:** [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12) — DataProvider/Normalizer/Quality/PIT 계약. GitHub CI [run 43712325371](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43712325371): Python 3.12/3.13 Ruff/mypy/pytest/secret guard 전부 통과; PR #12 merged (13cb52d).
-- **다음 단일 작업:** E1.2 시간봉 집계·시장 세션/DST를 별도 PR로 진행. E1.3 저장·manifest는 그 이후.
+- **진행 중:** [PR #13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13) — SessionCalendar, 미국 DST/local time, Tick/Bar → 임의 시간봉 offline aggregation, gap/no-lookahead 정책. 로컬 66 passed, 1 skipped. CI 검증 전 완료 표시 금지.
+- **다음 단일 작업:** PR #13 mypy/Ruff/pytest CI 확인 및 병합; 이후 E1.3 데이터셋 manifest·raw/normalized 저장을 구현.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -44,6 +45,7 @@
 - [E9 — Issue #10](https://github.com/ByeonDoHyeon06/invest-engine/issues/10)
 
 ## 변경 기록
+- 2026-11-15: E1.2 PR #13 구현 중. 세션 기준 시간봉 재구성과 미국 DST/조기폐장 검증(로컬 66 passed + Hypothesis 미설치 1 skipped).
 - 2026-11-15: E1.1 PR #12 squash merged (13cb52d), CI run 43712325371 양쪽 Python 버전 정상. E1.2가 다음 작업.
 - 2026-11-15: E1.1 브랜치 feat/e1-ingestion-quality-pit 및 Draft PR #12 생성. 엄격한 공급자 원시데이터 정규화·feed quarantine·as-of 관측 경계 추가. 전체 E1은 미완료.
 - 2026-11-15: 빈 저장소에서 비전/계획 문서 작성, E0 진입 예정.
