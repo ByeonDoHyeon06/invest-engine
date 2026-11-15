@@ -34,4 +34,4 @@
 - 계약 변경은 ADR 추가/기존 ADR 상태 변경. 주요 버전 반영.
 - Live credential을 요청하거나 commit하지 않는다.
 
-**현재 단계:** E0 검증 완료. E1.1 정규화/품질(합병 #12), E1.2 세션 기반 시간봉 집계(합병 #13) 검증 완료. **다음 단일 작업은 E1.3 dataset manifest / 원본·정규화 Parquet 저장·integrity·revision 검증.** E1 Epic #2는 열려 있음. Trader/Order/Strategy/Backtesting 기능 아직 없음. 먼저 STATUS와 열린 PR/CI를 확인.
+**현재 단계:** E0/E1 기초 검증 완료. E1.1 #12 정규화/품질, E1.2 #13 세션 시간봉, E1.3 #14 immutable Parquet/manifest 모두 main 병합·Python 3.12/3.13 CI 통과. **다음 단일 작업 E2 Issue #3: immutable TradingState + Event→Command pure reducer와 단일 writer runtime 기초를 별도 PR로 구현.** 주문/전략/백테스트/Live 기능 아직 없음. 먼저 STATUS/ROADMAP/열린 PR/CI 확인.
