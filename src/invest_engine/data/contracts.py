@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
+from types import MappingProxyType
 from datetime import datetime, timedelta
 from typing import Iterable, Mapping, Protocol
 
@@ -10,6 +12,20 @@ from invest_engine.domain.errors import InvalidEvent, UnsupportedData
 from invest_engine.domain.primitives import InstrumentId, Market, utc_datetime
 
 SUPPORTED_KINDS = frozenset({"trade", "quote", "book", "bar", "status"})
+
+
+def _freeze_raw(value: object) -> object:
+    """Freeze nested provider payloads to prevent mutation between replay passes."""
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise InvalidEvent("raw payload keys must be strings")
+        return MappingProxyType({key: _freeze_raw(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_raw(item) for item in value)
+    if value is None or isinstance(value, (str, int, bool, Decimal, datetime)):
+        return value
+    raise InvalidEvent("unsupported raw payload value")
+
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +52,7 @@ class RawMarketRecord:
             raise UnsupportedData(f"unsupported raw data kind: {self.kind}")
         if not isinstance(self.payload, Mapping):
             raise InvalidEvent("raw payload must be a mapping")
-        object.__setattr__(self, "payload", dict(self.payload))
+        object.__setattr__(self, "payload", _freeze_raw(self.payload))
         for field_name in ("event_time", "available_at", "received_at"):
             object.__setattr__(
                 self, field_name, utc_datetime(getattr(self, field_name), field=field_name)

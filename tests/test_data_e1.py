@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
@@ -101,6 +100,14 @@ def test_raw_record_input_is_copied(kr_instrument: InstrumentId) -> None:
     record = trade(kr_instrument, payload=payload)
     payload["price"] = "1"
     assert normalize_record(record).payload.price == Decimal("10")  # type: ignore[union-attr]
+    with pytest.raises(TypeError):
+        record.payload["price"] = "3"  # type: ignore[index]
+    nested = trade(kr_instrument, kind="book", payload={
+        "bids": [{"price": "8", "size": "1"}],
+        "asks": [{"price": "9", "size": "2"}],
+    })
+    with pytest.raises(TypeError):
+        nested.payload["bids"][0]["price"] = "4"  # type: ignore[index]
 
 
 def test_timezone_normalizes_to_utc(kr_instrument: InstrumentId) -> None:
@@ -133,6 +140,10 @@ def test_quality_duplicate_and_sequence_gap_stay_quarantined(us_instrument: Inst
     assert gate.inspect(first).disposition is Disposition.ACCEPT
     dup = gate.inspect(first)
     assert QualityFlag.DUPLICATE in dup.flags
+    # A duplicate carrying bogus metadata must not advance the stream cursor.
+    poisoning = gate.inspect(normalize_record(trade(us_instrument, source_sequence=10000,
+                                                    event_time=AT + timedelta(days=1))))
+    assert QualityFlag.DUPLICATE in poisoning.flags
     second = normalize_record(trade(us_instrument, event_id="trade-2", source_sequence=102,
                                     ingest_ordinal=2, event_time=AT + timedelta(seconds=1)))
     bad = gate.inspect(second)

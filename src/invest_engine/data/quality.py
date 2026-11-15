@@ -84,9 +84,12 @@ class QualityGate:
         flags: set[QualityFlag] = set()
         key = self.stream_key(event)
         if event.event_id in self._seen_ids:
-            flags.add(QualityFlag.DUPLICATE)
-        else:
-            self._seen_ids.add(event.event_id)
+            return QualityDecision(
+                Disposition.QUARANTINE,
+                replace(event, quality_flags=tuple(sorted(set(event.quality_flags) | {QualityFlag.DUPLICATE.value}))),
+                (QualityFlag.DUPLICATE,),
+            )
+        self._seen_ids.add(event.event_id)
 
         previous_time = self._watermarks.get(key)
         if previous_time is not None and event.event_time < previous_time - self.policy.allowed_lateness:
