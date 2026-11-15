@@ -21,6 +21,7 @@
 - [전체 아키텍처](docs/ARCHITECTURE.md)
 - [기술 스택/선택 근거](docs/TECH_STACK.md)
 - [도메인·이벤트·시간 계약](docs/DOMAIN.md)
+- [E1 데이터 수집·품질 계약](docs/DATA_INGESTION.md)
 - [전략·지능·연구](docs/STRATEGIES.md)
 - [위험·주문·포트폴리오](docs/RISK_EXECUTION.md)
 - [백테스트·Forward·검증 게이트](docs/VALIDATION.md)
