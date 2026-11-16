@@ -15,3 +15,5 @@
 | [0008](0008-synthetic-settlement.md) | Accepted (simulation; PR #20 CI verified) | 합성 매도 거래세, 미결제금, 확인 이벤트 및 장부 감사 |
 
 각 ADR은 Context, Decision, Consequences, Alternatives, Revisit trigger를 포함한다. 날짜가 아닌 명시적 조건으로 변경 여부를 판단한다.
+
+- [ADR-0010](0010-bar-fill-assumptions.md) — E5.1 보수적 바 체결, stop/target 미구현 범위 (Proposed)

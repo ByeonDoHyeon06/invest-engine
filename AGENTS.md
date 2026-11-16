@@ -28,6 +28,12 @@
 - 동일 events/config/artifact = deterministic replay. 모든 실험 manifest 작성.
 - outbox/idempotency/reconciliation은 Live 전에 필수.
 
+## E5 연구 엔진 경계
+- docs/E5_BACKTEST.md 및 ADR-0010 참고. E5.1은 보수적 Bar LIMIT 모델이지만 실제 체결 가능성을 보장하지 않는다.
+- 보고서 PnL은 통화별로 분리, FX 미확인 시 자동 합산 금지. 신호생성 봉과 동일한 봉에서 체결 금지.
+- E5.2 stop/target/갭과 E5.3 실험 CLI/manifest 미완료를 완료라고 표시하지 않는다.
+- 실제 브로커 연결은 E8 승인 전 금지.
+
 ## 작업 완료 시
 - 실행한 테스트와 결과를 명확히 보고. 실행 못하면 그 사유 기록.
 - docs/STATUS.md의 last commit/PR/next task/blocks/phase 업데이트.

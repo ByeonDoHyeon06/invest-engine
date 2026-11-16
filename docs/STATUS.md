@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-16
-**현재:** **E0~E4 검증 및 main 병합 완료**. E4 전략/Feature/ORB/allocator PR #21, Fill 귀속 가상장부 PR #22 완료. 자동 체결 모델·백테스트·실거래 없음.
-**현재 Stage:** [E5 Backtest Engine — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (NEXT); E4 Issue #5 VERIFIED (PR #21/#22). **LIVE NOT AUTHORIZED.**
+**현재:** **E0~E4 검증 및 main 병합 완료**. E5.1 최초 통합 역사적 Replay/보수적 Bar fill/리포트 구현 PR #23 검증 중. E5 전체 미완료. E4 전략/Feature/ORB/allocator PR #21, Fill 귀속 가상장부 PR #22 완료. 자동 체결 모델·백테스트·실거래 없음.
+**현재 Stage:** [E5 Backtest Engine — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (IN PROGRESS: PR #23); E4 Issue #5 VERIFIED (PR #21/#22). **LIVE NOT AUTHORIZED.**
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -20,7 +20,7 @@
 - **E2 구현:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) immutable State/Reducer + pure observation routing, DAG scheduler skeleton, SQLite event journal/atomic checkpoints/restart verification, fail-closed halt.
 - **E2 CI:** [run 43834211614](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834211614): Python 3.12/3.13 각각 99 passed + Ruff/mypy/secret guard. 로컬은 96 passed, 3 skipped (선택 라이브러리 미설치).
 - **E2 병합 증거:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) squash commit [7d1b814](https://github.com/ByeonDoHyeon06/invest-engine/commit/7d1b814366cb5b4c4976db04ecbddf764c65ef82). 최종 PR CI [43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280), Python 3.12/3.13 각 99 passed, Ruff/mypy/secret guard green.
-- **다음 단일 작업:** [E5 Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6)에서 E2 관측 저널 → E4 전략 신호/배분 → E3 합성 OrderIntent/Fill/virtual attribution의 **결정론적 통합 Replay**를 먼저 설계하고, bar-only 보수적 체결모델과 cost/experiment manifest를 별도 PR로 구현. E4 연구 코드를 Live로 자동연결하지 않음.
+- **다음 단일 작업:** PR #23 E5.1 CI/review → 병합. E5.2 stop/target·gap 동시 봉 보수모델과 견고성 테스트, E5.3 experiment manifest/CLI 를 별도 PR로 구현. [E5 Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6)에서 E2 관측 저널 → E4 전략 신호/배분 → E3 합성 OrderIntent/Fill/virtual attribution의 **결정론적 통합 Replay**를 먼저 설계하고, bar-only 보수적 체결모델과 cost/experiment manifest를 별도 PR로 구현. E4 연구 코드를 Live로 자동연결하지 않음.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -126,3 +126,8 @@
 - 라이브 안전 상태:
 
 **에이전트 및 개발자는 새 작업 시작 전 README → STATUS → ROADMAP → 관련 설계/ADR을 읽고, 끝날 때 STATUS를 갱신한다.**
+
+## E5.1 구현 기록 (2026-11-16)
+- [PR #23](https://github.com/ByeonDoHyeon06/invest-engine/pull/23): E2→E4→E3 결정론적 역사 replay 연결, 기존 주문의 다음 봉 관통 조건과 참여 상한·부분 체결, 가상 수수료·통화별 성과·결정 trace. 코드에서 broker/network 호출 없음.
+- 로컬 Python 3.13 196 passed, 3 skipped (Hypothesis/PyArrow 로컬 미설치). GitHub CI와 최종 병합은 별도 확인.
+- E5.1은 E5 전체 완료가 아님: stop/target/갭·큐·실험 CLI 미완료. E6 자동 학습·E7 Forward·E8 LIVE 미착수.

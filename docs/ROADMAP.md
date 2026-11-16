@@ -114,6 +114,7 @@
 **E5 통합 의존:** strategy decision/attribution ticket의 영속성, E2→E4→E3 실행기, 체결모델 및 Backtest report. **E4가 Live 안전성을 뜻하지 않는다.**
 
 ### E5 — Backtest Engine & Reporting
+**Implementation status (E5.1, PR #23):** 역사 이벤트→E2→E4 전략·Feature→E3 위험·가상 주문/체결 연결. 지정가 strict penetration, volume participation cap, fee/tax 및 별도 통화별 리포트. [E5_BACKTEST.md](E5_BACKTEST.md), [ADR-0010](adr/0010-bar-fill-assumptions.md). **E5 전체 검증/종료 아님.** E5.2 stop/target 겹침·갭·민감도, E5.3 CLI/manifest·더 많은 Golden Tests 필요.
 **의존성:** E3, E4.
 
 **작업:**
