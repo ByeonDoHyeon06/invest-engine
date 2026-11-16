@@ -6,8 +6,9 @@
 1. README.md 읽기 (프로젝트 범위/원칙)
 2. docs/STATUS.md 읽기 (현재 단계·다음 실행 항목·블로커)
 3. docs/ROADMAP.md 읽기 (Epic 순서/DoD/의존성)
-4. 수정할 모듈의 docs/ARCHITECTURE.md, DOMAIN.md, STRATEGIES.md, RISK_EXECUTION.md, VALIDATION.md, INTEGRATIONS.md와 docs/adr/ 읽기.
-5. GitHub의 열린 Issue/PR/CI 확인하여 진행 중 작업·실패를 먼저 해결.
+4. E3 이하 개발 전 docs/ENGINE_IO.md · docs/ML_RESEARCH.md · docs/adr/0005-io-contracts.md를 확인한다. 문서의 JSON은 제안이며 아직 구현/승인된 API가 아니다.
+5. 수정할 모듈의 docs/ARCHITECTURE.md, DOMAIN.md, STRATEGIES.md, RISK_EXECUTION.md, VALIDATION.md, INTEGRATIONS.md와 docs/adr/ 읽기.
+6. GitHub의 열린 Issue/PR/CI 확인하여 진행 중 작업·실패를 먼저 해결.
 
 ## 고정된 사용자 합의
 - 1분 OHLCV는 코어 제한이 아니다: TradeTick, QuoteTick, Bar(임의 주기), 기업·공시·거시 관측까지 타입 안전하게 받아야 한다.
@@ -35,3 +36,9 @@
 - Live credential을 요청하거나 commit하지 않는다.
 
 **현재 단계:** E0/E1 기초 검증 완료. E1.1 #12 정규화/품질, E1.2 #13 세션 시간봉, E1.3 #14 immutable Parquet/manifest 모두 main 병합·Python 3.12/3.13 CI 통과. **다음 단일 작업 E2 Issue #3: immutable TradingState + Event→Command pure reducer와 단일 writer runtime 기초를 별도 PR로 구현.** 주문/전략/백테스트/Live 기능 아직 없음. 먼저 STATUS/ROADMAP/열린 PR/CI 확인.
+
+## E3 전 경계 확인
+- E0~E2의 EventEnvelope는 시장 데이터 용도로 구현됨. 새 주문/계좌/Fill 타입은 versioned decoder/journal migration과 별도 불변식 테스트 필요.
+- 외부 Run API, 내부 Event/Command API, 미래 Prediction API는 서로 다른 계약. ML 출력은 주문이 아니다.
+- NoAction / Rejected / DataUnavailable / Halted는 반드시 구분하고 reason_codes·decision trace를 보존한다.
+- E3 범위는 simulated order/risk/portfolio 및 외부 계약 fixtures. 예측 모델은 E6 이후에 연구한다.
