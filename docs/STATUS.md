@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-16
-**현재:** E0/E1 VERIFIED. E2 구현·CI 통과(PR #15), 문서 동기화 및 병합 대기. 실제 주문·전략·계좌 없음.
-**현재 Stage:** [E2 — Issue #3](https://github.com/ByeonDoHyeon06/invest-engine/issues/3) (CODE VERIFIED; PR #15 MERGE PENDING). Next after merge: E3 Issue #4.
+**현재:** E0/E1/E2 완료, E2 PR #15 main 병합·최종 CI 검증 완료. E3 주문·포트폴리오·위험관리 구현 전. 실거래 없음.
+**현재 Stage:** [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4) (NEXT, NOT STARTED). E0/E1/E2 VERIFIED + MERGED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -19,7 +19,8 @@
 - **검증 완료:** [PR #14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14), squash [77e7aab](https://github.com/ByeonDoHyeon06/invest-engine/commit/77e7aab5fb9433edbe53f084d800e52dd051cae2). [CI 43714655109](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43714655109): Python 3.12/3.13 각각 76 passed + Ruff/mypy/secret guard. 로컬 73 passed, 3 skipped(로컬 의존성 미설치). Parquet 실제 저장/복원 테스트는 CI에서 실행됨.
 - **E2 구현:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) immutable State/Reducer + pure observation routing, DAG scheduler skeleton, SQLite event journal/atomic checkpoints/restart verification, fail-closed halt.
 - **E2 CI:** [run 43834211614](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834211614): Python 3.12/3.13 각각 99 passed + Ruff/mypy/secret guard. 로컬은 96 passed, 3 skipped (선택 라이브러리 미설치).
-- **다음 단일 작업:** PR #15 최종 문서-only CI 검증 후 병합·E2 Issue #3 종료. 이후 E3 Issue #4의 Portfolio/OrderIntent/SimBroker 계약을 작은 PR로 시작.
+- **E2 병합 증거:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) squash commit [7d1b814](https://github.com/ByeonDoHyeon06/invest-engine/commit/7d1b814366cb5b4c4976db04ecbddf764c65ef82). 최종 PR CI [43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280), Python 3.12/3.13 각 99 passed, Ruff/mypy/secret guard green.
+- **다음 단일 작업:** [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4)에서 Money/Quantity precision & rounding ADR을 먼저 확정하고, Position/OrderIntent/OrderState 순수 타입과 simulated Fill/Portfolio Ledger의 불변식을 첫 PR로 구현.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -48,6 +49,7 @@
 - [E9 — Issue #10](https://github.com/ByeonDoHyeon06/invest-engine/issues/10)
 
 ## 변경 기록
+- 2026-11-16: [E2 PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) squash merged (7d1b814); 최종 [CI 43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280) Python 3.12/3.13 각 99 passed + Ruff/mypy/secret guard. E2 Issue #3 closed; E3 다음 단계.
 - 2026-11-16: E2 코드 PR #15에서 통과(GitHub CI 43834211614). 문서/상태 반영 중, 병합 전. 라이브 기능 없음.
 - 2026-11-15: E1.3 PR #14 squash merged (77e7aab), [CI 43714655109](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43714655109) Python 3.12/3.13 각각 76 passed. E1 전체 데이터 기반 검증, Issue #2 종료 및 E2 next.
 - 2026-11-15: E1.3 PR #14 생성; immutable Parquet raw/normalized datasets, SHA256 및 provenance 명세. CI 검증 중.
