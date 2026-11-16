@@ -1,7 +1,7 @@
 # ADR-0009: Trust-limited strategy plugin boundary and initial ORB baseline
 
 - Date: 2026-11-16
-- Status: Proposed (E4 CI / review pending)
+- Status: Accepted (E4.1/2 CI, E4.3 attributable ledger pending CI)
 
 ## Context
 E0–E3 contain immutable market/portfolio event contracts and a simulated execution ledger. Putting indicator logic or market-dependent strategy rules into the core would reintroduce 1m-bar coupling and allow model output to evade the risk gate.
@@ -23,3 +23,7 @@ E0–E3 contain immutable market/portfolio event contracts and a simulated execu
 
 ## Consequences and revisiting
 Better separation and testability, but replay orchestration, fill attribution, and data vendor entitlements remain required before E5 and any production deployment. Revisit after E5 integrated historical replay or if untrusted third-party plugins become in-scope.
+
+## E4.3 follow-up — attribution without broker access
+
+A separate pure `VirtualLedger` uses immutable `AttributionTicket` and E3 `SimulatedFill` to allocate shared fills to strategy-level virtual positions. It conserves quantity and costs, computes realized P&L, rejects duplicate conflicts/overfills, and can audit aggregate quantity against E3's simulated account. **No transactionally durable ticket journal or live strategy ledger yet**; E5 will connect the replay orchestrator and persistence boundary. This follow-up does not relax the trust boundary or risk gate.

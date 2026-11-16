@@ -1,6 +1,6 @@
 # E4 Strategy SDK & ORB baseline
 
-**Status:** implemented candidate; verify GitHub CI and integration before marking E4 complete. **No actual brokerage or autonomous fill execution.**
+**Status:** E4.1/2 validated, E4.3 virtual-attribution implementation candidate; GitHub CI pending. **No actual brokerage or autonomous fill execution.**
 
 ## 1. Purpose
 
@@ -63,7 +63,21 @@ Acceptance scenarios:
 
 ## 5. E4 outstanding items
 
-- [ ] Decide fill-attributed virtual strategy ledger and persistent strategy decision journaling (separate PR before declaring E4 wholly complete).
+- [x] Add pure fill-attributed virtual strategy ledger (E4.3; pending CI review).
+- [ ] Persist attribution tickets and transactionally journal strategy decisions with order commands (E5 integrated runtime).
 - [ ] Optimize incremental feature calculations and test batch-vs-stream parity (can be E5 performance hardening).
 - [ ] Explicit E2→E4→E3 replay orchestrator with idempotent signal-to-order handoff (E5 integration).
 - [ ] Measure ORB strategies with realistic spread, slippage, data availability and trade execution model (E5); **no profitability assertion before that**.
+
+## 6. E4.3 — deterministic virtual fill attribution (research only)
+
+**New files:** `src/invest_engine/strategies/attribution.py`, `tests/test_attribution_e4.py`.
+
+- A `ticket_for_plan(allocation_plan, simulated_order_intent)` links an approved simulation order to its source strategy weight allocation; do not infer strategy provenance from a broker order alone.
+- `record_simulated_fill(VirtualLedger, AttributionTicket, SimulatedFill)` is a **pure reducer**: shares and acquisition fees split proportionally among strategy targets; a SELL is allocated pro rata across actual outstanding virtual strategy positions; realized P&L tracks fees and cost basis.
+- Splits may use **fractional virtual shares for accounting** even if the actual trade uses whole lots. These are research attribution units, never tradeable physical shares. A deterministic final-strategy remainder ensures sum(split_quantity) equals the original Fill quantity exactly.
+- The virtual ledger refuses unknown/mismatched intents, overfilling an order, duplicate execution IDs with different contents, or selling unallocated shares. Identical repeated fills are idempotent.
+- `audit_virtual_against_account(virtual, trading_state)` checks instrument-level virtual total quantities against E3 actual synthetic positions. It requires full coverage; if the E3 account has external/manual holdings, matching cannot be asserted and the auditor rejects it.
+- Replay of the same tickets+fills deterministically regenerates virtual holdings and realized P&L. **Persistence/transactional recording of tickets and cross-module E2→E4→E3 state commits is E5 work**; no atomic production research ledger claim here.
+
+E4 quality gates: interface/ORB/Feature tests plus synthetic fill-attribution and account-audit tests. Python 3.12/3.13 CI must pass before closing the E4 Epic.
