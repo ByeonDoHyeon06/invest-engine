@@ -1,7 +1,7 @@
 # ADR-0005: Explicit external I/O vs internal event contracts
 
 - Date: 2026-11-16
-- Status: Proposed for review (not yet accepted)
+- Status: Accepted (2026-11-16, boundary separation; Run/Prediction wire APIs remain proposed)
 - Context: Pre-E3 Engine API gap; research reference https://codingapple.com/unit/deep-learning-stock-price-ai/
 
 ## Context
