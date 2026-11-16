@@ -23,6 +23,7 @@
 - **[AI·ML 연구 목표 및 평가 계약 (E6 설계안)](docs/ML_RESEARCH.md)**
 - [E2 이벤트 런타임과 복구 규칙](docs/EVENT_RUNTIME.md)
 - **[E5.1 과거 데이터 재생 및 체결 모델](docs/E5_BACKTEST.md)**
+- **[E5.2 오프라인 RunRequest/실험 CLI](docs/E5_EXPERIMENT.md)**
 - **[E3 모의매매 주문·위험·포트폴리오 구현](docs/E3_SIMULATION.md)**
 - **[E3.3 시세 평가·일일 손실·계좌 대조](docs/E3_MONITORING.md)**
 - **[E3.4 합성 세금·매도 미결제금·정산 확인·Gate](docs/E3_SETTLEMENT.md)**
@@ -115,3 +116,7 @@ python -m pytest -q tests/test_strategy_e4.py tests/test_orb_e4.py tests/test_al
 ### E4.3 전략별 가상 손익 귀속
 
 E3의 합성 Fill을 여러 전략의 가상 포지션·취득원가·실현손익으로 귀속하고 실제 E3 합성 잔고와 수량을 감사한다. **이 장부는 아직 메모리 내 재생 가능한 연구용 계산이며**, 신호/주문/귀속 티켓의 통합 영속화와 백테스트 체결 모델은 E5 범위다. 실거래 기능은 여전히 없다.
+
+## E5 offline research CLI (PR #23 + #24)
+
+입력은 API 키가 아닌 자체 데이터/명시적인 거래세션/전략·위험 설정이다. `invest-engine backtest --config <run.json>`으로 `report.json`, `manifest.json`, `equity.jsonl`, `decisions.jsonl`, `fills.jsonl`을 만들 수 있다. [E5_EXPERIMENT.md](docs/E5_EXPERIMENT.md) 참조. **실행 가능한 stop/target/gap model 및 실거래는 지원하지 않는다.**
