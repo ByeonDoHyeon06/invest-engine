@@ -105,3 +105,40 @@ def test_ticket_guards():
         AttributionTicket("bad", INST, Side.BUY, D("10"))
     with pytest.raises(ValueError, match="SELL attribution"):
         AttributionTicket("bad", INST, Side.SELL, D("10"), (("one", D("1")),))
+
+
+def test_full_synthetic_buy_sell_realized_pnl_matches_e3():
+    cfg = TradingConfig("a", (MonetaryRules("KRW", D("1")),),
+                        ((INST.key, InstrumentRules(D("1"), D("1"))),))
+    eng = TradingRuntime(cfg, (Money(D("1000000"), "KRW"),))
+    sigs = (
+        StrategySignal("orb-in", "orb", "1", INST, SignalDirection.LONG, D("0.01"),
+                       NOW, NOW + timedelta(minutes=1), "bar1", D("95")),
+        StrategySignal("ema-in", "ema", "1", INST, SignalDirection.LONG, D("0.01"),
+                       NOW, NOW + timedelta(minutes=1), "bar1", D("95")),
+    )
+    buy_plan = allocate_targets(sigs, as_of=NOW).plans[0]
+    buy_intent = propose_simulated_intents((buy_plan,), state=eng.state, config=cfg,
+                                           marks=(MarketMark(INST, D("100"), NOW, "fixture"),),
+                                           as_of=NOW)[0]
+    eng.submit(buy_intent)
+    eng.accept_simulated(buy_intent.intent_id, NOW + timedelta(seconds=1))
+    eng.fill_simulated(buy_intent.intent_id, price=D("100"), quantity=buy_intent.quantity,
+                       execution_id="buy-ex", at=NOW + timedelta(seconds=2))
+    virtual = record_simulated_fill(VirtualLedger(), ticket_for_plan(buy_plan, buy_intent),
+                                     eng.state.fills[0])
+    sell_at = NOW + timedelta(seconds=3)
+    exit_signal = StrategySignal("exit", "risk-exit", "1", INST, SignalDirection.EXIT,
+                                 D(0), sell_at, sell_at + timedelta(minutes=1), "bar-exit")
+    sell_plan = allocate_targets((exit_signal,), as_of=sell_at).plans[0]
+    sell_intent = OrderIntent("sell-e4", "a", "e4-allocator", INST,
+                              Side.SELL, D("100"), D("120"), sell_at)
+    assert eng.submit(sell_intent).decision.decision.value == "APPROVED"
+    eng.accept_simulated(sell_intent.intent_id, sell_at + timedelta(seconds=1))
+    eng.fill_simulated(sell_intent.intent_id, price=D("120"), quantity=D("100"),
+                       execution_id="sell-ex", at=sell_at + timedelta(seconds=2))
+    virtual = record_simulated_fill(virtual, ticket_for_plan(sell_plan, sell_intent),
+                                     eng.state.fills[1])
+    audit_virtual_against_account(virtual, eng.state)
+    assert sum((p.realized_pnl for p in virtual.positions), D(0)) == eng.state.position(INST).realized_pnl
+    assert virtual.instrument_quantity(INST) == D("100")
