@@ -35,7 +35,7 @@ https://codingapple.com/unit/deep-learning-stock-price-ai/
          ↓
     StrategySignal → Allocator → Risk → Execution
 
-Prediction은 ORDER/BUI/SELL 같은 브로커 명령을 반환하지 않는다. 데이터 quality에 문제가 있거나 모델이 OOD(out of distribution) 신호를 감지하면 ABSTAIN.
+Prediction은 BUY/SELL 같은 브로커 명령을 반환하지 않는다. 데이터 quality에 문제가 있거나 모델이 OOD(out of distribution) 신호를 감지하면 ABSTAIN.
 
 ## 3. 예측 대상(Target) 후보
 1. **Forward return**: t 시점에 결정된 실행 가능 시작가격과 t+h 시점의 가격 변동률; 가격수준보다 먼저 실험.
