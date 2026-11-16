@@ -8,7 +8,7 @@ import pytest
 
 from invest_engine.data.calendar import StaticSessionCalendar, TradingSession
 from invest_engine.domain.events import Bar, EventEnvelope
-from invest_engine.domain.primitives import InstrumentId, Market
+from invest_engine.domain.primitives import InstrumentId
 from invest_engine.strategies.orb import ORBLongStrategy, ORBParameters
 from invest_engine.strategies.runtime import StrategyRunner
 
