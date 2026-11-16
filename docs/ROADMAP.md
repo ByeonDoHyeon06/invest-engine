@@ -98,21 +98,20 @@
 
 **DoD (E3 synthetic): PASS [PR #20 CI](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688). 현금/미결제금·체결 수량·합성 세금/수수료·예약금 일관성, 중복 이벤트 0중복 반영, 재시작/UNKNOWN·복구·E3.3 레거시 저널 재생 검증. **실시간 자동 체결 추론(E5), 실제 증권사 계좌 대조(E8), 결제 달력·실제 세율(E7/E8) 제외.**
 
-### E4 — Strategy SDK & Baseline
-**의존성:** E2, E3.
-
-**진행 중:** [PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) — SDK, NoTrade/ORB, Point-in-Time FeatureRegistry, target allocator. 로컬 회귀 181 passed, 3 skipped; main 병합 전 CI 검증 필요. [세부 사양](E4_STRATEGY.md) · [ADR-0009](adr/0009-strategy-boundary.md). **전략별 실제 Fill 귀속/virtual P&L ledger 및 통합 신호 저널은 아직 미구현**이며 추후 PR로 검증.
-
+### E4 — Strategy SDK & Baseline [VERIFIED]
+**의존성:** E2, E3. **병합/검증:** [PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) + [PR #22](https://github.com/ByeonDoHyeon06/invest-engine/pull/22); [CI 43857703057](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43857703057) Python 3.12/3.13 각 191 passed, Ruff/mypy/secret guard green. [세부 사양](E4_STRATEGY.md) · [ADR-0009](adr/0009-strategy-boundary.md).
 
 **작업:**
-- [ ] Strategy Manifest(DataRequirements, warmup, version, supported markets)
-- [ ] read-only StrategyContext + signal/target-position proposal
-- [ ] FeatureGraph(EMA, ATR, volume filters) 및 as-of 조회
-- [ ] ORB_LONG_V1 기준 구현; 1m/5m은 **전략 설정**만으로 지정
-- [ ] 최저기준 비교군: buy-and-hold 또는 no-trade / 간단 EMA (연구 기준)
-- [ ] 여러 전략 충돌 시 allocator 정책 및 전략 가상 장부
+- [x] Strategy Manifest(DataRequirements, warmup, version, supported markets)
+- [x] read-only StrategyContext + signal/target-position proposal (trusted internal Python plugins only)
+- [x] FeatureGraph(EMA, ATR, volume filters) 및 as-of 조회 (reference batch implementation)
+- [x] ORB_LONG_V1 기준 구현; 1m/5m은 **전략 설정**만으로 지정 (수익성 미검증)
+- [x] 최저기준 비교군: NoTrade (buy-and-hold/EMA 전략은 필요 시 E5 실험에서 추가)
+- [x] 여러 전략 충돌 시 allocator 정책 및 **합성 Fill 기반 전략별 가상 손익 장부**(in-memory, audit 포함)
 
-**DoD:** 전략 코드로 API/현금 변경 불가, 동일 입력에 동일 신호, 주기만 변경 시 코어 수정 불필요, warmup 미달·데이터 부재 때 주문 없음.
+**DoD:** 동일 입력에 동일 신호; warmup/데이터·세션 부족 시 신호 없음; 전략 Context에 브로커/계좌 변경 권한 없음; 위험/주문은 E3만 승인; 가상 Fill 귀속 보존/감사. Python Protocol은 외부 플러그인에 대한 보안 샌드박스가 아니므로 신뢰된 내부 전략만 허용.
+
+**E5 통합 의존:** strategy decision/attribution ticket의 영속성, E2→E4→E3 실행기, 체결모델 및 Backtest report. **E4가 Live 안전성을 뜻하지 않는다.**
 
 ### E5 — Backtest Engine & Reporting
 **의존성:** E3, E4.
