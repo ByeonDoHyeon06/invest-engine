@@ -6,7 +6,7 @@
 1. README.md 읽기 (프로젝트 범위/원칙)
 2. docs/STATUS.md 읽기 (현재 단계·다음 실행 항목·블로커)
 3. docs/ROADMAP.md 읽기 (Epic 순서/DoD/의존성)
-4. E3 이하 개발 전 docs/ENGINE_IO.md · docs/ML_RESEARCH.md · docs/E3_SIMULATION.md · docs/E3_MONITORING.md · ADR-0005/0006/0007을 확인한다. E3의 엄격한 주문 JSON만 구현돼 있고, Run/Prediction JSON 예시는 아직 설계안이다.
+4. E3 이하 개발 전 docs/ENGINE_IO.md · docs/ML_RESEARCH.md · docs/E3_SIMULATION.md · docs/E3_MONITORING.md · docs/E3_SETTLEMENT.md · ADR-0005/0006/0007/0008을 확인한다. E3의 엄격한 주문 JSON만 구현돼 있고, Run/Prediction JSON 예시는 아직 설계안이다.
 5. 수정할 모듈의 docs/ARCHITECTURE.md, DOMAIN.md, STRATEGIES.md, RISK_EXECUTION.md, VALIDATION.md, INTEGRATIONS.md와 docs/adr/ 읽기.
 6. GitHub의 열린 Issue/PR/CI 확인하여 진행 중 작업·실패를 먼저 해결.
 
@@ -35,7 +35,7 @@
 - 계약 변경은 ADR 추가/기존 ADR 상태 변경. 주요 버전 반영.
 - Live credential을 요청하거나 commit하지 않는다.
 
-**현재 단계:** E0/E1/E2 검증·병합 완료, E3.1 PR #17·E3.2 PR #18 병합, E3.3 PR #19 병합·CI 검증 완료. 구현 시작 전 STATUS/ROADMAP/열린 PR·CI 확인.
+**현재 단계:** E0~E2 검증·병합, E3.1~3.3 PR #17~#19 검증·병합. **E3.4 PR #20는 코드·Gate 리뷰 및 CI 단계.** 병합·Issue 종료 여부는 STATUS/PR을 확인한 뒤 판단.
 
 ## E3 구현 경계 및 남은 작업
 - E0~E2의 EventEnvelope는 시장 데이터용. E3는 별도 trading_event/event journal namespace에서 simulated order/fill을 구현; E2 시장 이벤트에 대한 실전 주문 전략 통합은 E4/E5 후속 작업.
@@ -43,4 +43,10 @@
 - NoAction / Rejected / DataUnavailable / Halted는 반드시 구분하고 reason_codes·decision trace를 보존한다.
 - E3 범위는 simulated order/risk/portfolio 및 외부 계약 fixtures. 예측 모델은 E6 이후에 연구한다.
 
-**현재 재개 지점:** [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4), E3.1/2/3 [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17)/[#18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)/[#19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) 모두 main 병합. **다음 E3.4 synthetic tax/settlement 및 gate audit** 범위를 확정해 구현하고, E4 전략 SDK로 이동. 수익성 검증/전략·Market→Order 자동연결/실거래 기능 없음.
+**현재 재개 지점:** [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4), E3.1/2/3 [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17)/[#18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)/[#19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) 모두 main 병합. **E3.4 PR #20의 CI·Gate 및 병합 확인 후 E4 전략 SDK**로 이동. 수익성 검증/전략·Market→Order 자동연결/실거래 기능 없음.
+
+## E3.4 합성 정산 정책
+- 기본 IMMEDIATE는 기존 E3 저널과 호환. EXPLICIT_CONFIRMATION은 매도대금 net을 unsettled에 기록하고 CashSettlementConfirmed 이벤트 이후 settled/available로 이동.
+- sell_tax_rate는 합성 테스트 비율일 뿐 실제 법적 거래세·토스 수수료가 아님. 수수료·가산세와 정산정책은 버전/저널 identity에 고정.
+- 거래소 영업일 T+N, 실제 broker buying power, 실계좌 연동 및 실제 세금정산은 E7/E8 이후 검증.
+- 모든 거래 reducer 상태전이에서 cash/주문/포지션/체결/미결제금 불변식을 감사. E4는 E3 실거래 인증을 전제하지 않음.

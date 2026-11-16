@@ -35,6 +35,13 @@ class OrderStatus(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class SellSettlementMode(str, Enum):
+    """Simulated crediting of net SELL proceeds; no brokerage settlement claims."""
+
+    IMMEDIATE = "IMMEDIATE"
+    EXPLICIT_CONFIRMATION = "EXPLICIT_CONFIRMATION"
+
+
 class DecisionStatus(str, Enum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
@@ -111,6 +118,8 @@ class TradingConfig:
     settlement_rules: tuple[MonetaryRules, ...]
     instrument_rules: tuple[tuple[str, InstrumentRules], ...]
     fee_rate: Decimal = Decimal("0.001")  # synthetic fixture only, not Toss fee
+    sell_tax_rate: Decimal = Decimal("0")  # optional synthetic SELL levy
+    sell_settlement_mode: SellSettlementMode = SellSettlementMode.IMMEDIATE
 
     def __post_init__(self) -> None:
         if not self.account_id.strip():
@@ -118,6 +127,13 @@ class TradingConfig:
         _decimal(self.fee_rate, field="fee_rate")
         if self.fee_rate < 0 or self.fee_rate > 1:
             raise ValueError("fee_rate must be within [0, 1]")
+        _decimal(self.sell_tax_rate, field="sell_tax_rate")
+        if self.sell_tax_rate < 0 or self.sell_tax_rate >= 1:
+            raise ValueError("sell_tax_rate must be within [0, 1)")
+        if self.fee_rate + self.sell_tax_rate >= 1:
+            raise ValueError("combined synthetic sell costs must be below proceeds")
+        if not isinstance(self.sell_settlement_mode, SellSettlementMode):
+            raise ValueError("invalid sell settlement mode")
         if len({v.currency for v in self.settlement_rules}) != len(self.settlement_rules):
             raise ValueError("duplicate settlement currency rules")
         if len({key for key, _ in self.instrument_rules}) != len(self.instrument_rules):

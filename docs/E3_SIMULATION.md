@@ -96,6 +96,8 @@ This is an example of **deterministic manual virtual fills**, not a trading stra
 
 Still missing: production-grade market mark-to-market and FX/settlement risk, daily loss threshold with fresh data, actual broker-account reconciliation and automated market fill models. E3.2 is **not a live-trading safety certification**.
 
-## E3.3 Market Monitoring (PR #19 merged; CI #43849493669)
+## E3.4 — Optional synthetic tax and confirmed sale settlement
 
-[E3_MONITORING.md](E3_MONITORING.md) defines optional simulation-only mark-to-market, per-currency daily-loss latches, fresh-entry gate, and synthetic reference-account comparison. **No real market/broker connection**. A clean evaluation is not a real broker guarantee; simulation `require_monitoring=False` defaults only preserve legacy tests. See [ADR-0007](adr/0007-monitored-risk.md).
+[Full technical contract and Gate audit](E3_SETTLEMENT.md) · [ADR-0008](adr/0008-synthetic-settlement.md).
+
+Existing immediate sale-credit behavior is retained as the default for previously saved E3 journals. A new opt-in `SellSettlementMode.EXPLICIT_CONFIRMATION` records net synthetic sell proceeds as `unsettled`, excluding them from buying power until `confirm_cash_settlement(execution_id, at)` records a durable confirmation. `sell_tax_rate` is explicitly synthetic and part of the journal identity; each fill carries derived fee/tax audit values. Internal ledger reservations and position quantities are audited after every event. Actual broker settlement calendars, withholding schedules, FX conversion and exchange rules remain outside E3.
