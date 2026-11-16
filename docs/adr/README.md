@@ -10,5 +10,6 @@
 | [0004](0004-controlled-adaptation.md) | Accepted | Research와 Live 분리 및 자기개선 통제 |
 | [0005](0005-io-contracts.md) | Accepted | Run/Runtime/Prediction 입출력 경계 분리 |
 | [0006](0006-monetary-rules.md) | Accepted (simulation) | 금액 반올림/호가/수량 및 비용기준 risk 정책 |
+| [0007](0007-monitored-risk.md) | Accepted (simulation) | 시세·환율 관측 기반 위험 관리 및 대조 검토 |
 
 각 ADR은 Context, Decision, Consequences, Alternatives, Revisit trigger를 포함한다. 날짜가 아닌 명시적 조건으로 변경 여부를 판단한다.
