@@ -12,7 +12,7 @@ from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.events import Bar, EventEnvelope
 from invest_engine.domain.primitives import InstrumentId, Market, Money
 from invest_engine.research.backtest import HistoricalBacktest
-from invest_engine.research.fills import BarFillPolicy, eligible_fill
+from invest_engine.research.fills import BarFillPolicy
 from invest_engine.strategies.baselines import NoTradeStrategy
 from invest_engine.strategies.contracts import (
     DataRequirement, SignalDirection, StrategyContext, StrategyManifest, StrategySignal,
@@ -79,7 +79,7 @@ def feed(*, prices: tuple[tuple[str, str, str, str, str], ...] | None = None):
     return tuple(events)
 
 
-def make_runner(*, fee: str = "0.001", fill: BarFillPolicy = BarFillPolicy(),
+def make_runner(*, fee: str = "0.001", fill: BarFillPolicy | None = None,
                 exit_on: int | None = None, no_trade: bool = False) -> HistoricalBacktest:
     config = TradingConfig(
         "sim", (MonetaryRules("KRW", D("1")),),
