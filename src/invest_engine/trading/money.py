@@ -29,7 +29,8 @@ class MonetaryRules:
             raise ValueError("currency must be an uppercase ISO 4217 code")
         _increment(self.cash_step, "cash_step")
         # This policy supports currency quantum increments, e.g. 1 KRW or 0.01 USD.
-        if self.cash_step.as_tuple().exponent < -12:
+        exponent = self.cash_step.as_tuple().exponent
+        if not isinstance(exponent, int) or exponent < -12:
             raise ValueError("cash_step precision exceeds supported simulation scale")
         with localcontext() as ctx:
             ctx.prec = 64
