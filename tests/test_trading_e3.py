@@ -169,15 +169,13 @@ def test_journal_rejects_changed_risk_config_and_corruption(tmp_path):
     db = tmp_path / "r.sqlite"
     with SQLiteTradingJournal(db) as journal:
         runtime(journal).submit(buy())
-    with SQLiteTradingJournal(db) as journal:
-        with pytest.raises(InvalidEvent, match="differs"):
-            runtime(journal, RiskLimits(max_open_positions=5))
+    with SQLiteTradingJournal(db) as journal, pytest.raises(InvalidEvent, match="differs"):
+        runtime(journal, RiskLimits(max_open_positions=5))
     with SQLiteTradingJournal(db) as journal:
         journal.connection.execute("UPDATE trading_events SET checksum='garbage' WHERE ordinal=0")
         journal.connection.commit()
-    with SQLiteTradingJournal(db) as journal:
-        with pytest.raises(InvalidEvent, match="checksum"):
-            runtime(journal)
+    with SQLiteTradingJournal(db) as journal, pytest.raises(InvalidEvent, match="checksum"):
+        runtime(journal)
 
 
 def test_restart_recovers_halt_after_invalid_execution(tmp_path):

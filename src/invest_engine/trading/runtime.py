@@ -12,7 +12,7 @@ from invest_engine.trading.journal import SQLiteTradingJournal
 from invest_engine.trading.ledger import (
     FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
     OrderReconciled, OrderRejected, OrderReserved, OrderUnknown,
-    TradingEvent, TradingPayload, TradingState, TradingStatus, exposure_for, initial_trading_state,
+    TradingEvent, TradingPayload, TradingStatus, exposure_for, initial_trading_state,
     reduce_trade_event,
 )
 from invest_engine.trading.models import (
@@ -39,13 +39,15 @@ class TradingRuntime:
 
     def __init__(
         self, config: TradingConfig, opening_cash: tuple[Money, ...],
-        limits: RiskLimits = RiskLimits(),
+        limits: RiskLimits | None = None,
         *, journal: SQLiteTradingJournal | None = None,
         checkpoint_interval: int = 10,
     ) -> None:
         if checkpoint_interval < 1:
             raise ValueError("checkpoint interval must be positive")
-        self.config, self.limits, self.journal = config, limits, journal
+        self.config = config
+        self.limits = limits if limits is not None else RiskLimits()
+        self.journal = journal
         self.checkpoint_interval = checkpoint_interval
         self.state = initial_trading_state(config.account_id, opening_cash)
         for cash in self.state.cash:
@@ -53,7 +55,7 @@ class TradingRuntime:
             if rule.settle(cash.settled) != cash.settled:
                 raise ValueError("opening balance violates currency precision")
         if journal is not None:
-            self.state = journal.restore(self.state, config, limits)
+            self.state = journal.restore(self.state, config, self.limits)
         self._halt_reason: str | None = journal.halt_reason() if journal else None
 
     def _emit(self, payload: TradingPayload, at: datetime, event_id: str) -> TradingEvent:

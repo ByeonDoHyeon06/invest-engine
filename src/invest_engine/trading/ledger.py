@@ -8,7 +8,7 @@ from decimal import Decimal, localcontext
 from enum import Enum
 
 from invest_engine.domain.errors import InvalidEvent
-from invest_engine.domain.primitives import InstrumentId, Money, _decimal, utc_datetime
+from invest_engine.domain.primitives import InstrumentId, Money, utc_datetime
 from invest_engine.trading.models import (
     OrderIntent, OrderStatus, Side, SimulatedFill, TradingConfig,
 )
