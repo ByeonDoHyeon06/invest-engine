@@ -4,7 +4,7 @@
 
 국내·미국 주식 대상으로 시장 데이터, 전략, 위험관리, 주문·체결, 포트폴리오, 연구·자기개선을 분리한 독립형 적응형 트레이딩 엔진.
 
-**현재 상태:** **E0~E3 합성 기반 검증 및 main 병합 완료** (E3.4 [PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20), [main CI 43852453688](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688)); **E4 전략 SDK 다음 단계**. Live/증권사 API·전략 기반 자동 주문·백테스트는 미구현. 개인용·headless·검증 우선.
+**현재 상태:** **E0~E4 엔진/전략 기반 검증 완료** (E4 PR #21·#22, [CI 43857703057](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43857703057) Python 3.12/3.13 각 191 passed). **다음 E5 Backtest Engine**. 실제 브로커 주문·시장 자동 체결·수익 검증은 미구현.
 
 ## 설계 원칙
 - 해상도 비종속: Tick/Quote/OrderBook/Bar/재무·공시 이벤트를 각각 정확한 타입으로 처리한다. 1분봉은 전략 설정이지 엔진 제한이 아니다.
@@ -100,7 +100,7 @@ python -m pytest -q
 
 [E3 상세 구현·남은 과제](docs/E3_SIMULATION.md) · [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) · [E3.2 운영 안전 PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)
 
-## E4 — Strategy SDK (진행 중)
+## E4 — Strategy SDK (검증 완료)
 
 읽기 전용 시장 데이터 → FeatureRegistry → StrategySignal → Portfolio Allocation → **가상 주문 제안**의 독립 흐름을 추가했다. ORB는 검증되지 않은 첫 기준 가설이며, 모델이 주문을 직접 실행하지 않는다. 실제 브로커·모델 학습·과거 체결 시뮬레이터는 아직 없다.
 
@@ -109,4 +109,8 @@ PYTHONPATH=src python examples/e4_strategy_signals.py
 python -m pytest -q tests/test_strategy_e4.py tests/test_orb_e4.py tests/test_allocation_e4.py tests/test_features_e4.py
 ```
 
-[PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) · [E4 사양](docs/E4_STRATEGY.md)
+[PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) · [PR #22 가상 Fill 귀속](https://github.com/ByeonDoHyeon06/invest-engine/pull/22) · [E4 사양](docs/E4_STRATEGY.md)
+
+### E4.3 전략별 가상 손익 귀속
+
+E3의 합성 Fill을 여러 전략의 가상 포지션·취득원가·실현손익으로 귀속하고 실제 E3 합성 잔고와 수량을 감사한다. **이 장부는 아직 메모리 내 재생 가능한 연구용 계산이며**, 신호/주문/귀속 티켓의 통합 영속화와 백테스트 체결 모델은 E5 범위다. 실거래 기능은 여전히 없다.
