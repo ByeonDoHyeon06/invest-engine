@@ -584,14 +584,14 @@ def audit_trading_state(state: TradingState) -> None:
     fills_by_order: dict[str, Decimal] = {}
     shares_by_symbol: dict[str, Decimal] = {}
     for fill in state.fills:
-        order = orders.get(fill.intent_id)
-        if order is None:
+        fill_order = orders.get(fill.intent_id)
+        if fill_order is None:
             raise InvalidEvent("fill references unknown order")
         fills_by_order[fill.intent_id] = (
             fills_by_order.get(fill.intent_id, Decimal(0)) + fill.quantity
         )
-        key = order.intent.instrument.key
-        delta = fill.quantity if order.intent.side is Side.BUY else -fill.quantity
+        key = fill_order.intent.instrument.key
+        delta = fill.quantity if fill_order.intent.side is Side.BUY else -fill.quantity
         shares_by_symbol[key] = shares_by_symbol.get(key, Decimal(0)) + delta
     for order in state.orders:
         qty = fills_by_order.get(order.intent.intent_id, Decimal(0))
