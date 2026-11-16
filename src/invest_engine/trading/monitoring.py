@@ -11,7 +11,7 @@ from decimal import Decimal, localcontext
 from typing import TYPE_CHECKING
 
 from invest_engine.domain.primitives import InstrumentId, Money, _currency, _decimal, utc_datetime
-from invest_engine.trading.models import OrderStatus, Side
+from invest_engine.trading.models import OrderStatus
 
 if TYPE_CHECKING:
     from invest_engine.trading.ledger import TradingState
