@@ -19,6 +19,7 @@
 - [현재 상태·다음 작업](docs/STATUS.md)
 - [단계별 로드맵 및 완료 조건](docs/ROADMAP.md)
 - [전체 아키텍처](docs/ARCHITECTURE.md)
+- [E2 이벤트 런타임과 복구 규칙](docs/EVENT_RUNTIME.md)
 - [기술 스택/선택 근거](docs/TECH_STACK.md)
 - [도메인·이벤트·시간 계약](docs/DOMAIN.md)
 - [E1 데이터 수집·품질 계약](docs/DATA_INGESTION.md)
