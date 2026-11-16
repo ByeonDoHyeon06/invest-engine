@@ -4,7 +4,7 @@
 
 국내·미국 주식 대상으로 시장 데이터, 전략, 위험관리, 주문·체결, 포트폴리오, 연구·자기개선을 분리한 독립형 적응형 트레이딩 엔진.
 
-**현재 상태:** E0·E1 FOUNDATIONS VERIFIED (PR #11~#14, 2026-11-15). 실거래·백테스트·주문 기능 없음. **다음 단계 E2 결정론적 이벤트 런타임.** 개인용·headless·검증 우선.
+**현재 상태:** E0·E1·E2 VERIFIED (PR #11~#15, 2026-11-16). E3 주문/자산/위험 구현 전이며 외부 I/O 계약 설계 검토 중. 실거래·백테스트·주문 기능 없음. 개인용·headless·검증 우선.
 
 ## 설계 원칙
 - 해상도 비종속: Tick/Quote/OrderBook/Bar/재무·공시 이벤트를 각각 정확한 타입으로 처리한다. 1분봉은 전략 설정이지 엔진 제한이 아니다.
@@ -19,6 +19,8 @@
 - [현재 상태·다음 작업](docs/STATUS.md)
 - [단계별 로드맵 및 완료 조건](docs/ROADMAP.md)
 - [전체 아키텍처](docs/ARCHITECTURE.md)
+- **[Engine 입출력 계약 (E3 전 검토안)](docs/ENGINE_IO.md)**
+- **[AI·ML 연구 목표 및 평가 계약 (E6 설계안)](docs/ML_RESEARCH.md)**
 - [E2 이벤트 런타임과 복구 규칙](docs/EVENT_RUNTIME.md)
 - [기술 스택/선택 근거](docs/TECH_STACK.md)
 - [도메인·이벤트·시간 계약](docs/DOMAIN.md)
@@ -75,3 +77,7 @@ python -m pytest -q
 [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12) · [PR #13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13) · [PR #14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14) · [E1 검증 CI](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43714655109)
 
 **주의:** E1은 데이터 기반만 제공한다. 주문/계좌/전략/실시간 트레이딩 및 수익 검증은 미구현이다. 실제 거래소 공휴일 캘린더 제공자, 라이브 watermark finalization, 시세 공급자 라이선스 검토 및 실제 시장 데이터 보정은 별도 과제로 남는다.
+
+## E3 착수 전 I/O 설계 검토
+
+전략/모델은 직접 주문하지 않는다. [ENGINE_IO.md](docs/ENGINE_IO.md)에 RunRequest/RunResult·DomainEvent/Command·RiskDecision·NoAction·결과 추적을, [ML_RESEARCH.md](docs/ML_RESEARCH.md)에 예측 대상·baseline·no-leakage 평가를 정리했다. **두 문서의 JSON은 아직 실행되는 API가 아닌 설계 초안**이며, E3 주문/회계 코드를 병합하기 전 버전·스키마·코어 호환성 테스트로 확정한다.
