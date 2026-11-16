@@ -54,7 +54,7 @@
 
 **DoD:** 합성 Tick에서 1m/30m 바 생성, 거래소 세션/DST, 데이터 중복·지연·갭, 수정주가 정책의 데이터셋 메타데이터 보존(기업행동 변환 자체는 추후), 30m→1m 요청 거부, Parquet 재생·checksum 테스트 통과. [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12) / [#13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13) / [#14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14).
 
-### E2 — Deterministic Event Runtime [VERIFIED PR #15; MERGE PENDING]
+### E2 — Deterministic Event Runtime [VERIFIED + MERGED: PR #15]
 **의존성:** E1.
 
 **작업:**
@@ -66,6 +66,8 @@
 - [x] Fail-closed HALTED on invalid/stale/duplicate event, journal failure; persisted halt, explicit operator-reviewed restart. Full broker/account reconciliation remains E8.
 
 **DoD:** Synthetic 500-event deterministic state hash, invalid event/clock rollback/duplicate rejection, 5 market payload codec roundtrips, snapshot+tail recovery, persisted halt, journal/snapshot corruption tests. **GitHub CI [run 43834211614](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834211614): Python 3.12 and 3.13 each 99 tests passed; Ruff, mypy, secret guard successful** (before documentation-only final update).
+
+**Merged evidence:** [Final CI 43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280) — Python 3.12/3.13 each 99 passed, Ruff/mypy/secret guard green. [Merge 7d1b814](https://github.com/ByeonDoHyeon06/invest-engine/commit/7d1b814366cb5b4c4976db04ecbddf764c65ef82).
 
 **Deliverable:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) · [E2 runtime contract](EVENT_RUNTIME.md). **Limitation:** E2 is observation state only; no order, trading ledger, real strategy execution or live broker, and restart currently replays entire journal (O(N)). Schema migration not implemented; unknown schema fails closed. Storage fault can prevent persisted halt, so operation host must block unattended restart on database fault.
 
