@@ -100,7 +100,7 @@ class SQLiteTradingJournal:
         actual = dict(self.connection.execute(
             "SELECT intent_id,state FROM trading_outbox"
         ))
-        expected: dict[str, str] = {}
+        expected_outbox: dict[str, str] = {}
         for order in state.orders:
             if order.status is OrderStatus.REJECTED and order.intent.intent_id not in actual:
                 continue
@@ -114,8 +114,8 @@ class SQLiteTradingJournal:
                 OrderStatus.CANCELED: "CLOSED",
                 OrderStatus.REJECTED: "CLOSED",
             }
-            expected[order.intent.intent_id] = mapping[order.status]
-        if actual != expected:
+            expected_outbox[order.intent.intent_id] = mapping[order.status]
+        if actual != expected_outbox:
             raise InvalidEvent("outbox does not match event-replayed order states")
         if self.halt_reason() is not None:
             from dataclasses import replace
