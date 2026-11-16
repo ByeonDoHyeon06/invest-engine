@@ -8,6 +8,7 @@ import json
 from invest_engine.core.fixtures import synthetic_ticks
 from invest_engine.core.replay import replay_events
 from invest_engine.domain.primitives import InstrumentId, Market
+from invest_engine.research.experiment import run_experiment
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -18,8 +19,16 @@ def main(argv: list[str] | None = None) -> int:
     replay = subparsers.add_parser("replay-synthetic", help="Replay synthetic trades deterministically")
     replay.add_argument("--count", type=int, default=500)
     replay.add_argument("--market", choices=["KR", "US"], default="KR")
+    backtest = subparsers.add_parser("backtest", help="Offline historical market events; no broker access")
+    backtest.add_argument("--config", required=True)
     args = parser.parse_args(argv)
 
+    if args.command == "backtest":
+        result = run_experiment(args.config)
+        print(json.dumps({"run_id": result.run_id, "run_sha256": result.report.run_sha256,
+                          "manifest_sha256": result.manifest_sha256,
+                          "output_dir": str(result.output_dir)}, sort_keys=True))
+        return 0
     if args.command == "replay-synthetic":
         market = Market(args.market)
         instrument = InstrumentId(

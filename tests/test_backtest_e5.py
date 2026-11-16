@@ -176,3 +176,35 @@ def test_fill_policy_validates_numbers():
         BarFillPolicy(participation=D("0"))
     with pytest.raises(ValueError):
         BarFillPolicy(spread_bps=D("-1"))
+
+
+def test_real_orb_plugin_causal_integration_21_synthetic_sessions():
+    """E2→E4 ORB/ATR/volume→E3 risk/fill, requiring twenty past sessions."""
+    from invest_engine.strategies.orb import ORBLongStrategy
+
+    sessions = tuple(TradingSession(Market.KR, "KRX", T+timedelta(days=d),
+                                    T+timedelta(days=d, hours=1)) for d in range(21))
+    events = []
+    for day, session in enumerate(sessions):
+        for minute in range(7):
+            start = session.start + minute*STEP
+            breakout = day == 20 and minute == 5
+            after = day == 20 and minute == 6
+            bar = Bar(start, start+STEP, D("99"), D("105") if after else D("102") if breakout else D("100"),
+                      D("95"), D("100") if after else D("101") if breakout else D("99"),
+                      D("1000") if after else D("30") if breakout else D("10"), interval=STEP)
+            end = start + STEP
+            events.append(EventEnvelope(f"orb:{day}:{minute}", "market.bar", "synthetic",
+                                        INST, end, end, end, len(events), bar))
+    cfg = TradingConfig("sim", (MonetaryRules("KRW", D("1")),),
+                        ((INST.key, InstrumentRules(D("1"), D("1"))),), fee_rate=D("0.001"))
+    result = HistoricalBacktest(
+        calendar=StaticSessionCalendar(sessions), strategies=(ORBLongStrategy(),),
+        config=cfg, opening_cash=(Money(D("100000"), "KRW"),),
+        risk=RiskLimits(per_trade_planned_loss=D("0.5"),
+                        max_symbol_cost_fraction=D("0.2"), max_total_cost_fraction=D("0.5")),
+    ).run(tuple(events))
+    assert result.decisions[-2].signal_ids
+    assert result.decisions[-2].fills == ()
+    assert result.decisions[-1].fills
+    assert result.entry_fill_count == 1
