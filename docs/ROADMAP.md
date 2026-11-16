@@ -54,18 +54,20 @@
 
 **DoD:** 합성 Tick에서 1m/30m 바 생성, 거래소 세션/DST, 데이터 중복·지연·갭, 수정주가 정책의 데이터셋 메타데이터 보존(기업행동 변환 자체는 추후), 30m→1m 요청 거부, Parquet 재생·checksum 테스트 통과. [PR #12](https://github.com/ByeonDoHyeon06/invest-engine/pull/12) / [#13](https://github.com/ByeonDoHyeon06/invest-engine/pull/13) / [#14](https://github.com/ByeonDoHyeon06/invest-engine/pull/14).
 
-### E2 — Deterministic Event Runtime
+### E2 — Deterministic Event Runtime [VERIFIED PR #15; MERGE PENDING]
 **의존성:** E1.
 
 **작업:**
-- [ ] single-writer reducer, immutable event/command 계약
-- [ ] 이벤트 ordering(available_at, provider sequence, ingest index), replay clock
-- [ ] checkpoint/snapshot, 이벤트 저널, schema migration policy
-- [ ] strategy subscription routing, feature dependency scheduler 기본 뼈대
-- [ ] Runtime(mode=BACKTEST/PAPER/LIVE)에서 동일 순수 코어 호출
-- [ ] 처리 실패·중복·재시작 시 fail-closed 상태 설계
+- [x] Single-writer immutable state reducer, typed observation-dispatch command contract — PR #15 tests
+- [x] Strict ordinal/event-id/quality/observation-time ordering. E1 source-sequence gap quarantine retained; no implicit reordering.
+- [x] SQLite WAL event journal, atomic append+checkpoint, restart replay/snapshot integrity checks; unsupported event schema rejected (migration implementation deferred).
+- [x] Subscription routing by event type/market/bar interval and feature dependency DAG scheduler skeleton. Strategy execution/feature calculation deferred E4.
+- [x] BACKTEST/PAPER share pure core; LIVE config intentionally refused pending authorized E8 adapter.
+- [x] Fail-closed HALTED on invalid/stale/duplicate event, journal failure; persisted halt, explicit operator-reviewed restart. Full broker/account reconciliation remains E8.
 
-**DoD:** 이벤트 입력과 설정/버전/시드가 같으면 이벤트 로그와 상태 해시가 동일; 미래 정보 노출 및 동시성 비결정성이 테스트로 방지.
+**DoD:** Synthetic 500-event deterministic state hash, invalid event/clock rollback/duplicate rejection, 5 market payload codec roundtrips, snapshot+tail recovery, persisted halt, journal/snapshot corruption tests. **GitHub CI [run 43834211614](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834211614): Python 3.12 and 3.13 each 99 tests passed; Ruff, mypy, secret guard successful** (before documentation-only final update).
+
+**Deliverable:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) · [E2 runtime contract](EVENT_RUNTIME.md). **Limitation:** E2 is observation state only; no order, trading ledger, real strategy execution or live broker, and restart currently replays entire journal (O(N)). Schema migration not implemented; unknown schema fails closed. Storage fault can prevent persisted halt, so operation host must block unattended restart on database fault.
 
 ### E3 — Portfolio, Risk, Order Simulation
 **의존성:** E2.
