@@ -1,7 +1,7 @@
 # ADR-0010 — Conservative observable-bar fill model for E5 research
 
 - Date: 2026-11-16
-- Status: Proposed for E5.1
+- Status: Accepted for E5.1 offline research only
 
 ## Context
 
