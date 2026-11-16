@@ -140,6 +140,8 @@ CLI 후보:
       "quantity":"10",
       "limit_price":{"currency":"KRW","amount":"7000"},
       "time_in_force":"DAY",
+      "stop_plan":{"trigger_price":{"currency":"KRW","amount":"6800"},
+                   "reason":"SYNTHETIC_STOP_FOR_TEST"},
       "requested_at":"2026-11-16T01:00:00Z",
       "correlation_id":"case-e3-01"
     }
