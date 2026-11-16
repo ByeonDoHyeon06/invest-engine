@@ -7,6 +7,7 @@ intentionally disabled until a separately authorized broker adapter exists.
 from __future__ import annotations
 
 import hashlib
+from contextlib import suppress
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import Enum
@@ -91,12 +92,13 @@ class Subscription:
             event.instrument_id is None or event.instrument_id.market not in self.markets
         ):
             return False
-        if self.bar_intervals and (
-            not isinstance(event.payload, Bar)
-            or event.payload.interval not in self.bar_intervals
-        ):
-            return False
-        return True
+        return not (
+            self.bar_intervals
+            and (
+                not isinstance(event.payload, Bar)
+                or event.payload.interval not in self.bar_intervals
+            )
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,10 +226,10 @@ class EventRuntime:
             reason = f"{type(exc).__name__}: {exc}"
             self.state = replace(self.state, status=RuntimeStatus.HALTED, halt_reason=reason)
             if self.journal is not None:
-                try:
+                with suppress(Exception):
+                    # If durable halt cannot be recorded, the in-memory runtime
+                    # remains halted. The host must treat storage faults as fatal.
                     self.journal.record_halt(reason)
-                except Exception:
-                    pass  # in-memory state remains halted if storage is broken
             raise
 
     def resume_after_review(self, *, reviewed: bool = False) -> None:
