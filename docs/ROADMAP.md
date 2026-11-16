@@ -71,14 +71,16 @@
 
 **Deliverable:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) · [E2 runtime contract](EVENT_RUNTIME.md). **Limitation:** E2 is observation state only; no order, trading ledger, real strategy execution or live broker, and restart currently replays entire journal (O(N)). Schema migration not implemented; unknown schema fails closed. Storage fault can prevent persisted halt, so operation host must block unattended restart on database fault.
 
-### E3 — Portfolio, Risk, Order Simulation [IN PROGRESS: PR #17/#18 MERGED; PR #19 E3.3 REVIEW]
+### E3 — Portfolio, Risk, Order Simulation [IN PROGRESS: PR #17/#18/#19 MERGED, E3.4 NEXT]
 **Pre-E3 contract gate (review first):** [ENGINE_IO.md](ENGINE_IO.md) · [ML_RESEARCH.md](ML_RESEARCH.md) · [ADR-0005](adr/0005-io-contracts.md). 외부 Run/Runtime/Prediction 계층을 구분하고 E3에 필요한 주문·포트폴리오 DomainEvent, 명시적 NO_ACTION/REJECTED, reason_codes, Decimal/UTC serialization, codec/journal migration을 고정한다. **E3의 ML 모델 구현은 금지(연구는 E6).**
+
+**E3.4 미완료:** E3 세금·정산 규칙(실제 국가별 법적 세율 주장이 아닌 합성 configurable 정책)·E3 전체 gate 확인. 주문 가격/체결 자동 추론은 E5, 실제 브로커 잔고는 E8. **E3 Epic을 아직 완료로 표시하지 않는다.**
 
 **권장 E3 PR 분할:** (a) Money/Quantity precision·rounding ADR + 타입·스키마 golden fixtures, (b) Account/Order/Fill DomainEvent + codec/journal migration, (c) 위험·예약금·포트폴리오 reducer, (d) simulated broker/부분체결/UNKNOWN 장애 테스트, (e) API artifact/결정 이력 검증.
 
 **의존성:** E2.
 
-**E3.3 구현/검증 대상:** [PR #19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) · [E3_MONITORING.md](E3_MONITORING.md) · [ADR-0007](adr/0007-monitored-risk.md). 계좌통화별 신선한 mark/FX를 이용한 지분 평가, 손실 도달 시 세션 래치, external *synthetic* account snapshot 비교, 불일치 운영자 검토, SQLite replay. **PR CI 전에는 완료 아님**. Legacy `require_monitoring=False`는 E3 합성 fixtures 호환을 위한 정책이며 실거래 허용치가 아니다.
+**E3.3 구현/검증 대상:** [PR #19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) · [E3_MONITORING.md](E3_MONITORING.md) · [ADR-0007](adr/0007-monitored-risk.md). 계좌통화별 신선한 mark/FX를 이용한 지분 평가, 손실 도달 시 세션 래치, external *synthetic* account snapshot 비교, 불일치 운영자 검토, SQLite replay. **CI 검증/병합 완료: 43849493669 (Python 3.12/3.13 각 150 passed)**. Legacy `require_monitoring=False`는 E3 합성 fixtures 호환을 위한 정책이며 실거래 허용치가 아니다.
 
 **추후 범위:** 실제 거래소 캘린더 기반 일일 기준자산, 외부 브로커/신뢰정보 비교, 통합 FX 계좌 손실 제한, 세금·결제·기업행동은 E7/E8 또는 별도 ADR; E4 전략, E5 자동 체결 시뮬레이션에서 계약을 이어받아야 함.
 

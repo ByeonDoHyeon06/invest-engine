@@ -35,7 +35,7 @@
 - 계약 변경은 ADR 추가/기존 ADR 상태 변경. 주요 버전 반영.
 - Live credential을 요청하거나 commit하지 않는다.
 
-**현재 단계:** E0/E1/E2 검증·병합 완료, E3.1 PR #17·E3.2 PR #18 병합, E3.3 PR #19 시세 기반 위험 모니터링 검증 중. 구현 시작 전 STATUS/ROADMAP/열린 PR·CI 확인.
+**현재 단계:** E0/E1/E2 검증·병합 완료, E3.1 PR #17·E3.2 PR #18 병합, E3.3 PR #19 병합·CI 검증 완료. 구현 시작 전 STATUS/ROADMAP/열린 PR·CI 확인.
 
 ## E3 구현 경계 및 남은 작업
 - E0~E2의 EventEnvelope는 시장 데이터용. E3는 별도 trading_event/event journal namespace에서 simulated order/fill을 구현; E2 시장 이벤트에 대한 실전 주문 전략 통합은 E4/E5 후속 작업.
@@ -43,4 +43,4 @@
 - NoAction / Rejected / DataUnavailable / Halted는 반드시 구분하고 reason_codes·decision trace를 보존한다.
 - E3 범위는 simulated order/risk/portfolio 및 외부 계약 fixtures. 예측 모델은 E6 이후에 연구한다.
 
-**현재 재개 지점:** [PR #19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) E3.3 CI/리뷰·병합 여부 확인. 시장 price/FX mark·세션 기준·synthetic reference를 받는 `observe_market_and_account` 구현. 지원되지 않은 라이브 브로커 계좌 대조나 실거래 안전성으로 오해하지 말 것. 실제 전략은 E4, 자동 체결/백테스트는 E5.
+**현재 재개 지점:** [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4), E3.1/2/3 [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17)/[#18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)/[#19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) 모두 main 병합. **다음 E3.4 synthetic tax/settlement 및 gate audit** 범위를 확정해 구현하고, E4 전략 SDK로 이동. 수익성 검증/전략·Market→Order 자동연결/실거래 기능 없음.

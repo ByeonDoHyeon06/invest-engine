@@ -96,6 +96,6 @@ This is an example of **deterministic manual virtual fills**, not a trading stra
 
 Still missing: production-grade market mark-to-market and FX/settlement risk, daily loss threshold with fresh data, actual broker-account reconciliation and automated market fill models. E3.2 is **not a live-trading safety certification**.
 
-## E3.3 Market Monitoring
+## E3.3 Market Monitoring (PR #19 merged; CI #43849493669)
 
 [E3_MONITORING.md](E3_MONITORING.md) defines optional simulation-only mark-to-market, per-currency daily-loss latches, fresh-entry gate, and synthetic reference-account comparison. **No real market/broker connection**. A clean evaluation is not a real broker guarantee; simulation `require_monitoring=False` defaults only preserve legacy tests. See [ADR-0007](adr/0007-monitored-risk.md).
