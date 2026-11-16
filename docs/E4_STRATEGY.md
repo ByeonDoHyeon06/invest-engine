@@ -1,6 +1,6 @@
 # E4 Strategy SDK & ORB baseline
 
-**Status:** E4.1/2 validated, E4.3 virtual-attribution implementation candidate; GitHub CI pending. **No actual brokerage or autonomous fill execution.**
+**Status:** E4.1–E4.3 verified, merged as PR #21/#22; [CI 43857703057](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43857703057) Python 3.12/3.13 each 191 passed. **No actual brokerage or autonomous fill execution.**
 
 ## 1. Purpose
 
@@ -63,7 +63,7 @@ Acceptance scenarios:
 
 ## 5. E4 outstanding items
 
-- [x] Add pure fill-attributed virtual strategy ledger (E4.3; pending CI review).
+- [x] Add pure fill-attributed virtual strategy ledger (E4.3; CI verified, PR #22).
 - [ ] Persist attribution tickets and transactionally journal strategy decisions with order commands (E5 integrated runtime).
 - [ ] Optimize incremental feature calculations and test batch-vs-stream parity (can be E5 performance hardening).
 - [ ] Explicit E2→E4→E3 replay orchestrator with idempotent signal-to-order handoff (E5 integration).
