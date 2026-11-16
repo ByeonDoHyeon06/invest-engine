@@ -72,6 +72,10 @@
 **Deliverable:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) · [E2 runtime contract](EVENT_RUNTIME.md). **Limitation:** E2 is observation state only; no order, trading ledger, real strategy execution or live broker, and restart currently replays entire journal (O(N)). Schema migration not implemented; unknown schema fails closed. Storage fault can prevent persisted halt, so operation host must block unattended restart on database fault.
 
 ### E3 — Portfolio, Risk, Order Simulation
+**Pre-E3 contract gate (review first):** [ENGINE_IO.md](ENGINE_IO.md) · [ML_RESEARCH.md](ML_RESEARCH.md) · [ADR-0005](adr/0005-io-contracts.md). 외부 Run/Runtime/Prediction 계층을 구분하고 E3에 필요한 주문·포트폴리오 DomainEvent, 명시적 NO_ACTION/REJECTED, reason_codes, Decimal/UTC serialization, codec/journal migration을 고정한다. **E3의 ML 모델 구현은 금지(연구는 E6).**
+
+**권장 E3 PR 분할:** (a) Money/Quantity precision·rounding ADR + 타입·스키마 golden fixtures, (b) Account/Order/Fill DomainEvent + codec/journal migration, (c) 위험·예약금·포트폴리오 reducer, (d) simulated broker/부분체결/UNKNOWN 장애 테스트, (e) API artifact/결정 이력 검증.
+
 **의존성:** E2.
 
 **작업:**
@@ -111,6 +115,8 @@
 **DoD:** 합성 체결 golden cases/경계 테스트, 미래 봉 가격 이용한 동시 체결 금지, 동일 실험 결과 재현, 수수료/슬리피지 변경이 결과에 반영.
 
 ### E6 — Research, Robustness & Adaptive Candidate Pipeline
+**예측 모델 검증 계약:** [ML_RESEARCH.md](ML_RESEARCH.md). Persistence/zero-return/dummy baseline, 거래 비용 차감 경제적 성능, 시간 기반 split·purge, Feature as-of/label horizon, OOS/Shadow 검증을 필수화. 모델은 PredictionResult만 반환하며 주문 명령을 생성하지 않는다.
+
 **의존성:** E5.
 
 **작업:**

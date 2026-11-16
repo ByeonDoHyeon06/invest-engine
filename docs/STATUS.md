@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-16
-**현재:** E0/E1/E2 완료, E2 PR #15 main 병합·최종 CI 검증 완료. E3 주문·포트폴리오·위험관리 구현 전. 실거래 없음.
-**현재 Stage:** [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4) (NEXT, NOT STARTED). E0/E1/E2 VERIFIED + MERGED.
+**현재:** E0/E1/E2 완료, E2 PR #15 main 병합 검증 완료. E3 주문·포트폴리오·위험관리 구현 전. **E3 시작 전 I/O·AI 평가 계약 리뷰 초안 준비 중.** 실거래 없음.
+**현재 Stage:** [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4) (NEXT, NOT STARTED). 선행: ENGINE_IO/ML_RESEARCH/ADR-0005 설계 리뷰. E0/E1/E2 VERIFIED + MERGED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -20,7 +20,7 @@
 - **E2 구현:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) immutable State/Reducer + pure observation routing, DAG scheduler skeleton, SQLite event journal/atomic checkpoints/restart verification, fail-closed halt.
 - **E2 CI:** [run 43834211614](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834211614): Python 3.12/3.13 각각 99 passed + Ruff/mypy/secret guard. 로컬은 96 passed, 3 skipped (선택 라이브러리 미설치).
 - **E2 병합 증거:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) squash commit [7d1b814](https://github.com/ByeonDoHyeon06/invest-engine/commit/7d1b814366cb5b4c4976db04ecbddf764c65ef82). 최종 PR CI [43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280), Python 3.12/3.13 각 99 passed, Ruff/mypy/secret guard green.
-- **다음 단일 작업:** [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4)에서 Money/Quantity precision & rounding ADR을 먼저 확정하고, Position/OrderIntent/OrderState 순수 타입과 simulated Fill/Portfolio Ledger의 불변식을 첫 PR로 구현.
+- **다음 단일 작업:** [ENGINE_IO.md](ENGINE_IO.md) 및 [ML_RESEARCH.md](ML_RESEARCH.md)의 스키마·E3 범위 검토 및 [ADR-0005](adr/0005-io-contracts.md) 승인 여부 결정. 이후 [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4)에서 Money/Quantity precision & rounding ADR을 먼저 확정하고, Position/OrderIntent/OrderState 순수 타입과 simulated Fill/Portfolio Ledger의 불변식을 첫 PR로 구현.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -47,6 +47,13 @@
 - [E7 — Issue #8](https://github.com/ByeonDoHyeon06/invest-engine/issues/8)
 - [E8 — Issue #9](https://github.com/ByeonDoHyeon06/invest-engine/issues/9)
 - [E9 — Issue #10](https://github.com/ByeonDoHyeon06/invest-engine/issues/10)
+
+## Pre-E3 인터페이스 검토 (2026-11-16)
+
+- 문서: [Engine Run/Runtime I/O](ENGINE_IO.md), [ML 연구 I/O/검증](ML_RESEARCH.md), [ADR-0005 Proposed](adr/0005-io-contracts.md).
+- 목적: E0~E2 시장 데이터 이벤트/저널은 구현되었지만 외부 RunRequest/RunResult, 주문 이벤트, AI PredictionResult API는 **미구현**임을 명확히 구분.
+- 검토 상태: Design proposal (NOT MERGED until review). **E3 개발·Live 주문은 시작하지 않음**.
+- E3 연결 시 E2 SQLite journal/codec가 MarketPayload만 지원하므로 버전 있는 확장·복구 테스트 필수.
 
 ## 변경 기록
 - 2026-11-16: [E2 PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) squash merged (7d1b814); 최종 [CI 43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280) Python 3.12/3.13 각 99 passed + Ruff/mypy/secret guard. E2 Issue #3 closed; E3 다음 단계.
