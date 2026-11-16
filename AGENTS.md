@@ -43,4 +43,4 @@
 - NoAction / Rejected / DataUnavailable / Halted는 반드시 구분하고 reason_codes·decision trace를 보존한다.
 - E3 범위는 simulated order/risk/portfolio 및 외부 계약 fixtures. 예측 모델은 E6 이후에 연구한다.
 
-**현재 재개 지점:** E3 Issue #4 / [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17). CI 검증 후 병합하고, E3 잔여 risk/market mark/strategy trade handoff를 작은 PR로 진행한다. 실거래 주문·수익률 백테스트 기능 없음.
+**현재 재개 지점:** E3 Issue #4 / [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) 병합 완료. 다음은 E3.2 연속 위험 관리·Pause/Cancel/Flatten 정책 구현을 작은 PR로 시작. Market mark/strategy/real-time handoff는 후속 단계로 구분한다. 실거래 주문·수익률 백테스트 기능 없음.
