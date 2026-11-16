@@ -43,4 +43,4 @@
 - NoAction / Rejected / DataUnavailable / Halted는 반드시 구분하고 reason_codes·decision trace를 보존한다.
 - E3 범위는 simulated order/risk/portfolio 및 외부 계약 fixtures. 예측 모델은 E6 이후에 연구한다.
 
-**현재 재개 지점:** E3 Issue #4, E3.1 [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) 병합 완료, E3.2 운영자 PAUSE/CANCEL/FLATTEN 계획 [PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18) CI/리뷰 중. 이후 E3.3 market mark·daily stop·account reconciliation의 데이터 정책을 우선 확정. 실거래 주문·백테스트·실시간 자동 체결 기능 없음.
+**현재 재개 지점:** E3 Issue #4, E3.1 [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) / E3.2 [PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18) **both main merged**. 다음은 E3.3 market mark·daily stop·account reconciliation의 데이터 계약을 우선 확정하고 테스트 기반 구현. 실거래 주문·백테스트·실시간 자동 체결 기능 없음.
