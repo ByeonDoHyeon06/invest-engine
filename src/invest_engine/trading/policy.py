@@ -1,11 +1,12 @@
 """Pure pre-trade risk policy for synthetic long-only simulation.
 
-Not live risk protection: current-price marking, FX conversion and broker
-buying-power reconciliation remain later gates.
+Optional E3.3 synthetic mark-to-market monitoring is available, but actual
+live FX settlement and broker buying power remain separate E8 gates.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from decimal import Decimal, localcontext
 
 from invest_engine.domain.primitives import _decimal
@@ -26,14 +27,23 @@ class RiskLimits:
     max_total_cost_fraction: Decimal = Decimal("0.30")
     max_open_positions: int = 3
     require_stop_plan: bool = True
+    max_daily_loss_fraction: Decimal = Decimal("0.01")
+    mark_max_age: timedelta = timedelta(minutes=2)
+    require_monitoring: bool = False
+    require_account_reference: bool = False
 
     def __post_init__(self) -> None:
         for name in (
-            "per_trade_planned_loss", "max_symbol_cost_fraction", "max_total_cost_fraction"
+            "per_trade_planned_loss", "max_symbol_cost_fraction", "max_total_cost_fraction",
+            "max_daily_loss_fraction"
         ):
             value = _decimal(getattr(self, name), field=name)
             if value < 0 or value > 1:
                 raise ValueError(f"{name} must be between 0 and 1")
+        if not isinstance(self.mark_max_age, timedelta) or self.mark_max_age <= timedelta(0):
+            raise ValueError("mark_max_age must be positive")
+        if self.require_account_reference and not self.require_monitoring:
+            raise ValueError("account reference requires monitoring")
         if self.max_open_positions < 1:
             raise ValueError("max_open_positions must be positive")
 
