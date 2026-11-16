@@ -58,3 +58,9 @@ L1 매매결과 분석 → L2 시장상태별 전략선택 → L3 파라미터 �
 - [E4_STRATEGY.md](E4_STRATEGY.md): `StrategyManifest`, `DataRequirement`, readonly `StrategyContext`, `StrategySignal`, `NoTradeStrategy`, ORB baseline, FeatureRegistry, target allocator, synthetic OrderIntent planner.
 - **E4 설계 명세가 곧 실거래 전략의 입증이 아니다**. ORB의 5m/15m 및 ×1.5 거래량 필터는 백테스트 전 연구 가설.
 - 목표 할당은 fill별 전략 손익 장부가 아니므로, 정확한 전략별 기여도와 포지션 귀속은 후속 설계가 필요하다.
+
+## E4 verified implementation (2026-11-16)
+
+PR #21: typed Strategy SDK, NoTrade, ORB, as-of technical FeatureRegistry, target allocator. PR #22: immutable AttributionTicket + VirtualLedger shares/acquisition fees/proportional sells/realized P&L with idempotent synthetic Fill replay and E3 aggregate position audit. CI 43857703057 (Python 3.12/3.13 each 191 passed).
+
+**Not implemented:** durable E2→E4→E3 strategy/decision journal, autonomous fill simulation, backtest reports (E5), research ML (E6), any broker orders (E8). Python strategies are trusted plugins only, not isolated sandboxed code.
