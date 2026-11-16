@@ -55,3 +55,9 @@
 - E3는 수동 합성체결 기반 모의 주문/위험/장부 핵심을 검증했으며, 전략→시장 데이터→주문 자동 연결은 아직 없다.
 - E4는 `StrategyManifest`, DataRequirements, 읽기 전용 Context, StrategySignal, FeatureGraph와 ORB baseline을 먼저 구현한다. 직접 브로커 접근, 자기개선 자동승격 및 실제 주문 기능은 금지.
 - E3.4 성공: [PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20), [CI 43852453688](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688), 기존 E3.3 SQLite journal 해시·잔고 호환성 확인. 합성 세금/정산과 실제 거래소 규칙을 혼동하지 않는다.
+
+## E4 현재 작업 (2026-11-16)
+- [PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21): Strategy SDK/FeatureRegistry/ORB/NoTrade/target allocator. E3 모의 주문에는 **제안만** 연결; 실제 체결 결정은 E5 이후.
+- E4 전략은 신뢰할 수 있는 내부 Python 플러그인만 허용; Protocol은 샌드박스가 아님.
+- E4 필수 검증: 과거 관측만 입력, 시간봉 구성/거래세션/워밍업, 20 이전 세션 거래량, 다중 전략 상한, 신호 결정론.
+- E4 잔여: Fill 귀속 strategy-level virtual ledger와 실행·신호 영속 경계 평가. STATUS/ROADMAP 참조. E4 Issue #5를 근거 없이 닫지 말 것.
