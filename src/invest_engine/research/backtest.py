@@ -86,9 +86,9 @@ class HistoricalBacktest:
         self, *, calendar: SessionCalendar, strategies: tuple[Strategy, ...],
         config: TradingConfig, opening_cash: tuple[Money, ...],
         risk: RiskLimits | None = None,
-        fill_policy: BarFillPolicy = BarFillPolicy(),
-        allocation_policy: AllocationPolicy = AllocationPolicy(),
-        settings: BacktestSettings = BacktestSettings(),
+        fill_policy: BarFillPolicy | None = None,
+        allocation_policy: AllocationPolicy | None = None,
+        settings: BacktestSettings | None = None,
     ) -> None:
         if not strategies or len({s.manifest.strategy_id for s in strategies}) != len(strategies):
             raise ValueError("at least one uniquely named strategy required")
@@ -101,9 +101,9 @@ class HistoricalBacktest:
         self.risk = risk if risk is not None else RiskLimits()
         if self.risk.require_monitoring:
             raise ValueError("E5 does not yet supply the E3 monitored risk snapshot")
-        self.fill_policy = fill_policy
-        self.allocation_policy = allocation_policy
-        self.settings = settings
+        self.fill_policy = fill_policy if fill_policy is not None else BarFillPolicy()
+        self.allocation_policy = allocation_policy if allocation_policy is not None else AllocationPolicy()
+        self.settings = settings if settings is not None else BacktestSettings()
         self._used = False
 
     def run(self, events: tuple[EventEnvelope[MarketPayload], ...]) -> BacktestReport:
