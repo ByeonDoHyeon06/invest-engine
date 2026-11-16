@@ -11,7 +11,7 @@ from invest_engine.domain.primitives import InstrumentId, Money, _decimal, utc_d
 from invest_engine.trading.journal import SQLiteTradingJournal
 from invest_engine.trading.monitoring import MonitorInput, MonitorResult
 from invest_engine.trading.ledger import (
-    AccountReconciliationReviewed, EntriesPaused, EntriesResumed, FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
+    AccountReconciliationReviewed, CashSettlementConfirmed, EntriesPaused, EntriesResumed, FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
     OrderReconciled, OrderRejected, OrderReserved, OrderUnknown, RiskObserved,
     TradingEvent, TradingPayload, TradingStatus, exposure_for, initial_trading_state,
     reduce_trade_event,
@@ -93,6 +93,26 @@ class TradingRuntime:
                 with suppress(Exception):
                     self.journal.record_halt(self._halt_reason)
             raise
+
+    def confirm_cash_settlement(self, execution_id: str, at: datetime) -> bool:
+        """Confirm a synthetic SELL receivable; never infer broker settlement.
+
+        Duplicate confirmations are idempotent. A nonexistent execution HALTs
+        the simulation rather than manufacturing cash.
+        """
+        if self.state.status is TradingStatus.HALTED:
+            raise InvalidEvent("runtime halted")
+        if execution_id in self.state.settled_execution_ids:
+            return False
+        pending = next(
+            (p for p in self.state.pending_settlements if p.execution_id == execution_id),
+            None,
+        )
+        if pending is None or utc_datetime(at) < pending.occurred_at:
+            self._force_halt("unknown or prematurely settled execution")
+            raise InvalidEvent("no eligible pending settlement")
+        self._emit(CashSettlementConfirmed(execution_id), at, "settle:" + execution_id)
+        return True
 
     def observe_market_and_account(self, snapshot: MonitorInput) -> MonitorResult:
         """Persist exactly the observations used for valuation/reconciliation.

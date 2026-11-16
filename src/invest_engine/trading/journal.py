@@ -19,7 +19,7 @@ from invest_engine.trading.ledger import (
     FillRecorded, OrderAccepted, OrderCanceled, OrderReconciled, OrderRejected,
     OrderReserved, OrderUnknown, TradingEvent, TradingState, reduce_trade_event,
 )
-from invest_engine.trading.models import OrderStatus, TradingConfig
+from invest_engine.trading.models import OrderStatus, SellSettlementMode, TradingConfig
 from invest_engine.trading.policy import RiskLimits
 
 
@@ -73,7 +73,15 @@ class SQLiteTradingJournal:
                 "max_open_positions": limits.max_open_positions,
                 "require_stop_plan": limits.require_stop_plan,
             }
-        blob = json.dumps(_canonical({"config": config, "starting_cash": state.cash, "risk_limits": pinned_limits}),
+        config_identity = _canonical(config)
+        # Preserve pre-E3.4 journal identity for the old default, without
+        # weakening binding for non-default synthetic tax/settlement policy.
+        if (config.sell_tax_rate == 0
+                and config.sell_settlement_mode is SellSettlementMode.IMMEDIATE):
+            config_identity.pop("sell_tax_rate")
+            config_identity.pop("sell_settlement_mode")
+        blob = json.dumps(_canonical({"config": config_identity, "starting_cash": state.cash,
+                                      "risk_limits": pinned_limits}),
                           sort_keys=True, ensure_ascii=False, separators=(",", ":"))
         return hashlib.sha256(blob.encode()).hexdigest()
 

@@ -10,7 +10,7 @@ from enum import Enum
 from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.primitives import InstrumentId, Money, utc_datetime
 from invest_engine.trading.models import (
-    OrderIntent, OrderStatus, Side, SimulatedFill, TradingConfig,
+    OrderIntent, OrderStatus, SellSettlementMode, Side, SimulatedFill, TradingConfig,
 )
 from invest_engine.trading.money import multiply_cash
 from invest_engine.trading.monitoring import MonitorInput, MonitorResult, evaluate_monitor
@@ -56,6 +56,33 @@ class OrderRecord:
     @property
     def remaining(self) -> Decimal:
         return self.intent.quantity - self.filled_quantity
+
+
+@dataclass(frozen=True, slots=True)
+class TransactionCharge:
+    """Per-fill cost audit; tax is synthetic, derived from pinned config."""
+
+    execution_id: str
+    currency: str
+    gross: Decimal
+    fee: Decimal
+    tax: Decimal
+    cash_delta: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class PendingSettlement:
+    """Sale proceeds awaiting a distinct, idempotent simulated confirmation."""
+
+    execution_id: str
+    currency: str
+    amount: Decimal
+    occurred_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CashSettlementConfirmed:
+    execution_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,7 +151,7 @@ class AccountReconciliationReviewed:
 TradingPayload = (
     EntriesPaused | EntriesResumed | OrderReserved | OrderRejected | OrderAccepted | OrderCancelPending
     | OrderCanceled | OrderUnknown | OrderReconciled | FillRecorded
-    | RiskObserved | AccountReconciliationReviewed
+    | RiskObserved | AccountReconciliationReviewed | CashSettlementConfirmed
 )
 
 
@@ -161,6 +188,9 @@ class TradingState:
     monitoring: MonitorResult | None = None
     daily_loss_sessions: frozenset[str] = frozenset()
     reconciliation_hold: bool = False
+    charges: tuple[TransactionCharge, ...] = ()
+    pending_settlements: tuple[PendingSettlement, ...] = ()
+    settled_execution_ids: frozenset[str] = frozenset()
 
     def account(self, currency: str) -> CashLedger:
         for balance in self.cash:
@@ -294,6 +324,27 @@ def _apply(
         if state.monitoring.preceding_ordinal + 1 != state.last_ordinal:
             raise InvalidEvent("review requires latest account assessment")
         return replace(state, reconciliation_hold=False)
+    if isinstance(payload, CashSettlementConfirmed):
+        pending = next(
+            (p for p in state.pending_settlements if p.execution_id == payload.execution_id),
+            None,
+        )
+        if pending is None:
+            raise InvalidEvent("no pending settlement for execution")
+        balance = state.account(pending.currency)
+        if balance.unsettled < pending.amount:
+            raise InvalidEvent("settlement exceeds unsettled cash")
+        return replace(
+            _set_cash(state, replace(
+                balance,
+                settled=balance.settled + pending.amount,
+                unsettled=balance.unsettled - pending.amount,
+            )),
+            pending_settlements=tuple(
+                p for p in state.pending_settlements if p.execution_id != pending.execution_id
+            ),
+            settled_execution_ids=state.settled_execution_ids | {pending.execution_id},
+        )
     if isinstance(payload, EntriesPaused):
         if not payload.reason.strip() or state.entry_pause_reason is not None:
             raise InvalidEvent("invalid new entry pause")
@@ -384,6 +435,10 @@ def _apply(
             fee = money.settle(gross * config.fee_rate)
             if fee != fill.fee:
                 raise InvalidEvent("fee does not match simulated policy")
+            tax = (
+                money.settle(gross * config.sell_tax_rate)
+                if order.intent.side is Side.SELL else Decimal(0)
+            )
             old = state.position(order.intent.instrument)
             if order.intent.side is Side.BUY:
                 balance = state.account(money.currency)
@@ -410,8 +465,19 @@ def _apply(
                 if old is None or old.quantity < fill.quantity or old.reserved_sell < fill.quantity:
                     raise InvalidEvent("insufficient shares for fill")
                 balance = state.account(money.currency)
-                net = gross-fee
-                state = _set_cash(state, replace(balance, settled=balance.settled+net))
+                net = gross - fee - tax
+                if net < 0:
+                    raise InvalidEvent("synthetic costs exceed sale proceeds")
+                if config.sell_settlement_mode is SellSettlementMode.EXPLICIT_CONFIRMATION:
+                    state = _set_cash(state, replace(
+                        balance, unsettled=balance.unsettled + net,
+                    ))
+                    state = replace(state, pending_settlements=(
+                        *state.pending_settlements,
+                        PendingSettlement(fill.execution_id, money.currency, net, fill.occurred_at),
+                    ))
+                else:
+                    state = _set_cash(state, replace(balance, settled=balance.settled + net))
                 remaining_qty = old.quantity-fill.quantity
                 gain = net - old.average_cost * fill.quantity
                 state = _set_position(state, replace(old, quantity=remaining_qty, reserved_sell=old.reserved_sell-fill.quantity, realized_pnl=old.realized_pnl+gain))
@@ -424,8 +490,14 @@ def _apply(
         )
         updated = replace(next_order, filled_quantity=updated_qty, status=new_status)
         state = _set_order(state, updated)
+        cash_delta = -(gross + fee) if order.intent.side is Side.BUY else gross - fee - tax
         return replace(
-            state, seen_fills=state.seen_fills | {fill.execution_id}, fills=(*state.fills, fill)
+            state,
+            seen_fills=state.seen_fills | {fill.execution_id},
+            fills=(*state.fills, fill),
+            charges=(*state.charges, TransactionCharge(
+                fill.execution_id, money.currency, gross, fee, tax, cash_delta,
+            )),
         )
     raise InvalidEvent("unknown trade payload")
 
@@ -441,8 +513,102 @@ def reduce_trade_event(
     if state.observed_at is not None and event.occurred_at < state.observed_at:
         raise InvalidEvent("trade event time reversed")
     updated = _apply(state, event.payload, config, limits or RiskLimits())
+    audit_trading_state(updated)
     # A single codec defines both the persisted wire event and state-chain hash.
     from invest_engine.trading.codec import encode_trade_event
     blob = encode_trade_event(event)
     digest = hashlib.sha256(bytes.fromhex(state.digest) + len(blob).to_bytes(8, "big") + blob).hexdigest()
     return replace(updated, last_ordinal=event.ordinal, observed_at=event.occurred_at, digest=digest, seen_events=updated.seen_events | {event.event_id})
+
+
+def audit_trading_state(state: TradingState) -> None:
+    """Validate journal/position/reservation consistency after each transition.
+
+    Internal invariant audit only; this does not prove an external broker agrees.
+    """
+    active = {
+        OrderStatus.RESERVED, OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED,
+        OrderStatus.CANCEL_PENDING, OrderStatus.UNKNOWN,
+    }
+    orders = {order.intent.intent_id: order for order in state.orders}
+    if len(orders) != len(state.orders):
+        raise InvalidEvent("duplicate order records")
+
+    reserved_by_currency: dict[str, Decimal] = {}
+    reserved_sell_by_symbol: dict[str, Decimal] = {}
+    for order in state.orders:
+        if order.status not in active:
+            if order.reserved_cash or order.reserved_qty:
+                raise InvalidEvent("closed order retains reservation")
+            continue
+        if order.intent.side is Side.BUY:
+            c = order.intent.instrument.currency
+            reserved_by_currency[c] = reserved_by_currency.get(c, Decimal(0)) + order.reserved_cash
+        else:
+            key = order.intent.instrument.key
+            reserved_sell_by_symbol[key] = (
+                reserved_sell_by_symbol.get(key, Decimal(0)) + order.reserved_qty
+            )
+
+    unsettled_by_currency: dict[str, Decimal] = {}
+    pending_ids: set[str] = set()
+    for pending in state.pending_settlements:
+        if pending.execution_id in pending_ids:
+            raise InvalidEvent("duplicate pending settlement")
+        pending_ids.add(pending.execution_id)
+        unsettled_by_currency[pending.currency] = (
+            unsettled_by_currency.get(pending.currency, Decimal(0)) + pending.amount
+        )
+    if pending_ids & state.settled_execution_ids:
+        raise InvalidEvent("settlement pending and confirmed simultaneously")
+    if not state.settled_execution_ids <= state.seen_fills:
+        raise InvalidEvent("settlement of nonexistent fill")
+
+    cash_currencies = {balance.currency for balance in state.cash}
+    if not set(reserved_by_currency) <= cash_currencies or not set(unsettled_by_currency) <= cash_currencies:
+        raise InvalidEvent("reservation or settlement currency not funded")
+    for balance in state.cash:
+        if balance.settled < 0 or balance.reserved < 0 or balance.unsettled < 0:
+            raise InvalidEvent("negative ledger cash")
+        if balance.available < 0:
+            raise InvalidEvent("negative buying power")
+        if reserved_by_currency.get(balance.currency, Decimal(0)) != balance.reserved:
+            raise InvalidEvent("cash reservations do not match open orders")
+        if unsettled_by_currency.get(balance.currency, Decimal(0)) != balance.unsettled:
+            raise InvalidEvent("unsettled cash does not match pending sales")
+
+    if len(state.charges) != len(state.fills) or len(state.fills) != len(state.seen_fills):
+        raise InvalidEvent("fill or charge journal inconsistent")
+    if {v.execution_id for v in state.charges} != state.seen_fills:
+        raise InvalidEvent("missing per-fill charge")
+    fills_by_order: dict[str, Decimal] = {}
+    shares_by_symbol: dict[str, Decimal] = {}
+    for fill in state.fills:
+        order = orders.get(fill.intent_id)
+        if order is None:
+            raise InvalidEvent("fill references unknown order")
+        fills_by_order[fill.intent_id] = (
+            fills_by_order.get(fill.intent_id, Decimal(0)) + fill.quantity
+        )
+        key = order.intent.instrument.key
+        delta = fill.quantity if order.intent.side is Side.BUY else -fill.quantity
+        shares_by_symbol[key] = shares_by_symbol.get(key, Decimal(0)) + delta
+    for order in state.orders:
+        qty = fills_by_order.get(order.intent.intent_id, Decimal(0))
+        if qty != order.filled_quantity or qty > order.intent.quantity:
+            raise InvalidEvent("order fill total inconsistent")
+    positions = {p.instrument.key: p for p in state.positions}
+    if len(positions) != len(state.positions):
+        raise InvalidEvent("duplicate position records")
+    if set(shares_by_symbol) - set(positions):
+        raise InvalidEvent("fill position is missing")
+    for position in state.positions:
+        if position.quantity != shares_by_symbol.get(position.instrument.key, Decimal(0)):
+            raise InvalidEvent("position quantities do not match fills")
+        if position.quantity < 0:
+            raise InvalidEvent("negative long position")
+        reserved = reserved_sell_by_symbol.get(position.instrument.key, Decimal(0))
+        if position.reserved_sell != reserved or position.reserved_sell > position.quantity:
+            raise InvalidEvent("sell reservations inconsistent")
+    if set(reserved_sell_by_symbol) - set(positions):
+        raise InvalidEvent("reservation on nonexistent position")
