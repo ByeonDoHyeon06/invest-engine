@@ -2,7 +2,7 @@
 
 **기준일:** 2026-11-16
 **현재:** E0/E1/E2 검증 완료. 설계 PR #16 및 **E3.1 구현 PR #17 main 병합 완료**. 합성 주문/체결·현금 예약·리스크·저널 구현. 실제 주문·전략·시장 기반 자동 체결·백테스트 없음.
-**현재 Stage:** [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4) (IN PROGRESS; PR #17 MERGED; PR #18 E3.2 REVIEW). E0/E1/E2 VERIFIED + MERGED.
+**현재 Stage:** [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4) (IN PROGRESS; PR #17/E3.1 + PR #18/E3.2 MERGED). E0/E1/E2 VERIFIED + MERGED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -65,8 +65,8 @@
 
 ## E3.2 진행 및 남은 E3.3 (2026-11-16)
 
-- [PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18): 신규 BUY 일시중지/검토 후 재개, 확정 전 예약을 유지하는 일괄 취소 요청, 신선한 가격을 명시 입력받는 제한가 SELL 청산 *계획만* 생성. 새로운 이벤트 타입은 기존 E3 v1을 깨지 않도록 추가.
-- 로컬 Python 3.13: **129 passed, 3 skipped**(Hypothesis/PyArrow 미설치). GitHub CI는 리뷰 중.
+- [PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18) (MERGED [96a2366](https://github.com/ByeonDoHyeon06/invest-engine/commit/96a2366a8f9dd57b33554ae08afe6ad28680779c)): 신규 BUY 일시중지/검토 후 재개, 확정 전 예약을 유지하는 일괄 취소 요청, 신선한 가격을 명시 입력받는 제한가 SELL 청산 *계획만* 생성. 새로운 이벤트 타입은 기존 E3 v1을 깨지 않도록 추가.
+- 로컬 Python 3.13: **129 passed, 3 skipped**(Hypothesis/PyArrow 미설치). GitHub CI [43844743665](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43844743665): Python 3.12/3.13 각각 **132 passed**, Ruff/mypy/secret guard 성공.
 - 다음 단계: Risk monitoring / stale market mark / daily-loss gate / reference broker account mismatch behavior 검증. 실제 시장·브로커 호출은 아직 없는 상태.
 
 ## 변경 기록
