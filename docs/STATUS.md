@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-16
-**현재:** **E0~E3 합성 기반 검증 완료**. E3.1~3.4 PR #17~#20 main 병합. [E3.4 PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20) · [main CI 43852453688](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688) Python 3.12/3.13 각 160 passed, Ruff/mypy/secrets 통과. 실제 주문·전략·백테스트 없음.
-**현재 Stage:** [E4 Strategy SDK — Issue #5](https://github.com/ByeonDoHyeon06/invest-engine/issues/5) NEXT; E3 synthetic scope verified and merged (Issue #4 closing/closed). **LIVE NOT AUTHORIZED.**
+**현재:** **E0~E3 합성 기반 검증 완료; E4 전략 SDK 구현 PR #21 검증 중**. E3.1~3.4 PR #17~#20 main 병합. [E3.4 PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20) · [main CI 43852453688](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688) Python 3.12/3.13 각 160 passed, Ruff/mypy/secrets 통과. 실제 주문·전략·백테스트 없음.
+**현재 Stage:** [E4 Strategy SDK — Issue #5](https://github.com/ByeonDoHyeon06/invest-engine/issues/5) IN PROGRESS ([PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21), DRAFT); E3 synthetic scope verified and merged (Issue #4 closing/closed). **LIVE NOT AUTHORIZED.**
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -20,7 +20,7 @@
 - **E2 구현:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) immutable State/Reducer + pure observation routing, DAG scheduler skeleton, SQLite event journal/atomic checkpoints/restart verification, fail-closed halt.
 - **E2 CI:** [run 43834211614](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834211614): Python 3.12/3.13 각각 99 passed + Ruff/mypy/secret guard. 로컬은 96 passed, 3 skipped (선택 라이브러리 미설치).
 - **E2 병합 증거:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) squash commit [7d1b814](https://github.com/ByeonDoHyeon06/invest-engine/commit/7d1b814366cb5b4c4976db04ecbddf764c65ef82). 최종 PR CI [43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280), Python 3.12/3.13 각 99 passed, Ruff/mypy/secret guard green.
-- **다음 단일 작업:** [E4 Issue #5](https://github.com/ByeonDoHyeon06/invest-engine/issues/5)에서 StrategyManifest/DataRequirements/ReadOnly StrategyContext/StrategySignal/FeatureGraph + NoTrade baseline을 작은 첫 PR로 구현. 실제 브로커는 E8, 자동 체결 가격모델은 E5.
+- **다음 단일 작업:** [E4 PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21)의 Ruff/mypy/pytest/secret guard CI 검증 및 수정. 검증 완료 시 병합하고, 전략별 fill 귀속·영속 decision journal/원자적 signal→OrderIntent 연결 범위를 E4 후속 PR로 결정한다. 실제 Broker E8, 체결가격모델 E5.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -82,6 +82,13 @@
 - 로컬 Python 3.13: **157 passed, 3 skipped** (Hypothesis/PyArrow 미설치). 이전 E3.3 코드로 작성한 SQLite 저널을 신코드에서 동일 해시/금액으로 복구했음.
 - GitHub CI: 최초 mypy 변수 이름 충돌 수정 후, 최종 PR CI [43852259445](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852259445) 성공, Python 3.12/3.13 각 160 passed; merge [affe843](https://github.com/ByeonDoHyeon06/invest-engine/commit/affe8439642260923614f07394f8b9f46345942e) 후 [main CI 43852453688](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688) 성공.
 - 정산 방식은 실제 거래소 영업일이나 법적 세금 규정이 아닌 합성 확인 정책이며, 증권사 API나 실제 주문은 없음.
+
+## E4 Strategy SDK 진행 (2026-11-16)
+
+- [PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21): StrategyManifest/DataRequirements/읽기 전용 Context/Signal/Registry/NoTrade, as-of EMA/ATR/median volume, ORB_LONG_V1, multiple-strategy target allocator and broker-free simulated intent planner.
+- 문서: [E4_STRATEGY.md](E4_STRATEGY.md) · [ADR-0009](adr/0009-strategy-boundary.md).
+- **검증 상태:** 로컬 Python 3.13 pytest **181 passed, 3 skipped**; GitHub CI 상태 확인 중. 이 문서 갱신 시점에는 E4 전체 완료/Issue #5 종료로 표기하지 않는다.
+- 한계: 현재 E4는 in-memory 전략 runner 및 목표 할당 계획만 보유. Fill 기반 전략별 가상 P&L 장부와 전략 판단/주문의 통합 영속 저널은 후속 검토. 실제 수익 검증/Backtest는 E5, Live는 E8 별도 승인.
 
 ## 변경 기록
 - 2026-11-16: E3.4 [PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20) merged `affe843`, main CI `43852453688` Python 3.12/3.13 each 160 passed + Ruff/mypy/secrets. E3 synthetic core complete, E4 Issue #5 NEXT.

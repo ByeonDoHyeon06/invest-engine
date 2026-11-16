@@ -31,6 +31,7 @@
 - [E1.2 거래 세션·시간봉 집계](docs/RESAMPLING.md)
 - [E1.3 데이터셋·무결성·출처](docs/DATASETS.md)
 - [전략·지능·연구](docs/STRATEGIES.md)
+- [E4 Strategy SDK 및 ORB 가설 구현](docs/E4_STRATEGY.md)
 - [위험·주문·포트폴리오](docs/RISK_EXECUTION.md)
 - [백테스트·Forward·검증 게이트](docs/VALIDATION.md)
 - [외부 데이터·증권사 연동](docs/INTEGRATIONS.md)
@@ -98,3 +99,14 @@ python -m pytest -q
 기대 합성 출력: 10주 × 7,000 KRW 주문 70,070 KRW 예약 → 4주 체결 및 나머지 취소 후 **971,972 KRW 현금·4주 포지션·예약 0**. 수수료율 0.1%, KRW 반올림은 테스트 설정이지 실제 증권사 조건이 아니다.
 
 [E3 상세 구현·남은 과제](docs/E3_SIMULATION.md) · [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) · [E3.2 운영 안전 PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)
+
+## E4 — Strategy SDK (진행 중)
+
+읽기 전용 시장 데이터 → FeatureRegistry → StrategySignal → Portfolio Allocation → **가상 주문 제안**의 독립 흐름을 추가했다. ORB는 검증되지 않은 첫 기준 가설이며, 모델이 주문을 직접 실행하지 않는다. 실제 브로커·모델 학습·과거 체결 시뮬레이터는 아직 없다.
+
+```bash
+PYTHONPATH=src python examples/e4_strategy_signals.py
+python -m pytest -q tests/test_strategy_e4.py tests/test_orb_e4.py tests/test_allocation_e4.py tests/test_features_e4.py
+```
+
+[PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) · [E4 사양](docs/E4_STRATEGY.md)
