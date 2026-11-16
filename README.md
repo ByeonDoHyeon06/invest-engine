@@ -22,6 +22,7 @@
 - **[Engine 입출력 계약](docs/ENGINE_IO.md)**
 - **[AI·ML 연구 목표 및 평가 계약 (E6 설계안)](docs/ML_RESEARCH.md)**
 - [E2 이벤트 런타임과 복구 규칙](docs/EVENT_RUNTIME.md)
+- **[E5.1 과거 데이터 재생 및 체결 모델](docs/E5_BACKTEST.md)**
 - **[E3 모의매매 주문·위험·포트폴리오 구현](docs/E3_SIMULATION.md)**
 - **[E3.3 시세 평가·일일 손실·계좌 대조](docs/E3_MONITORING.md)**
 - **[E3.4 합성 세금·매도 미결제금·정산 확인·Gate](docs/E3_SETTLEMENT.md)**
