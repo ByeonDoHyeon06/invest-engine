@@ -16,4 +16,4 @@
 
 각 ADR은 Context, Decision, Consequences, Alternatives, Revisit trigger를 포함한다. 날짜가 아닌 명시적 조건으로 변경 여부를 판단한다.
 
-- [ADR-0010](0010-bar-fill-assumptions.md) — E5.1 보수적 바 체결, stop/target 미구현 범위 (Proposed)
+- [ADR-0010](0010-bar-fill-assumptions.md) — E5.1 보수적 바 체결, stop/target 미구현 범위 (Accepted research-only)
