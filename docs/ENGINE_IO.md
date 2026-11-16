@@ -1,6 +1,6 @@
 # Engine I/O Contract — 외부·내부 입출력 명세
 
-**Status:** PROPOSED v0.1 (pre-E3 design review, 2026-11-16). **코드로 구현된 공개 API가 아니다.**  
+**Status:** E3 simulation input Python SDK + `e3-sim-v1` strict OrderIntent JSON parser implemented in PR #17. **Run API, Prediction API, trade performance report and broker/live transport remain design only.**  
 **Owner:** Issue #4 · **Scope:** Backtest/Paper/Live 공통 계약. Live는 별도 승인 전 사용 불가.
 
 ## 0. 빠른 결론
@@ -18,7 +18,7 @@
 
 코어에는 DB, 네트워크, Toss SDK, 벽시계, 학습모델 호출이 없다. 외부 I/O shell이 Command를 처리하고 그 결과를 다음 DomainEvent로 환류한다.
 
-**현재 실제 코드:** E0/E1 market EventEnvelope + 검증·변환·집계, E2 observation reducer/SQLite 저널/복구. **아직 미구현:** Run API, 주문/체결 DomainEvent, 전략/Portfolio/Risk 상태, Prediction API, 거래 성과 리포트. 아래 예시는 **목표 wire contract**이고 현재 CLI에서 실행되지 않는다.
+**현재 실제 코드:** E0/E1 market EventEnvelope, E2 observation runtime/journal, E3 **별도 버전 네임스페이스의 simulated TradingEvent / RiskDecision / Portfolio ledger**와 `decode_order_intent`. 아직 미구현: Run API, 전략/시장 기반 통합 실행, Prediction API, 수익률 보고/실거래. **아래 RunRequest/RunResult JSON과 RiskDecision JSON은 목표 wire contract 초안**이고 현재 CLI에서 실행되지 않는다.
 
 ## 1. 공통 직렬화·버전 규칙 (제안)
 
@@ -125,7 +125,7 @@ CLI 후보:
 
 ### 3.3 E3 입력/출력 예시: 주문 전 위험 심사
 
-**Synthetic OrderIntent (KRW, 실제 계좌 아님):**
+**Synthetic OrderIntent (KRW, 실제 계좌 아님):** 아래 JSON은 E3의 `decode_order_intent`에 입력 가능한 형태이며 실제 거래 명령이 아니다.
 
     {
       "schema_version":"0.1-draft",
@@ -227,3 +227,11 @@ E3는 ML/전략/백테스트 결과를 만들지 않는다. 입력 fixture와 �
 - 스키마 마이그레이션을 통해 과거 Replay/SQLite journal 파일을 읽거나 명시적으로 오류 처리해야 한다.
 - 테스트용 fixture는 합성 값만 사용하고 시세·계좌·API 키 공개 금지.
 - 구현 시 핵심 input/output 예시는 schema golden fixtures로 복제해 CI 검증.
+
+## E3 실제 SDK 경계 (PR #17)
+
+- 지원: Python `TradingRuntime.submit(OrderIntent)` → `SubmitOutcome(RiskDecision, SimulatedSubmitCommand[])`. 주문 확인/체결/취소는 **직접 호출한 합성 이벤트**로만 처리.
+- 지원: JSON 명령 `schema_version="e3-sim-v1"` + `kind="PROPOSE_ORDER_INTENT"` strict parser(`invest_engine.trading.wire.decode_order_intent`). 허용하지 않은 필드, float, 비UTC timestamp, 통화불일치, LIVE mode 요청 거부.
+- 지원: immutable `TradingState` 현금(settled/reserved/unsettled), 주문·부분체결·포지션·realized PnL, 이벤트 digest. `SQLiteTradingJournal`에 E2의 `events` 테이블과 충돌하지 않는 `trading_events`/outbox 버전 테이블 사용.
+- 실제 Python 사용 예시: [E3_SIMULATION.md](E3_SIMULATION.md). 입력 예제: [examples/e3_simulated_order.py](../examples/e3_simulated_order.py).
+- 여전히 초안: `RunRequest/RunResult`, `PredictionResult`, 자동 시장/실시간 주문 데이터 연결, 계좌·위험 통합 마크 평가.
