@@ -101,6 +101,9 @@
 ### E4 — Strategy SDK & Baseline
 **의존성:** E2, E3.
 
+**진행 중:** [PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) — SDK, NoTrade/ORB, Point-in-Time FeatureRegistry, target allocator. 로컬 회귀 181 passed, 3 skipped; main 병합 전 CI 검증 필요. [세부 사양](E4_STRATEGY.md) · [ADR-0009](adr/0009-strategy-boundary.md). **전략별 실제 Fill 귀속/virtual P&L ledger 및 통합 신호 저널은 아직 미구현**이며 추후 PR로 검증.
+
+
 **작업:**
 - [ ] Strategy Manifest(DataRequirements, warmup, version, supported markets)
 - [ ] read-only StrategyContext + signal/target-position proposal
