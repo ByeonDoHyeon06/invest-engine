@@ -35,7 +35,7 @@
 - 계약 변경은 ADR 추가/기존 ADR 상태 변경. 주요 버전 반영.
 - Live credential을 요청하거나 commit하지 않는다.
 
-**현재 단계:** E0~E2 검증·병합, E3.1~3.3 PR #17~#19 검증·병합. **E3.4 PR #20는 코드·Gate 리뷰 및 CI 단계.** 병합·Issue 종료 여부는 STATUS/PR을 확인한 뒤 판단.
+**현재 단계:** E0~E3 합성 엔진 검증·main 병합 완료 (PR #17~#20, CI 성공). **다음 E4 Strategy SDK (Issue #5).** STATUS/ROADMAP/PR/CI를 먼저 확인한다.
 
 ## E3 구현 경계 및 남은 작업
 - E0~E2의 EventEnvelope는 시장 데이터용. E3는 별도 trading_event/event journal namespace에서 simulated order/fill을 구현; E2 시장 이벤트에 대한 실전 주문 전략 통합은 E4/E5 후속 작업.
@@ -43,10 +43,15 @@
 - NoAction / Rejected / DataUnavailable / Halted는 반드시 구분하고 reason_codes·decision trace를 보존한다.
 - E3 범위는 simulated order/risk/portfolio 및 외부 계약 fixtures. 예측 모델은 E6 이후에 연구한다.
 
-**현재 재개 지점:** [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4), E3.1/2/3 [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17)/[#18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)/[#19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) 모두 main 병합. **E3.4 PR #20의 CI·Gate 및 병합 확인 후 E4 전략 SDK**로 이동. 수익성 검증/전략·Market→Order 자동연결/실거래 기능 없음.
+**현재 재개 지점:** [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4), E3.1/2/3 [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17)/[#18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)/[#19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) 모두 main 병합. **E3.4 PR #20은 CI 검증 후 main 병합 완료. 다음 E4 Strategy SDK**로 이동. 수익성 검증/전략·Market→Order 자동연결/실거래 기능 없음.
 
 ## E3.4 합성 정산 정책
 - 기본 IMMEDIATE는 기존 E3 저널과 호환. EXPLICIT_CONFIRMATION은 매도대금 net을 unsettled에 기록하고 CashSettlementConfirmed 이벤트 이후 settled/available로 이동.
 - sell_tax_rate는 합성 테스트 비율일 뿐 실제 법적 거래세·토스 수수료가 아님. 수수료·가산세와 정산정책은 버전/저널 identity에 고정.
 - 거래소 영업일 T+N, 실제 broker buying power, 실계좌 연동 및 실제 세금정산은 E7/E8 이후 검증.
 - 모든 거래 reducer 상태전이에서 cash/주문/포지션/체결/미결제금 불변식을 감사. E4는 E3 실거래 인증을 전제하지 않음.
+
+## E4 시작 조건 (2026-11-16)
+- E3는 수동 합성체결 기반 모의 주문/위험/장부 핵심을 검증했으며, 전략→시장 데이터→주문 자동 연결은 아직 없다.
+- E4는 `StrategyManifest`, DataRequirements, 읽기 전용 Context, StrategySignal, FeatureGraph와 ORB baseline을 먼저 구현한다. 직접 브로커 접근, 자기개선 자동승격 및 실제 주문 기능은 금지.
+- E3.4 성공: [PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20), [CI 43852453688](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688), 기존 E3.3 SQLite journal 해시·잔고 호환성 확인. 합성 세금/정산과 실제 거래소 규칙을 혼동하지 않는다.

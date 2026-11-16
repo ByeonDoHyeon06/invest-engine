@@ -71,10 +71,10 @@
 
 **Deliverable:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) · [E2 runtime contract](EVENT_RUNTIME.md). **Limitation:** E2 is observation state only; no order, trading ledger, real strategy execution or live broker, and restart currently replays entire journal (O(N)). Schema migration not implemented; unknown schema fails closed. Storage fault can prevent persisted halt, so operation host must block unattended restart on database fault.
 
-### E3 — Portfolio, Risk, Order Simulation [IN PROGRESS: PR #17~#19 MERGED, PR #20 CI/REVIEW]
+### E3 — Portfolio, Risk, Order Simulation [COMPLETE — synthetic-only PR #17~#20]
 **Pre-E3 contract gate (review first):** [ENGINE_IO.md](ENGINE_IO.md) · [ML_RESEARCH.md](ML_RESEARCH.md) · [ADR-0005](adr/0005-io-contracts.md). 외부 Run/Runtime/Prediction 계층을 구분하고 E3에 필요한 주문·포트폴리오 DomainEvent, 명시적 NO_ACTION/REJECTED, reason_codes, Decimal/UTC serialization, codec/journal migration을 고정한다. **E3의 ML 모델 구현은 금지(연구는 E6).**
 
-**E3.4 PR #20 (CI/검토):** [E3_SETTLEMENT.md](E3_SETTLEMENT.md) + [ADR-0008](adr/0008-synthetic-settlement.md) — 합성 매도 비용/세금, 명시적 unsettled→settled 확정 이벤트, 재시작·감사 불변식. 실제 법적 세율/T+N 캘린더를 주장하지 않음. **GitHub CI 및 최종 Gate 검증 후 E3 Epic 완료 여부 판단**. E4 전략, E5 자동체결, E8 실브로커는 별도 Gate.
+**E3.4 PR #20 (검증·병합):** [E3_SETTLEMENT.md](E3_SETTLEMENT.md) + [ADR-0008](adr/0008-synthetic-settlement.md) — 합성 매도 비용/세금, 명시적 unsettled→settled 확정 이벤트, 재시작·감사 불변식. 실제 법적 세율/T+N 캘린더를 주장하지 않음. **CI [43852453688](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688) Python 3.12/3.13 각 160 passed + Ruff/mypy/secrets 성공, [merge affe843](https://github.com/ByeonDoHyeon06/invest-engine/commit/affe8439642260923614f07394f8b9f46345942e). 합성 기반 E3 Gate 통과**. E4 전략, E5 자동체결, E8 실브로커는 별도 Gate.
 
 **권장 E3 PR 분할:** (a) Money/Quantity precision·rounding ADR + 타입·스키마 golden fixtures, (b) Account/Order/Fill DomainEvent + codec/journal migration, (c) 위험·예약금·포트폴리오 reducer, (d) simulated broker/부분체결/UNKNOWN 장애 테스트, (e) API artifact/결정 이력 검증.
 
@@ -82,21 +82,21 @@
 
 **E3.3 구현/검증 대상:** [PR #19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) · [E3_MONITORING.md](E3_MONITORING.md) · [ADR-0007](adr/0007-monitored-risk.md). 계좌통화별 신선한 mark/FX를 이용한 지분 평가, 손실 도달 시 세션 래치, external *synthetic* account snapshot 비교, 불일치 운영자 검토, SQLite replay. **CI 검증/병합 완료: 43849493669 (Python 3.12/3.13 각 150 passed)**. Legacy `require_monitoring=False`는 E3 합성 fixtures 호환을 위한 정책이며 실거래 허용치가 아니다.
 
-**추후 범위:** 실제 거래소 캘린더 기반 일일 기준자산, 외부 브로커/신뢰정보 비교, 통합 FX 계좌 손실 제한, 세금·결제·기업행동은 E7/E8 또는 별도 ADR; E4 전략, E5 자동 체결 시뮬레이션에서 계약을 이어받아야 함.
+**추후 범위:** 실제 거래소 캘린더 기반 일일 기준자산, 외부 브로커/신뢰정보 비교, 통합 FX 계좌 손실 제한, **실제 세율·거래소 결제/기업행동**은 E7/E8 또는 별도 ADR; E4 전략, E5 자동 체결 시뮬레이션에서 계약을 이어받아야 함.
 
-**추가 E3.2 하위 단계:** [PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18) — 합성 운영자 PAUSE/RESUME, 취소 요청 분리, 신선한 quote 기반 청산 계획(실제 체결 아님) 및 저널 복구 **CI 132 passed × 2, main 병합**. E3 전체 완료 아님.
+**E3.2 하위 단계:** [PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18) — 합성 운영자 PAUSE/RESUME, 취소 요청 분리, 신선한 quote 기반 청산 계획(실제 체결 아님) 및 저널 복구 **CI 132 passed × 2, main 병합**.
 
-**최초 하위 단계:** [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) — 합성주문 DTO·시뮬레이션 위험평가/장부·원자적 SQLite trade journal/outbox 및 정상·장애 테스트 **CI 검증·main 병합**. 다음은 E3.2 연속 위험관리/중지·청산 계획. 전체 E3는 **미완료**.
+**최초 하위 단계:** [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) — 합성주문 DTO·시뮬레이션 위험평가/장부·원자적 SQLite trade journal/outbox 및 정상·장애 테스트 **CI 검증·main 병합**. E3.2~3.4는 PR #18~#20에서 검증·병합됨.
 
 **작업:**
-- [x] KRW/USD 분리 ledger, 현금 예약, 합성 수수료·거래세·미결제금, 실현·선택적 시세기반 평가손익 (PR #17~#20; CI 기준 최종 확인 필요)
+- [x] KRW/USD 분리 ledger, 현금 예약, 합성 수수료·거래세·미결제금, 실현·선택적 시세기반 평가손익 ([PR #17~#20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20), [CI](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688))
 - [x] OrderIntent → Pretrade Risk → Durable Outbox → **수동 합성** Fill → 주입된 계좌 참조 정합성 검사 (실시간 자동 Fill은 E5, 브로커 대조는 E8)
 - [x] 주문 상태 머신(UNKNOWN/부분체결/취소/거부) 및 합성 부분체결
 - [x] 동일 intent/Fill 재처리 방지, 저널·outbox·정산 상태 및 restart consistency
 - [x] 합성 RiskLimits/mark freshness/daily loss/reconciliation hold (실제 시장/증권사 정책은 E7/E8)
 - [x] Halt/Pause/Cancel/Flatten **계획** 분리, 오류 시 신규 진입 차단 (매도 실행·실거래 아님)
 
-**DoD:** 현금 불변식, 체결 수량·수수료·예약금 정확, 중복 이벤트 0중복 반영, 재시작·응답 유실 장애 주입 테스트.
+**DoD (E3 synthetic): PASS [PR #20 CI](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688). 현금/미결제금·체결 수량·합성 세금/수수료·예약금 일관성, 중복 이벤트 0중복 반영, 재시작/UNKNOWN·복구·E3.3 레거시 저널 재생 검증. **실시간 자동 체결 추론(E5), 실제 증권사 계좌 대조(E8), 결제 달력·실제 세율(E7/E8) 제외.**
 
 ### E4 — Strategy SDK & Baseline
 **의존성:** E2, E3.

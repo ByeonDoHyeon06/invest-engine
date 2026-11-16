@@ -1,7 +1,7 @@
 # ADR-0008: Synthetic sell charges and explicit settlement confirmation
 
 - Date: 2026-11-16
-- Status: Accepted for **simulation only** (upon E3.4 CI/merge)
+- Status: Accepted for **simulation only** (E3.4 PR #20 verified/merged)
 
 ## Context
 

@@ -4,7 +4,7 @@
 
 국내·미국 주식 대상으로 시장 데이터, 전략, 위험관리, 주문·체결, 포트폴리오, 연구·자기개선을 분리한 독립형 적응형 트레이딩 엔진.
 
-**현재 상태:** E0~E2 완료 및 E3.1~E3.3 main 병합·검증. E3.4 모의 정산·세금·장부 감사 [PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20) CI 검토 중. Live/증권사 API·전략 기반 자동 주문·백테스트는 미구현. 개인용·headless·검증 우선.
+**현재 상태:** **E0~E3 합성 기반 검증 및 main 병합 완료** (E3.4 [PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20), [main CI 43852453688](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688)); **E4 전략 SDK 다음 단계**. Live/증권사 API·전략 기반 자동 주문·백테스트는 미구현. 개인용·headless·검증 우선.
 
 ## 설계 원칙
 - 해상도 비종속: Tick/Quote/OrderBook/Bar/재무·공시 이벤트를 각각 정확한 타입으로 처리한다. 1분봉은 전략 설정이지 엔진 제한이 아니다.

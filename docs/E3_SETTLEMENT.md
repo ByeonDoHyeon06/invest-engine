@@ -1,6 +1,6 @@
 # E3.4 — Explicit Synthetic Settlement, Cost Audit, and E3 Release Gate
 
-**Status:** implemented on E3.4 development branch, subject to CI. **Simulated-only; no real broker, statutory-tax, exchange calendar, or LIVE functionality.**
+**Status:** E3.4 verified and merged ([PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20); [CI](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43852453688)). **Simulated-only; no real broker, statutory-tax, exchange calendar, or LIVE functionality.**
 
 ## Scope & purpose
 
@@ -34,13 +34,13 @@ E3.1–E3.3 established deterministic order/portfolio accounting, reservations, 
 
 ## E3 Gate — verified scope and deferred dependencies
 
-| Gate | Verifiable evidence | Status after CI |
+| Gate | Verifiable evidence | Status |
 | --- | --- | --- |
 | Market events / deterministic core | E0-E2 tests, E2 journal | existing verified |
 | Synthetic risk, order, partial fill, cancel, idempotency | E3.1 tests | existing verified |
 | Operator pause/cancel/flatten plan | E3.2 tests | existing verified |
 | Optional marked equity / stale data / daily-loss latch / account snapshot comparison | E3.3 tests | existing verified |
-| Synthetic configurable sell levy / unsettled proceeds / manual settlement / ledger audit | E3.4 tests | verify CI before E3 closure |
+| Synthetic configurable sell levy / unsettled proceeds / manual settlement / ledger audit | E3.4 tests | verified PR #20, 160 passed × 2 |
 | Legacy journal compatibility | pre-E3.4 saved journal restored, same hash | manual integration check and CI regression |
 
 **Deliberate exclusions (not an E3 failure):** automatic real-time fill matching (E5); Strategy SDK/Portfolio Allocator (E4); data→trade combined dispatch (E4/E5); actual tax/fee schedule, market calendar settlement and live broker cash availability (E7/E8); broker-backed reconciliation and actual account credentials (E8); model training (E6).
@@ -51,4 +51,4 @@ E3.1–E3.3 established deterministic order/portfolio accounting, reservations, 
 
 1. `python -m pytest -q`, `ruff check .`, `mypy src`, `python scripts/check_secrets.py` on Python 3.12 and 3.13.
 2. Synthetic scenarios: exact fee/levy, KRW/USD rounding, non-spendable pending sale, repeated settlement idempotency, premature/unknown settlement fail-closed, policy identity mismatch, checkpoint/replay, corruption audit, prior journal replay unchanged.
-3. Update `docs/STATUS.md` with PR/CI/merge evidence and link the next E4 epic. Only after successful merge and CI, close E3 Issue #4.
+3. Update `docs/STATUS.md` with PR/CI/merge evidence and link the next E4 epic. Successful merge/CI achieved; close E3 Issue #4 and begin E4 Strategy SDK.
