@@ -15,7 +15,7 @@ def _validate(bars: Sequence[Bar], needed: int) -> None:
         raise ValueError("not enough completed bars")
     if any(not b.finalized for b in bars):
         raise ValueError("unfinalized bars are not allowed")
-    if any(a.end > b.start for a, b in zip(bars, bars[1:])):
+    if any(a.end > b.start for a, b in zip(bars, bars[1:], strict=False)):
         raise ValueError("bar sequence overlaps or is out of order")
 
 
@@ -39,7 +39,7 @@ def atr(bars: Sequence[Bar], period: int) -> Decimal:
         ranges = [max(curr.high - curr.low,
                       abs(curr.high - prior.close),
                       abs(curr.low - prior.close))
-                  for prior, curr in zip(bars, bars[1:])]
+                  for prior, curr in zip(bars, bars[1:], strict=False)]
         value = sum(ranges[:period], Decimal(0)) / period
         for tr in ranges[period:]:
             value = (value * (period - 1) + tr) / period
