@@ -1,7 +1,7 @@
 # ADR-0009: Trust-limited strategy plugin boundary and initial ORB baseline
 
 - Date: 2026-11-16
-- Status: Accepted (E4.1/2 CI, E4.3 attributable ledger pending CI)
+- Status: Accepted (E4.1–E4.3 CI verified; PR #21/#22)
 
 ## Context
 E0–E3 contain immutable market/portfolio event contracts and a simulated execution ledger. Putting indicator logic or market-dependent strategy rules into the core would reintroduce 1m-bar coupling and allow model output to evade the risk gate.
