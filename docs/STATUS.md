@@ -87,7 +87,7 @@
 
 - [PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21): StrategyManifest/DataRequirements/읽기 전용 Context/Signal/Registry/NoTrade, as-of EMA/ATR/median volume, ORB_LONG_V1, multiple-strategy target allocator and broker-free simulated intent planner.
 - 문서: [E4_STRATEGY.md](E4_STRATEGY.md) · [ADR-0009](adr/0009-strategy-boundary.md).
-- **검증 상태:** [PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) merged (970834b); [PR #22](https://github.com/ByeonDoHyeon06/invest-engine/pull/22) merged (6d32a30), [CI 43857703057](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43857703057) Python 3.12/3.13 각 191 passed + Ruff/mypy/secret guard; E4 Issue #5 종료 단계.
+- **검증 상태:** [PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) merged (970834b); [PR #22](https://github.com/ByeonDoHyeon06/invest-engine/pull/22) merged (6d32a30), [CI 43857703057](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43857703057) Python 3.12/3.13 각 191 passed + Ruff/mypy/secret guard; [E4 Issue #5](https://github.com/ByeonDoHyeon06/invest-engine/issues/5) CLOSED.
 - 구현: E4.3은 실제 합성 Fill을 전략별 가상 포지션/실현손익으로 귀속하고 E3 장부와 수량을 감사. **단, 가상 귀속 티켓은 아직 in-memory**: E2/E3 저널과 원자적으로 결합한 복구·백테스트 실행기는 E5. 실제 수익 검증/Backtest 미구현, Live는 E8 별도 승인.
 
 ## E4 완료 요약 (2026-11-16)
