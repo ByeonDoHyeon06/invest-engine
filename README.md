@@ -95,4 +95,4 @@ python -m pytest -q
 
 기대 합성 출력: 10주 × 7,000 KRW 주문 70,070 KRW 예약 → 4주 체결 및 나머지 취소 후 **971,972 KRW 현금·4주 포지션·예약 0**. 수수료율 0.1%, KRW 반올림은 테스트 설정이지 실제 증권사 조건이 아니다.
 
-[E3 상세 구현·남은 과제](docs/E3_SIMULATION.md) · [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17)
+[E3 상세 구현·남은 과제](docs/E3_SIMULATION.md) · [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) · [E3.2 운영 안전 PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)
