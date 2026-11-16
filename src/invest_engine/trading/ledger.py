@@ -57,6 +57,16 @@ class OrderRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class EntriesPaused:
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class EntriesResumed:
+    reviewed_by: str
+
+
+@dataclass(frozen=True, slots=True)
 class OrderReserved:
     intent: OrderIntent
     reserved_cash: Decimal
@@ -100,7 +110,7 @@ class FillRecorded:
 
 
 TradingPayload = (
-    OrderReserved | OrderRejected | OrderAccepted | OrderCancelPending
+    EntriesPaused | EntriesResumed | OrderReserved | OrderRejected | OrderAccepted | OrderCancelPending
     | OrderCanceled | OrderUnknown | OrderReconciled | FillRecorded
 )
 
@@ -133,6 +143,7 @@ class TradingState:
     last_ordinal: int = -1
     observed_at: datetime | None = None
     status: TradingStatus = TradingStatus.RUNNING
+    entry_pause_reason: str | None = None
     digest: str = ""
 
     def account(self, currency: str) -> CashLedger:
@@ -243,6 +254,16 @@ def _release_reservation(state: TradingState, order: OrderRecord) -> TradingStat
 
 
 def _apply(state: TradingState, payload: TradingPayload, config: TradingConfig) -> TradingState:
+    if isinstance(payload, EntriesPaused):
+        if not payload.reason.strip() or state.entry_pause_reason is not None:
+            raise InvalidEvent("invalid new entry pause")
+        return replace(state, entry_pause_reason=payload.reason)
+    if isinstance(payload, EntriesResumed):
+        if state.entry_pause_reason is None or not payload.reviewed_by.strip():
+            raise InvalidEvent("invalid entry resume authorization")
+        if any(o.status is OrderStatus.UNKNOWN for o in state.orders):
+            raise InvalidEvent("unknown broker status prevents entry resume")
+        return replace(state, entry_pause_reason=None)
     if isinstance(payload, (OrderReserved, OrderRejected)):
         intent = payload.intent
         if intent.account_id != state.account_id:
@@ -283,7 +304,7 @@ def _apply(state: TradingState, payload: TradingPayload, config: TradingConfig) 
             raise InvalidEvent("cannot acknowledge order in its current status")
         return _set_order(state, replace(order, status=OrderStatus.ACCEPTED))
     if isinstance(payload, OrderUnknown):
-        if order.status not in (OrderStatus.RESERVED, OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED):
+        if order.status not in (OrderStatus.RESERVED, OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED, OrderStatus.CANCEL_PENDING):
             raise InvalidEvent("cannot declare order unknown in current status")
         return _set_order(state, replace(order, status=OrderStatus.UNKNOWN))
     if isinstance(payload, OrderReconciled):

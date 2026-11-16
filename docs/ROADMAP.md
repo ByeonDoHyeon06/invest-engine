@@ -71,12 +71,14 @@
 
 **Deliverable:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) · [E2 runtime contract](EVENT_RUNTIME.md). **Limitation:** E2 is observation state only; no order, trading ledger, real strategy execution or live broker, and restart currently replays entire journal (O(N)). Schema migration not implemented; unknown schema fails closed. Storage fault can prevent persisted halt, so operation host must block unattended restart on database fault.
 
-### E3 — Portfolio, Risk, Order Simulation [IN PROGRESS: PR #17 MERGED; E3.2 NEXT]
+### E3 — Portfolio, Risk, Order Simulation [IN PROGRESS: PR #17 MERGED; PR #18 E3.2 REVIEW]
 **Pre-E3 contract gate (review first):** [ENGINE_IO.md](ENGINE_IO.md) · [ML_RESEARCH.md](ML_RESEARCH.md) · [ADR-0005](adr/0005-io-contracts.md). 외부 Run/Runtime/Prediction 계층을 구분하고 E3에 필요한 주문·포트폴리오 DomainEvent, 명시적 NO_ACTION/REJECTED, reason_codes, Decimal/UTC serialization, codec/journal migration을 고정한다. **E3의 ML 모델 구현은 금지(연구는 E6).**
 
 **권장 E3 PR 분할:** (a) Money/Quantity precision·rounding ADR + 타입·스키마 golden fixtures, (b) Account/Order/Fill DomainEvent + codec/journal migration, (c) 위험·예약금·포트폴리오 reducer, (d) simulated broker/부분체결/UNKNOWN 장애 테스트, (e) API artifact/결정 이력 검증.
 
 **의존성:** E2.
+
+**추가 E3.2 하위 단계:** [PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18) — 합성 운영자 PAUSE/RESUME, 취소 요청 분리, 신선한 quote 기반 청산 계획(실제 체결 아님) 및 저널 복구. E3 전체 완료 아님.
 
 **현재 하위 단계:** [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) — 합성주문 DTO·시뮬레이션 위험평가/장부·원자적 SQLite trade journal/outbox 및 정상·장애 테스트 **CI 검증·main 병합**. 다음은 E3.2 연속 위험관리/중지·청산 계획. 전체 E3는 **미완료**.
 

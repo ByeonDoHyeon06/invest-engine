@@ -3,22 +3,38 @@ from __future__ import annotations
 
 from contextlib import suppress
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, localcontext
 
 from invest_engine.domain.errors import InvalidEvent
-from invest_engine.domain.primitives import Money, utc_datetime
+from invest_engine.domain.primitives import InstrumentId, Money, _decimal, utc_datetime
 from invest_engine.trading.journal import SQLiteTradingJournal
 from invest_engine.trading.ledger import (
-    FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
+    EntriesPaused, EntriesResumed, FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
     OrderReconciled, OrderRejected, OrderReserved, OrderUnknown,
     TradingEvent, TradingPayload, TradingStatus, exposure_for, initial_trading_state,
     reduce_trade_event,
 )
 from invest_engine.trading.models import (
-    DecisionStatus, OrderIntent, OrderStatus, RiskDecision, SimulatedFill, TradingConfig,
+    DecisionStatus, OrderIntent, OrderStatus, RiskDecision, Side, SimulatedFill, TradingConfig,
 )
 from invest_engine.trading.policy import RiskLimits, evaluate_order
+
+
+@dataclass(frozen=True, slots=True)
+class ExitQuote:
+    instrument: InstrumentId
+    limit_price: Decimal
+    available_at: datetime
+
+    def __post_init__(self) -> None:
+        _decimal(self.limit_price, field="exit.quote", positive=True)
+        object.__setattr__(self, "available_at", utc_datetime(self.available_at))
+
+
+@dataclass(frozen=True, slots=True)
+class SimulatedCancelCommand:
+    intent_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,7 +106,11 @@ class TradingRuntime:
                                               approved_qty=intent.quantity, reservation=existing.reserved_cash))
         if self.state.status is TradingStatus.HALTED:
             return SubmitOutcome(RiskDecision(intent.intent_id, DecisionStatus.HALTED, reason_codes=("RUNTIME_HALTED",)))
-        if intent.account_id != self.config.account_id:
+        if self.state.entry_pause_reason is not None and intent.side is Side.BUY:
+            decision = RiskDecision(
+                intent.intent_id, DecisionStatus.REJECTED, reason_codes=("NEW_ENTRIES_PAUSED",)
+            )
+        elif intent.account_id != self.config.account_id:
             decision = RiskDecision(intent.intent_id, DecisionStatus.REJECTED, reason_codes=("ACCOUNT_MISMATCH",))
         else:
             try:
@@ -113,6 +133,56 @@ class TradingRuntime:
 
     def reconcile(self, intent_id: str, status: OrderStatus, at: datetime) -> None:
         self._emit(OrderReconciled(intent_id, status), at, "reconcile:"+intent_id)
+
+    def pause_new_entries(self, *, reason: str, at: datetime) -> None:
+        """Operator safety pause. Does not cancel existing orders or positions."""
+        self._emit(EntriesPaused(reason), at, "pause:"+str(self.state.last_ordinal+1))
+
+    def resume_new_entries(self, *, reviewed_by: str, at: datetime) -> None:
+        """A reviewed resume; blocked when unresolved UNKNOWN orders remain."""
+        if not reviewed_by.strip():
+            raise PermissionError("reviewer identity is required")
+        self._emit(EntriesResumed(reviewed_by), at, "resume:"+str(self.state.last_ordinal+1))
+
+    def request_cancel_all(self, *, at: datetime) -> tuple["SimulatedCancelCommand", ...]:
+        """Request cancellation of accepted orders; never presume success."""
+        commands: list[SimulatedCancelCommand] = []
+        for order in tuple(self.state.orders):
+            if order.status in (OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED):
+                self.request_cancel(order.intent.intent_id, at)
+                commands.append(SimulatedCancelCommand(order.intent.intent_id))
+        return tuple(commands)
+
+    def plan_flatten(self, *, at: datetime, quotes: tuple["ExitQuote", ...],
+                     max_age: timedelta) -> tuple[OrderIntent, ...]:
+        """Return only *proposed* synthetic SELL intents; no orders are submitted.
+
+        All open positions require a supplied valid fresh quote or the entire
+        plan is rejected. Remaining reserved SELL quantity is not double-sold.
+        """
+        now = utc_datetime(at)
+        if max_age < timedelta(0):
+            raise ValueError("max_age must be nonnegative")
+        by_key = {item.instrument.key: item for item in quotes}
+        if len(by_key) != len(quotes):
+            raise InvalidEvent("duplicate flatten quotes")
+        intents: list[OrderIntent] = []
+        for position in self.state.positions:
+            free = position.quantity - position.reserved_sell
+            if free <= 0:
+                continue
+            quote = by_key.get(position.instrument.key)
+            if quote is None or quote.available_at > now or now - quote.available_at > max_age:
+                raise InvalidEvent("missing or stale quote for flatten plan")
+            rules = self.config.rules_for(position.instrument)
+            rules.validate_price(quote.limit_price)
+            rules.validate_quantity(free)
+            intents.append(OrderIntent(
+                f"flatten:{position.instrument.key}:{self.state.last_ordinal+1}",
+                self.config.account_id, "operator:flatten", position.instrument,
+                Side.SELL, free, quote.limit_price, now,
+            ))
+        return tuple(sorted(intents, key=lambda item: item.instrument.key))
 
     def request_cancel(self, intent_id: str, at: datetime) -> None:
         self._emit(OrderCancelPending(intent_id), at, "cancel-requested:"+intent_id)

@@ -10,7 +10,7 @@ from invest_engine.core.replay import _canonical
 from invest_engine.domain.errors import InvalidEvent, UnsupportedData
 from invest_engine.domain.primitives import AssetClass, InstrumentId, Market
 from invest_engine.trading.ledger import (
-    FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
+    EntriesPaused, EntriesResumed, FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
     OrderReconciled, OrderRejected, OrderReserved, OrderUnknown, TradingEvent,
 )
 from invest_engine.trading.models import (
@@ -50,6 +50,10 @@ def _intent(data: dict[str, Any]) -> OrderIntent:
 
 
 def _payload(name: str, data: dict[str, Any]) -> Any:
+    if name == "EntriesPaused":
+        return EntriesPaused(data["reason"])
+    if name == "EntriesResumed":
+        return EntriesResumed(data["reviewed_by"])
     if name == "OrderReserved":
         return OrderReserved(_intent(_mapping(data["intent"])), Decimal(data["reserved_cash"]))
     if name == "OrderRejected":

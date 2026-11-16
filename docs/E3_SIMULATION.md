@@ -84,3 +84,14 @@ This is an example of **deterministic manual virtual fills**, not a trading stra
 - E5 event-driven bar/tick simulator with fees/slippage/time-based fill eligibility and Run API
 - E7 broker paper stream reconciliation, session calendar, FX, and operational monitoring
 - E8 explicit live authorization, exchange/broker trading rules, actual settlement/tax policy, idempotent broker submission, account and buying-power reconciliation
+
+## E3.2 operator safety controls (additive schema update)
+
+- `pause_new_entries(reason, at)` persists an `EntriesPaused` event. **Only new BUY risk** is blocked; already accepted orders, cancel acknowledgements and position-reducing SELL intents can still be processed.
+- `resume_new_entries(reviewed_by, at)` requires explicit reviewer attribution and no UNKNOWN orders. It emits an auditable `EntriesResumed` event. This is a simulation-level identity field, not authentication.
+- `request_cancel_all(at)` emits `OrderCancelPending` for acknowledged open orders and returns `SimulatedCancelCommand` items. It **does not assume any cancel succeeded**; reservation stays until confirmed cancel/Fill/reconciliation.
+- `plan_flatten(at, quotes, max_age)` returns only suggested **LIMIT SELL** intents to flatten unreserved long positions. Every involved instrument requires an explicit fresh quote. It **does not call submit**, create a market order, or guarantee any execution; callers must deliberately submit the suggestions to the simulated risk gate.
+- Cancel request ambiguity can transition `CANCEL_PENDING → UNKNOWN → RECONCILING outcome` without releasing reserved cash ahead of confirmation.
+- New operator event types were added to the E3-v1 tagged union without changing existing OrderReserved/Fill event wire representations, checkpoint semantics, or E2 market-event tables.
+
+Still missing: production-grade market mark-to-market and FX/settlement risk, daily loss threshold with fresh data, actual broker-account reconciliation and automated market fill models. E3.2 is **not a live-trading safety certification**.

@@ -2,7 +2,7 @@
 
 **기준일:** 2026-11-16
 **현재:** E0/E1/E2 검증 완료. 설계 PR #16 및 **E3.1 구현 PR #17 main 병합 완료**. 합성 주문/체결·현금 예약·리스크·저널 구현. 실제 주문·전략·시장 기반 자동 체결·백테스트 없음.
-**현재 Stage:** [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4) (IN PROGRESS; PR #17 MERGED). E3.2 미구현 항목 후속 PR 필요. E0/E1/E2 VERIFIED + MERGED.
+**현재 Stage:** [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4) (IN PROGRESS; PR #17 MERGED; PR #18 E3.2 REVIEW). E0/E1/E2 VERIFIED + MERGED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -62,6 +62,12 @@
 - E3.1 로컬 테스트: Python 3.13 **122 passed, 3 skipped**(Hypothesis/PyArrow 로컬 미설치). GitHub CI [run 43843169134](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43843169134) Python 3.12/3.13 Ruff/mypy/pytest/secret guard 모두 통과. [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) squash merged as [d49f95f](https://github.com/ByeonDoHyeon06/invest-engine/commit/d49f95f34001e0b0695e8565f1b14e1f108f231c).
 - E3 잔여: mark-to-market equity/FX와 시장 세션 평가, 실시간 데이터로 모의 체결 결정하는 모델(E5), 실제 broker sync(E8), 전략/E2 통합 실행(E4~E5). E3 기간에는 적어도 **Pause/Cancel/Reduce/Flatten 명령** 및 위험 상태 정책을 후속 PR로 설계·검증해야 함.
 - LIVE: NOT AUTHORIZED. 토스증권 API 모듈 없음.
+
+## E3.2 진행 및 남은 E3.3 (2026-11-16)
+
+- [PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18): 신규 BUY 일시중지/검토 후 재개, 확정 전 예약을 유지하는 일괄 취소 요청, 신선한 가격을 명시 입력받는 제한가 SELL 청산 *계획만* 생성. 새로운 이벤트 타입은 기존 E3 v1을 깨지 않도록 추가.
+- 로컬 Python 3.13: **129 passed, 3 skipped**(Hypothesis/PyArrow 미설치). GitHub CI는 리뷰 중.
+- 다음 단계: Risk monitoring / stale market mark / daily-loss gate / reference broker account mismatch behavior 검증. 실제 시장·브로커 호출은 아직 없는 상태.
 
 ## 변경 기록
 - 2026-11-16: [E2 PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) squash merged (7d1b814); 최종 [CI 43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280) Python 3.12/3.13 각 99 passed + Ruff/mypy/secret guard. E2 Issue #3 closed; E3 다음 단계.
