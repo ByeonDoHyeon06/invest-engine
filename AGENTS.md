@@ -6,7 +6,7 @@
 1. README.md 읽기 (프로젝트 범위/원칙)
 2. docs/STATUS.md 읽기 (현재 단계·다음 실행 항목·블로커)
 3. docs/ROADMAP.md 읽기 (Epic 순서/DoD/의존성)
-4. E3 이하 개발 전 docs/ENGINE_IO.md · docs/ML_RESEARCH.md · docs/E3_SIMULATION.md · ADR-0005/0006을 확인한다. E3의 엄격한 주문 JSON만 구현돼 있고, Run/Prediction JSON 예시는 아직 설계안이다.
+4. E3 이하 개발 전 docs/ENGINE_IO.md · docs/ML_RESEARCH.md · docs/E3_SIMULATION.md · docs/E3_MONITORING.md · ADR-0005/0006/0007을 확인한다. E3의 엄격한 주문 JSON만 구현돼 있고, Run/Prediction JSON 예시는 아직 설계안이다.
 5. 수정할 모듈의 docs/ARCHITECTURE.md, DOMAIN.md, STRATEGIES.md, RISK_EXECUTION.md, VALIDATION.md, INTEGRATIONS.md와 docs/adr/ 읽기.
 6. GitHub의 열린 Issue/PR/CI 확인하여 진행 중 작업·실패를 먼저 해결.
 
@@ -35,7 +35,7 @@
 - 계약 변경은 ADR 추가/기존 ADR 상태 변경. 주요 버전 반영.
 - Live credential을 요청하거나 commit하지 않는다.
 
-**현재 단계:** E0/E1 기초 검증 완료. E1.1 #12 정규화/품질, E1.2 #13 세션 시간봉, E1.3 #14 immutable Parquet/manifest 모두 main 병합·Python 3.12/3.13 CI 통과. **다음 단일 작업 E2 Issue #3: immutable TradingState + Event→Command pure reducer와 단일 writer runtime 기초를 별도 PR로 구현.** 주문/전략/백테스트/Live 기능 아직 없음. 먼저 STATUS/ROADMAP/열린 PR/CI 확인.
+**현재 단계:** E0/E1/E2 검증·병합 완료, E3.1 PR #17·E3.2 PR #18 병합, E3.3 PR #19 시세 기반 위험 모니터링 검증 중. 구현 시작 전 STATUS/ROADMAP/열린 PR·CI 확인.
 
 ## E3 구현 경계 및 남은 작업
 - E0~E2의 EventEnvelope는 시장 데이터용. E3는 별도 trading_event/event journal namespace에서 simulated order/fill을 구현; E2 시장 이벤트에 대한 실전 주문 전략 통합은 E4/E5 후속 작업.
@@ -43,4 +43,4 @@
 - NoAction / Rejected / DataUnavailable / Halted는 반드시 구분하고 reason_codes·decision trace를 보존한다.
 - E3 범위는 simulated order/risk/portfolio 및 외부 계약 fixtures. 예측 모델은 E6 이후에 연구한다.
 
-**현재 재개 지점:** E3 Issue #4, E3.1 [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) / E3.2 [PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18) **both main merged**. 다음은 E3.3 market mark·daily stop·account reconciliation의 데이터 계약을 우선 확정하고 테스트 기반 구현. 실거래 주문·백테스트·실시간 자동 체결 기능 없음.
+**현재 재개 지점:** [PR #19](https://github.com/ByeonDoHyeon06/invest-engine/pull/19) E3.3 CI/리뷰·병합 여부 확인. 시장 price/FX mark·세션 기준·synthetic reference를 받는 `observe_market_and_account` 구현. 지원되지 않은 라이브 브로커 계좌 대조나 실거래 안전성으로 오해하지 말 것. 실제 전략은 E4, 자동 체결/백테스트는 E5.

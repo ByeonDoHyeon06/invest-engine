@@ -3,15 +3,20 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any, cast
 
 from invest_engine.core.replay import _canonical
 from invest_engine.domain.errors import InvalidEvent, UnsupportedData
 from invest_engine.domain.primitives import AssetClass, InstrumentId, Market
 from invest_engine.trading.ledger import (
-    EntriesPaused, EntriesResumed, FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
-    OrderReconciled, OrderRejected, OrderReserved, OrderUnknown, TradingEvent,
+    AccountReconciliationReviewed, EntriesPaused, EntriesResumed, FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
+    OrderReconciled, OrderRejected, OrderReserved, OrderUnknown, RiskObserved, TradingEvent,
+)
+from invest_engine.domain.primitives import Money
+from invest_engine.trading.monitoring import (
+    ExternalAccountReference, FxMark, MarketMark, MonitorInput,
+    ReferencePosition, SessionBaseline,
 )
 from invest_engine.trading.models import (
     OrderIntent, OrderStatus, OrderType, Side, SimulatedFill, TimeInForce,
@@ -68,6 +73,36 @@ def _payload(name: str, data: dict[str, Any]) -> Any:
         return OrderUnknown(data["intent_id"])
     if name == "OrderReconciled":
         return OrderReconciled(data["intent_id"], OrderStatus(data["status"]))
+    if name == "RiskObserved":
+        raw = _mapping(data["observation"])
+        marks = tuple(MarketMark(
+            _instrument(_mapping(v["instrument"])), Decimal(v["price"]),
+            datetime.fromisoformat(v["available_at"]), v["source"],
+        ) for v in raw["marks"])
+        fx_rates = tuple(FxMark(
+            v["base"], v["quote"], Decimal(v["rate"]),
+            datetime.fromisoformat(v["available_at"]), v["source"],
+        ) for v in raw["fx_rates"])
+        baselines = tuple(SessionBaseline(
+            v["currency"], v["session_id"], Decimal(v["equity"]),
+            datetime.fromisoformat(v["started_at"]),
+        ) for v in raw["baselines"])
+        ref = None
+        if raw["reference"] is not None:
+            value = _mapping(raw["reference"])
+            ref = ExternalAccountReference(
+                value["account_id"], datetime.fromisoformat(value["as_of"]),
+                tuple(Money(Decimal(v["amount"]), v["currency"]) for v in value["cash"]),
+                tuple(ReferencePosition(v["instrument_key"], Decimal(v["quantity"]))
+                      for v in value["positions"]),
+                tuple(value["open_intent_ids"]) if value["open_intent_ids"] is not None else None,
+            )
+        return RiskObserved(MonitorInput(
+            datetime.fromisoformat(raw["checked_at"]), raw["session_id"],
+            raw["base_currency"], marks, fx_rates, baselines, ref,
+        ))
+    if name == "AccountReconciliationReviewed":
+        return AccountReconciliationReviewed(data["reviewed_by"])
     if name == "FillRecorded":
         f = _mapping(data["fill"])
         return FillRecorded(SimulatedFill(
@@ -91,5 +126,5 @@ def decode_trade_event(data: bytes) -> TradingEvent:
         if encode_trade_event(result) != data:
             raise InvalidEvent("noncanonical persisted trading event")
         return result
-    except (KeyError, ValueError, TypeError, OverflowError, json.JSONDecodeError) as exc:
+    except (KeyError, ValueError, TypeError, OverflowError, InvalidOperation, json.JSONDecodeError) as exc:
         raise InvalidEvent(f"invalid trading-event encoding: {type(exc).__name__}") from exc

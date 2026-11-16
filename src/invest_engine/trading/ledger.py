@@ -13,6 +13,8 @@ from invest_engine.trading.models import (
     OrderIntent, OrderStatus, Side, SimulatedFill, TradingConfig,
 )
 from invest_engine.trading.money import multiply_cash
+from invest_engine.trading.monitoring import MonitorInput, MonitorResult, evaluate_monitor
+from invest_engine.trading.policy import RiskLimits
 from invest_engine.trading.policy import Exposure
 
 
@@ -109,9 +111,20 @@ class FillRecorded:
     fill: SimulatedFill
 
 
+@dataclass(frozen=True, slots=True)
+class RiskObserved:
+    observation: MonitorInput
+
+
+@dataclass(frozen=True, slots=True)
+class AccountReconciliationReviewed:
+    reviewed_by: str
+
+
 TradingPayload = (
     EntriesPaused | EntriesResumed | OrderReserved | OrderRejected | OrderAccepted | OrderCancelPending
     | OrderCanceled | OrderUnknown | OrderReconciled | FillRecorded
+    | RiskObserved | AccountReconciliationReviewed
 )
 
 
@@ -145,6 +158,9 @@ class TradingState:
     status: TradingStatus = TradingStatus.RUNNING
     entry_pause_reason: str | None = None
     digest: str = ""
+    monitoring: MonitorResult | None = None
+    daily_loss_sessions: frozenset[str] = frozenset()
+    reconciliation_hold: bool = False
 
     def account(self, currency: str) -> CashLedger:
         for balance in self.cash:
@@ -253,7 +269,31 @@ def _release_reservation(state: TradingState, order: OrderRecord) -> TradingStat
     return _set_position(state, replace(position, reserved_sell=position.reserved_sell-order.reserved_qty))
 
 
-def _apply(state: TradingState, payload: TradingPayload, config: TradingConfig) -> TradingState:
+def _apply(
+    state: TradingState, payload: TradingPayload, config: TradingConfig,
+    limits: RiskLimits,
+) -> TradingState:
+    if isinstance(payload, RiskObserved):
+        evaluation = evaluate_monitor(state, payload.observation, limits)
+        sessions = state.daily_loss_sessions
+        if "DAILY_LOSS_LIMIT" in evaluation.reasons:
+            sessions = sessions | {evaluation.session_id}
+        mismatch_codes = {
+            "CASH_RECONCILIATION_MISMATCH", "POSITION_RECONCILIATION_MISMATCH",
+            "ORDER_RECONCILIATION_MISMATCH", "REFERENCE_ACCOUNT_MISMATCH",
+        }
+        return replace(
+            state, monitoring=evaluation, daily_loss_sessions=sessions,
+            reconciliation_hold=state.reconciliation_hold or bool(mismatch_codes.intersection(evaluation.reasons)),
+        )
+    if isinstance(payload, AccountReconciliationReviewed):
+        if not payload.reviewed_by.strip() or not state.reconciliation_hold:
+            raise InvalidEvent("reconciliation review requires active hold and reviewer")
+        if state.monitoring is None or state.monitoring.reasons:
+            raise InvalidEvent("healthy reconciled assessment required before review")
+        if state.monitoring.preceding_ordinal + 1 != state.last_ordinal:
+            raise InvalidEvent("review requires latest account assessment")
+        return replace(state, reconciliation_hold=False)
     if isinstance(payload, EntriesPaused):
         if not payload.reason.strip() or state.entry_pause_reason is not None:
             raise InvalidEvent("invalid new entry pause")
@@ -390,14 +430,17 @@ def _apply(state: TradingState, payload: TradingPayload, config: TradingConfig) 
     raise InvalidEvent("unknown trade payload")
 
 
-def reduce_trade_event(state: TradingState, event: TradingEvent, config: TradingConfig) -> TradingState:
+def reduce_trade_event(
+    state: TradingState, event: TradingEvent, config: TradingConfig,
+    limits: RiskLimits | None = None,
+) -> TradingState:
     if state.status is TradingStatus.HALTED:
         raise InvalidEvent("trading state halted")
     if event.ordinal != state.last_ordinal + 1 or event.event_id in state.seen_events:
         raise InvalidEvent("noncontiguous or duplicate trading event")
     if state.observed_at is not None and event.occurred_at < state.observed_at:
         raise InvalidEvent("trade event time reversed")
-    updated = _apply(state, event.payload, config)
+    updated = _apply(state, event.payload, config, limits or RiskLimits())
     # A single codec defines both the persisted wire event and state-chain hash.
     from invest_engine.trading.codec import encode_trade_event
     blob = encode_trade_event(event)

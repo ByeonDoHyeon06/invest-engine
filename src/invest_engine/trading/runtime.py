@@ -9,16 +9,17 @@ from decimal import Decimal, localcontext
 from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.primitives import InstrumentId, Money, _decimal, utc_datetime
 from invest_engine.trading.journal import SQLiteTradingJournal
+from invest_engine.trading.monitoring import MonitorInput, MonitorResult
 from invest_engine.trading.ledger import (
-    EntriesPaused, EntriesResumed, FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
-    OrderReconciled, OrderRejected, OrderReserved, OrderUnknown,
+    AccountReconciliationReviewed, EntriesPaused, EntriesResumed, FillRecorded, OrderAccepted, OrderCanceled, OrderCancelPending,
+    OrderReconciled, OrderRejected, OrderReserved, OrderUnknown, RiskObserved,
     TradingEvent, TradingPayload, TradingStatus, exposure_for, initial_trading_state,
     reduce_trade_event,
 )
 from invest_engine.trading.models import (
     DecisionStatus, OrderIntent, OrderStatus, RiskDecision, Side, SimulatedFill, TradingConfig,
 )
-from invest_engine.trading.policy import RiskLimits, evaluate_order
+from invest_engine.trading.policy import Exposure, RiskLimits, evaluate_order
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +81,7 @@ class TradingRuntime:
             raise InvalidEvent("runtime halted")
         event = TradingEvent(event_id, self.state.last_ordinal + 1, utc_datetime(at), payload)
         try:
-            proposed = reduce_trade_event(self.state, event, self.config)
+            proposed = reduce_trade_event(self.state, event, self.config, self.limits)
             if self.journal is not None:
                 self.journal.commit(event, proposed, checkpoint=(event.ordinal+1) % self.checkpoint_interval == 0)
             self.state = proposed
@@ -92,6 +93,80 @@ class TradingRuntime:
                 with suppress(Exception):
                     self.journal.record_halt(self._halt_reason)
             raise
+
+    def observe_market_and_account(self, snapshot: MonitorInput) -> MonitorResult:
+        """Persist exactly the observations used for valuation/reconciliation.
+
+        No market feed or broker is queried; the caller owns input provenance.
+        """
+        self._emit(RiskObserved(snapshot), snapshot.checked_at,
+                   "risk-observation:" + str(self.state.last_ordinal + 1))
+        result = self.state.monitoring
+        if result is None:
+            raise InvalidEvent("monitoring result was not applied")
+        return result
+
+    def review_reconciliation_hold(self, *, reviewed_by: str, at: datetime) -> None:
+        """Explicit operator review after a verified healthy reconciliation."""
+        if not reviewed_by.strip():
+            raise PermissionError("reviewer identity required")
+        self._emit(AccountReconciliationReviewed(reviewed_by), at,
+                   "reconciliation-review:" + str(self.state.last_ordinal + 1))
+
+    def _monitor_buy_reasons(self, intent: OrderIntent) -> tuple[str, ...]:
+        if not self.limits.require_monitoring or intent.side is Side.SELL:
+            return ()
+        result = self.state.monitoring
+        if result is None:
+            return ("MARK_MONITORING_REQUIRED",)
+        if result.session_id in self.state.daily_loss_sessions:
+            return ("DAILY_LOSS_LATCHED",)
+        if self.state.reconciliation_hold:
+            return ("ACCOUNT_RECONCILIATION_REVIEW_REQUIRED",)
+        if result.reasons:
+            return result.reasons
+        if result.preceding_ordinal + 1 != self.state.last_ordinal:
+            return ("MARK_RECHECK_AFTER_STATE_CHANGE",)
+        if (intent.submitted_at < result.checked_at
+            or intent.submitted_at - result.checked_at > self.limits.mark_max_age):
+            return ("MONITOR_CHECK_STALE",)
+        quote = next((v for v in result.marks if v.instrument.key == intent.instrument.key), None)
+        if quote is None:
+            return ("ENTRY_MARK_MISSING",)
+        if (quote.available_at > intent.submitted_at
+            or intent.submitted_at - quote.available_at > self.limits.mark_max_age):
+            return ("ENTRY_MARK_STALE",)
+        return ()
+
+    def _marked_exposure(self, intent: OrderIntent) -> Exposure:
+        """Use current marked equity and exposure rather than acquisition cost."""
+        old = exposure_for(self.state, intent.instrument.currency, intent.instrument)
+        result = self.state.monitoring
+        if intent.side is Side.SELL or not self.limits.require_monitoring or result is None:
+            return old
+        by_key = {m.instrument.key: m.price for m in result.marks}
+        held_value = sum(
+            (p.quantity * by_key[p.instrument.key] for p in self.state.positions
+             if p.instrument.currency == intent.instrument.currency and p.quantity > 0),
+            Decimal(0),
+        )
+        symbol_marked = sum(
+            (p.quantity * by_key[p.instrument.key] for p in self.state.positions
+             if p.instrument.key == intent.instrument.key and p.quantity > 0), Decimal(0),
+        )
+        existing_held_cost = sum(
+            (p.quantity * p.average_cost for p in self.state.positions
+             if p.instrument.currency == intent.instrument.currency), Decimal(0),
+        )
+        symbol_held_cost = sum(
+            (p.quantity * p.average_cost for p in self.state.positions
+             if p.instrument.key == intent.instrument.key), Decimal(0),
+        )
+        return replace(old,
+            equity_at_cost=old.cash + held_value,
+            total_cost=old.total_cost - existing_held_cost + held_value,
+            symbol_cost=old.symbol_cost - symbol_held_cost + symbol_marked,
+        )
 
     def submit(self, intent: OrderIntent) -> SubmitOutcome:
         existing = self.state.order(intent.intent_id)
@@ -106,7 +181,11 @@ class TradingRuntime:
                                               approved_qty=intent.quantity, reservation=existing.reserved_cash))
         if self.state.status is TradingStatus.HALTED:
             return SubmitOutcome(RiskDecision(intent.intent_id, DecisionStatus.HALTED, reason_codes=("RUNTIME_HALTED",)))
-        if self.state.entry_pause_reason is not None and intent.side is Side.BUY:
+        monitor_reasons = self._monitor_buy_reasons(intent)
+        if monitor_reasons:
+            decision = RiskDecision(intent.intent_id, DecisionStatus.REJECTED,
+                                    reason_codes=monitor_reasons)
+        elif self.state.entry_pause_reason is not None and intent.side is Side.BUY:
             decision = RiskDecision(
                 intent.intent_id, DecisionStatus.REJECTED, reason_codes=("NEW_ENTRIES_PAUSED",)
             )
@@ -114,7 +193,7 @@ class TradingRuntime:
             decision = RiskDecision(intent.intent_id, DecisionStatus.REJECTED, reason_codes=("ACCOUNT_MISMATCH",))
         else:
             try:
-                exposure = exposure_for(self.state, intent.instrument.currency, intent.instrument)
+                exposure = self._marked_exposure(intent)
                 unknown = any(o.status is OrderStatus.UNKNOWN for o in self.state.orders)
                 decision = evaluate_order(intent, self.config, self.limits, exposure, halted=unknown)
             except InvalidEvent:

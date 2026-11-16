@@ -8,6 +8,8 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
 from invest_engine.core.replay import _canonical
@@ -55,7 +57,23 @@ class SQLiteTradingJournal:
     def _identity(config: TradingConfig, state: TradingState, limits: RiskLimits) -> str:
         # Identity pins policy & opening cash; non-breaking replay cannot silently
         # switch account, currency quantum, instrument rules or fee calculation.
-        blob = json.dumps(_canonical({"config": config, "starting_cash": state.cash, "risk_limits": limits}),
+        # Preserve the E3.1/E3.2 journal identity for unchanged default limits.
+        # New monitoring policies create distinct identities to prevent replay drift.
+        legacy = (
+            not limits.require_monitoring and not limits.require_account_reference
+            and limits.max_daily_loss_fraction == Decimal("0.01")
+            and limits.mark_max_age == timedelta(minutes=2)
+        )
+        pinned_limits: object = limits
+        if legacy:
+            pinned_limits = {
+                "per_trade_planned_loss": limits.per_trade_planned_loss,
+                "max_symbol_cost_fraction": limits.max_symbol_cost_fraction,
+                "max_total_cost_fraction": limits.max_total_cost_fraction,
+                "max_open_positions": limits.max_open_positions,
+                "require_stop_plan": limits.require_stop_plan,
+            }
+        blob = json.dumps(_canonical({"config": config, "starting_cash": state.cash, "risk_limits": pinned_limits}),
                           sort_keys=True, ensure_ascii=False, separators=(",", ":"))
         return hashlib.sha256(blob.encode()).hexdigest()
 
@@ -89,7 +107,7 @@ class SQLiteTradingJournal:
         checkpoints = dict(self.connection.execute("SELECT ordinal,digest FROM trading_checkpoints"))
         seen_cp: set[int] = set()
         for event in self._read():
-            state = reduce_trade_event(state, event, config)
+            state = reduce_trade_event(state, event, config, limits)
             expected = checkpoints.get(event.ordinal)
             if expected is not None:
                 seen_cp.add(event.ordinal)
