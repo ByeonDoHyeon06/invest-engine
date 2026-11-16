@@ -61,3 +61,9 @@
 - E4 전략은 신뢰할 수 있는 내부 Python 플러그인만 허용; Protocol은 샌드박스가 아님.
 - E4 필수 검증: 과거 관측만 입력, 시간봉 구성/거래세션/워밍업, 20 이전 세션 거래량, 다중 전략 상한, 신호 결정론.
 - E4 잔여: Fill 귀속 strategy-level virtual ledger와 실행·신호 영속 경계 평가. STATUS/ROADMAP 참조. E4 Issue #5를 근거 없이 닫지 말 것.
+
+## Latest state (2026-11-16, supersedes earlier E4 TODO)
+- E0~E4 verified and merged. PR #21 strategy SDK + ORB, PR #22 synthetic fill attribution; CI run 43857703057: Python 3.12/3.13 each 191 passed, Ruff/mypy/secret guard green.
+- E4 virtual positions are in-memory and research-only. No automatic market fills, brokerage interaction or integrated E2/E4/E3 replay.
+- NEXT: E5 Issue #6. First implement deterministic coordination and transaction/recording boundary for strategy signals, allocation tickets and simulated fills, then conservative OHLCV fill+fees/slippage, baseline report and experiment manifest.
+- Trusted internal strategies only; no Python code sandbox. LIVE NOT AUTHORIZED.
