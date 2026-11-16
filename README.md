@@ -4,7 +4,7 @@
 
 국내·미국 주식 대상으로 시장 데이터, 전략, 위험관리, 주문·체결, 포트폴리오, 연구·자기개선을 분리한 독립형 적응형 트레이딩 엔진.
 
-**현재 상태:** E0~E2 검증 완료, E3.1·E3.2 병합 완료, **E3.3 위험 모니터링 PR #19 main 병합·CI 검증 완료**. 실거래·증권사 API·전략 기반 자동 주문·백테스트는 여전히 미구현. 개인용·headless·검증 우선.
+**현재 상태:** E0~E2 완료 및 E3.1~E3.3 main 병합·검증. E3.4 모의 정산·세금·장부 감사 [PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20) CI 검토 중. Live/증권사 API·전략 기반 자동 주문·백테스트는 미구현. 개인용·headless·검증 우선.
 
 ## 설계 원칙
 - 해상도 비종속: Tick/Quote/OrderBook/Bar/재무·공시 이벤트를 각각 정확한 타입으로 처리한다. 1분봉은 전략 설정이지 엔진 제한이 아니다.
@@ -24,6 +24,7 @@
 - [E2 이벤트 런타임과 복구 규칙](docs/EVENT_RUNTIME.md)
 - **[E3 모의매매 주문·위험·포트폴리오 구현](docs/E3_SIMULATION.md)**
 - **[E3.3 시세 평가·일일 손실·계좌 대조](docs/E3_MONITORING.md)**
+- **[E3.4 합성 세금·매도 미결제금·정산 확인·Gate](docs/E3_SETTLEMENT.md)**
 - [기술 스택/선택 근거](docs/TECH_STACK.md)
 - [도메인·이벤트·시간 계약](docs/DOMAIN.md)
 - [E1 데이터 수집·품질 계약](docs/DATA_INGESTION.md)
