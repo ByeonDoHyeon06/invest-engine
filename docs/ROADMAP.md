@@ -114,7 +114,7 @@
 **E5 통합 의존:** strategy decision/attribution ticket의 영속성, E2→E4→E3 실행기, 체결모델 및 Backtest report. **E4가 Live 안전성을 뜻하지 않는다.**
 
 ### E5 — Backtest Engine & Reporting
-**Implementation status (E5.1 merged PR #23, E5.2 PR #24):** 역사 이벤트→E2→E4 전략·Feature→E3 위험·가상 주문/체결 연결. 지정가 strict penetration, volume participation cap, fee/tax 및 별도 통화별 리포트. [E5_BACKTEST.md](E5_BACKTEST.md), [ADR-0010](adr/0010-bar-fill-assumptions.md). **E5 전체 검증/종료 아님.** E5.2 stop/target 겹침·갭·민감도, E5.2 오프라인 RunRequest/CLI/JSONL·manifest를 구현한 PR #24 검증 중. E5.3은 stop/target 겹침·갭 손절과 비용/체결 강건성 검증 및 golden 테스트를 우선한다.
+**Implementation status (E5.1 merged PR #23, E5.2 merged PR #24):** 역사 이벤트→E2→E4 전략·Feature→E3 위험·가상 주문/체결 연결. 지정가 strict penetration, volume participation cap, fee/tax 및 별도 통화별 리포트. [E5_BACKTEST.md](E5_BACKTEST.md), [ADR-0010](adr/0010-bar-fill-assumptions.md). **E5 전체 검증/종료 아님.** E5.2 stop/target 겹침·갭·민감도, E5.2 오프라인 RunRequest/CLI/JSONL·manifest를 구현한 PR #24 GitHub CI 204 passed (Python 3.12/3.13) 후 병합 완료. E5.3은 stop/target 겹침·갭 손절과 비용/체결 강건성 검증 및 golden 테스트를 우선한다.
 **의존성:** E3, E4.
 
 **작업:**
