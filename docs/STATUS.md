@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-16
-**현재:** E0/E1/E2 검증 완료. 입출력 설계 PR #16 병합. E3 합성 주문/체결·현금 예약·리스크·저널 **PR #17 구현 및 CI 검증 중**. 실제 주문·전략·시장 기반 자동 체결·백테스트 없음.
-**현재 Stage:** [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4) (IN PROGRESS). [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17)에서는 합성 주문·장부만 구현하며 E3 전체 완료 전까지 Issue #4 유지.
+**현재:** E0/E1/E2 검증 완료. 설계 PR #16 및 **E3.1 구현 PR #17 main 병합 완료**. 합성 주문/체결·현금 예약·리스크·저널 구현. 실제 주문·전략·시장 기반 자동 체결·백테스트 없음.
+**현재 Stage:** [E3 — Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4) (IN PROGRESS; PR #17 MERGED). E3.2 미구현 항목 후속 PR 필요. E0/E1/E2 VERIFIED + MERGED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -20,7 +20,7 @@
 - **E2 구현:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) immutable State/Reducer + pure observation routing, DAG scheduler skeleton, SQLite event journal/atomic checkpoints/restart verification, fail-closed halt.
 - **E2 CI:** [run 43834211614](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834211614): Python 3.12/3.13 각각 99 passed + Ruff/mypy/secret guard. 로컬은 96 passed, 3 skipped (선택 라이브러리 미설치).
 - **E2 병합 증거:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) squash commit [7d1b814](https://github.com/ByeonDoHyeon06/invest-engine/commit/7d1b814366cb5b4c4976db04ecbddf764c65ef82). 최종 PR CI [43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280), Python 3.12/3.13 각 99 passed, Ruff/mypy/secret guard green.
-- **다음 단일 작업:** [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) CI/리뷰/병합 완료 후 E3 남은 기능(실제 mark-to-market 위험·거래세션 policy·Pause/Flatten·원자적 전체 회계/시장 관측 통합)을 Issue #4의 후속 PR로 계획. [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4)에서 Money/Quantity precision & rounding ADR을 먼저 확정하고, Position/OrderIntent/OrderState 순수 타입과 simulated Fill/Portfolio Ledger의 불변식을 첫 PR로 구현.
+- **다음 단일 작업:** [E3 Issue #4](https://github.com/ByeonDoHyeon06/invest-engine/issues/4)에서 **E3.2 연속 위험관리와 운영 상태/명령** (PAUSE, CANCEL, REDUCE/FLATTEN) 설계를 먼저 확정하고 작은 PR로 구현. 이후 market mark-to-market·세션 및 세금/FX 정합성 도입 시점을 명확히 분리할 것.(https://github.com/ByeonDoHyeon06/invest-engine/issues/4)에서 Money/Quantity precision & rounding ADR을 먼저 확정하고, Position/OrderIntent/OrderState 순수 타입과 simulated Fill/Portfolio Ledger의 불변식을 첫 PR로 구현.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -58,8 +58,8 @@
 ## E3 진행 기록 (2026-11-16)
 
 - [PR #16](https://github.com/ByeonDoHyeon06/invest-engine/pull/16) 입출력·ML 설계 문서 2026-11-16 병합 완료. ADR-0005 boundary 원칙 승인; Run/ML 구현은 추후.
-- [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17): simulated-only OrderIntent/Fill/Portfolio Ledger, RiskLimits(cost basis), Decimal·currency precision (ADR-0006), 별도 versioned SQLite trading journal/outbox 및 복구, strict e3-sim-v1 JSON wire.
-- E3.1 로컬 테스트: Python 3.13 **122 passed, 3 skipped**(Hypothesis/PyArrow 로컬 미설치). CI 검사 결과는 PR 체크 기준; 최초 Ruff/mypy 지적 수정 진행.
+- [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) (MERGED): simulated-only OrderIntent/Fill/Portfolio Ledger, RiskLimits(cost basis), Decimal·currency precision (ADR-0006), 별도 versioned SQLite trading journal/outbox 및 복구, strict e3-sim-v1 JSON wire.
+- E3.1 로컬 테스트: Python 3.13 **122 passed, 3 skipped**(Hypothesis/PyArrow 로컬 미설치). GitHub CI [run 43843169134](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43843169134) Python 3.12/3.13 Ruff/mypy/pytest/secret guard 모두 통과. [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) squash merged as [d49f95f](https://github.com/ByeonDoHyeon06/invest-engine/commit/d49f95f34001e0b0695e8565f1b14e1f108f231c).
 - E3 잔여: mark-to-market equity/FX와 시장 세션 평가, 실시간 데이터로 모의 체결 결정하는 모델(E5), 실제 broker sync(E8), 전략/E2 통합 실행(E4~E5). E3 기간에는 적어도 **Pause/Cancel/Reduce/Flatten 명령** 및 위험 상태 정책을 후속 PR로 설계·검증해야 함.
 - LIVE: NOT AUTHORIZED. 토스증권 API 모듈 없음.
 
