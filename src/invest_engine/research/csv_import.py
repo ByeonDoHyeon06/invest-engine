@@ -71,7 +71,8 @@ def import_ohlcv_csv(
             prices = [Decimal(str(row[name])) for name in ("open", "high", "low", "close", "volume")]
             if prev_end is not None and start < prev_end:
                 raise ValueError("CSV rows overlap or are not time ordered")
-            bar = Bar(start, end, *prices, interval=interval)
+            bar = Bar(start, end, prices[0], prices[1], prices[2],
+                      prices[3], prices[4], interval=interval)
             seen = end + observation_delay
             event = EventEnvelope(
                 f"csv:{hashlib.sha256(original).hexdigest()[:16]}:{n}",

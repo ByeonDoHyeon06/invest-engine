@@ -46,16 +46,16 @@ def main(argv: list[str] | None = None) -> int:
         instrument = InstrumentId(market, args.venue, args.identifier,
                                   args.symbol, args.currency)
         out = Path(args.output)
-        result = import_ohlcv_csv(
+        csv_result = import_ohlcv_csv(
             Path(args.input), out, instrument=instrument, source=args.source,
             interval=timedelta(seconds=args.interval_seconds),
             volume_unit=args.volume_unit,
         )
-        write_csv_import_manifest(out.with_suffix(".import.json"), result, args.source)
-        print(json.dumps({"records": result.event_count,
-                          "events_sha256": result.output_sha256,
-                          "volume_unit": result.volume_unit,
-                          "execution_eligible": result.execution_eligible}, sort_keys=True))
+        write_csv_import_manifest(out.with_suffix(".import.json"), csv_result, args.source)
+        print(json.dumps({"records": csv_result.event_count,
+                          "events_sha256": csv_result.output_sha256,
+                          "volume_unit": csv_result.volume_unit,
+                          "execution_eligible": csv_result.execution_eligible}, sort_keys=True))
         return 0
 
     if args.command == "stress":

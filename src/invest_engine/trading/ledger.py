@@ -368,13 +368,13 @@ def _apply(
         return replace(state, delisted_instruments=(
             state.delisted_instruments | {payload.instrument.key}))
     if isinstance(payload, DividendPaymentConfirmed):
-        pending = next((d for d in state.dividend_receivables
-                        if d.action_id == payload.action_id), None)
-        if pending is None or payload.action_id in state.paid_dividend_ids:
+        dividend_due = next((d for d in state.dividend_receivables
+                             if d.action_id == payload.action_id), None)
+        if dividend_due is None or payload.action_id in state.paid_dividend_ids:
             raise InvalidEvent("dividend payment has no unpaid entitlement")
-        balance = state.account(pending.currency)
+        balance = state.account(dividend_due.currency)
         return replace(
-            _set_cash(state, replace(balance, settled=balance.settled + pending.net)),
+            _set_cash(state, replace(balance, settled=balance.settled + dividend_due.net)),
             dividend_receivables=tuple(d for d in state.dividend_receivables
                                         if d.action_id != payload.action_id),
             paid_dividend_ids=state.paid_dividend_ids | {payload.action_id},
@@ -664,14 +664,14 @@ def audit_trading_state(state: TradingState) -> None:
     fills_by_order: dict[str, Decimal] = {}
     shares_by_symbol: dict[str, Decimal] = {}
     for fill in state.fills:
-        order = orders.get(fill.intent_id)
-        if order is None:
+        fill_order = orders.get(fill.intent_id)
+        if fill_order is None:
             raise InvalidEvent("fill references unknown order")
         fills_by_order[fill.intent_id] = (
             fills_by_order.get(fill.intent_id, Decimal(0)) + fill.quantity
         )
-        key = order.intent.instrument.key
-        delta = fill.quantity if order.intent.side is Side.BUY else -fill.quantity
+        key = fill_order.intent.instrument.key
+        delta = fill.quantity if fill_order.intent.side is Side.BUY else -fill.quantity
         shares_by_symbol[key] = shares_by_symbol.get(key, Decimal(0)) + delta
     if (len({name for name, _ in state.corporate_fingerprints})
             != len(state.corporate_fingerprints)
