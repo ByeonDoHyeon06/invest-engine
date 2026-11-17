@@ -127,10 +127,11 @@ class PITEvidence:
                 if (a.instrument_key == b.instrument_key and
                     a.effective_from < b.effective_until and b.effective_from < a.effective_until):
                     raise ValueError("overlapping universe membership windows")
-        for i, a in enumerate(self.action_coverages):
-            for b in self.action_coverages[i + 1:]:
-                if (a.instrument_key == b.instrument_key and
-                    a.start < b.end and b.start < a.end):
+        for i, coverage in enumerate(self.action_coverages):
+            for other_coverage in self.action_coverages[i + 1:]:
+                if (coverage.instrument_key == other_coverage.instrument_key and
+                    coverage.start < other_coverage.end and
+                    other_coverage.start < coverage.end):
                     raise ValueError("overlapping action coverage declarations")
 
     @property
