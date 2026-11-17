@@ -21,7 +21,7 @@ from invest_engine.research.fills import BarFillPolicy
 from invest_engine.research.protection import ProtectionPolicy
 from invest_engine.research.report import BacktestReport, canonical_json, sha256
 from invest_engine.strategies.baselines import NoTradeStrategy
-from invest_engine.strategies.contracts import DataRequirement
+from invest_engine.strategies.contracts import DataRequirement, Strategy
 from invest_engine.strategies.orb import ORBLongStrategy, ORBParameters
 from invest_engine.trading.models import TradingConfig
 from invest_engine.trading.money import InstrumentRules, MonetaryRules
@@ -104,6 +104,7 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
     calendar = StaticSessionCalendar(tuple(sessions))
     st = _object(raw["strategy"], {"id", "version", "parameters"})
     params = _object(st["parameters"], {"interval"}) if st["id"] == "no-trade" else None
+    strategy: Strategy
     if st["id"] == "no-trade" and st["version"] == "1.0.0":
         assert params is not None
         strategy = NoTradeStrategy(DataRequirement("market.bar", _interval(params["interval"])))
