@@ -76,6 +76,8 @@ def inspect_dataset(
         session = calendar.session_for(event.instrument_id, bar.start)
         if session is None or bar.end > session.end:
             raise ValueError('bar lies outside declared historical sessions')
+        if bar.interval is None:
+            raise ValueError('time bar requires an explicit interval')
         step = bar.interval // timedelta(microseconds=1)
         key = (event.instrument_id.key, step, session.start.isoformat())
         groups.setdefault(key, []).append(bar)
