@@ -43,8 +43,7 @@ def test_csv_roundtrip_and_no_trade_replay(tmp_path: Path):
     assert not meta.execution_eligible
     import hashlib
     assert hashlib.sha256(target.read_bytes()).hexdigest() == meta.output_sha256
-    from invest_engine.research.csv_import import write_csv_import_manifest
-    write_csv_import_manifest(tmp_path / "meta.json", meta, "public-preview")
+    write_csv_import_manifest(tmp_path / "meta.json", meta, "synthetic")
     assert '"availability_timestamps_are_assumptions":true' in (tmp_path / "meta.json").read_text()
     events = tuple(decode_event(line) for line in target.read_bytes().splitlines())
     assert len(events) == 5
