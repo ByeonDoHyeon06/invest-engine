@@ -87,7 +87,14 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         raise ValueError("nonempty run id required")
     if not isinstance(raw["code_sha"], str) or not raw["code_sha"].strip():
         raise ValueError("code revision required")
-    dataset = _object(raw["dataset"], {"events_jsonl", "source", "license", "sha256"})
+    dataset_input = raw["dataset"]
+    if not isinstance(dataset_input, dict):
+        raise ValueError("dataset must be an object")
+    declared = dataset_input.get("volume_unit")
+    if declared is not None and declared not in ("SHARES", "TICK_COUNT"):
+        raise ValueError("unsupported dataset volume unit")
+    dataset = _object({k: v for k, v in dataset_input.items() if k != "volume_unit"},
+                      {"events_jsonl", "source", "license", "sha256"})
     if not all(isinstance(dataset[k], str) and dataset[k].strip() for k in dataset):
         raise ValueError("historical data origin/license/checksum required")
     source_file = (root / dataset["events_jsonl"]).resolve()
@@ -127,6 +134,8 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         pit_result = validate_pit_events(events, evidence)
         pit_source, pit_license = spec["source"], spec["license"]
     st = _object(raw["strategy"], {"id", "version", "parameters"})
+    if declared == "TICK_COUNT" and st["id"] != "no-trade":
+        raise ValueError("TICK_COUNT volume is not traded shares; only no-trade smoke tests allowed")
     params = _object(st["parameters"], {"interval"}) if st["id"] == "no-trade" else None
     strategy: Strategy
     if st["id"] == "no-trade" and st["version"] == "1.0.0":
@@ -257,6 +266,7 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         "code_sha": raw["code_sha"], "dataset_file_sha256": file_hash,
         "dataset_event_sha256": report.dataset_sha256,
         "dataset_source": dataset["source"], "data_license": dataset["license"],
+        "dataset_volume_unit": declared if declared is not None else "UNDECLARED",
         "strategy_id": st["id"], "strategy_version": st["version"],
         "fill_model_version": policy.version,
         "protective_exit_version": protection.version if protection.enabled else None,
@@ -277,7 +287,9 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         "pit_source": pit_source, "pit_license": pit_license,
         "pit_data_release_verified": False,
         "warnings": (list(report.notes) + list(audit.warnings)
-                     + list(pit_result.reason_codes if pit_result else ("PIT_EVIDENCE_NOT_SUPPLIED",))),
+                     + list(pit_result.reason_codes if pit_result else ("PIT_EVIDENCE_NOT_SUPPLIED",))
+                     + (["VOLUME_IS_TICK_COUNT_NOT_TRADED_SHARES"] if declared == "TICK_COUNT" else [])
+                     + (["VOLUME_UNIT_NOT_DECLARED"] if declared is None else [])),
     }
     manifest_sha = sha256(manifest)
     (output_dir / "manifest.json").write_bytes(canonical_json(manifest))

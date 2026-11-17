@@ -8,6 +8,10 @@ from decimal import Decimal, localcontext
 from enum import Enum
 
 from invest_engine.domain.errors import InvalidEvent
+from invest_engine.trading.actions import (
+    DelistingObserved, DividendEntitled, DividendPaymentConfirmed, DividendReceivable,
+    PositionAdjustment, SplitApplied, action_fingerprint,
+)
 from invest_engine.domain.primitives import InstrumentId, Money, utc_datetime
 from invest_engine.trading.models import (
     OrderIntent, OrderStatus, SellSettlementMode, Side, SimulatedFill, TradingConfig,
@@ -152,6 +156,7 @@ TradingPayload = (
     EntriesPaused | EntriesResumed | OrderReserved | OrderRejected | OrderAccepted | OrderCancelPending
     | OrderCanceled | OrderUnknown | OrderReconciled | FillRecorded
     | RiskObserved | AccountReconciliationReviewed | CashSettlementConfirmed
+    | SplitApplied | DividendEntitled | DividendPaymentConfirmed | DelistingObserved
 )
 
 
@@ -191,6 +196,12 @@ class TradingState:
     charges: tuple[TransactionCharge, ...] = ()
     pending_settlements: tuple[PendingSettlement, ...] = ()
     settled_execution_ids: frozenset[str] = frozenset()
+    applied_corporate_ids: frozenset[str] = frozenset()
+    corporate_fingerprints: tuple[tuple[str, str], ...] = ()
+    position_adjustments: tuple[PositionAdjustment, ...] = ()
+    dividend_receivables: tuple[DividendReceivable, ...] = ()
+    paid_dividend_ids: frozenset[str] = frozenset()
+    delisted_instruments: frozenset[str] = frozenset()
 
     def account(self, currency: str) -> CashLedger:
         for balance in self.cash:
@@ -303,6 +314,71 @@ def _apply(
     state: TradingState, payload: TradingPayload, config: TradingConfig,
     limits: RiskLimits,
 ) -> TradingState:
+    if isinstance(payload, (SplitApplied, DividendEntitled, DelistingObserved)):
+        if payload.action_id in state.applied_corporate_ids:
+            raise InvalidEvent("duplicate corporate action")
+        if payload.instrument.key in state.delisted_instruments:
+            raise InvalidEvent("instrument already delisted")
+        if any(o.intent.instrument.key == payload.instrument.key and
+               o.status in (OrderStatus.RESERVED, OrderStatus.ACCEPTED,
+                            OrderStatus.PARTIALLY_FILLED, OrderStatus.CANCEL_PENDING,
+                            OrderStatus.UNKNOWN) for o in state.orders):
+            raise InvalidEvent("corporate action with open orders requires reconciliation")
+        position = state.position(payload.instrument)
+        state = replace(
+            state, applied_corporate_ids=state.applied_corporate_ids | {payload.action_id},
+            corporate_fingerprints=(*state.corporate_fingerprints,
+                                    (payload.action_id, action_fingerprint(payload))),
+        )
+        if isinstance(payload, SplitApplied):
+            if position is None or position.quantity == 0:
+                return state
+            with localcontext() as ctx:
+                ctx.prec = 64
+                new_quantity = position.quantity * payload.numerator / payload.denominator
+                rules = config.rules_for(payload.instrument)
+                try:
+                    rules.validate_quantity(new_quantity)
+                except ValueError as exc:
+                    raise InvalidEvent("fractional split shares require explicit cash-in-lieu policy") from exc
+                # Conserves the original total acquisition basis exactly.
+                new_cost = position.average_cost * payload.denominator / payload.numerator
+            state = _set_position(state, replace(position, quantity=new_quantity,
+                                                average_cost=new_cost))
+            return replace(state, position_adjustments=(
+                *state.position_adjustments,
+                PositionAdjustment(payload.action_id, payload.instrument.key,
+                                   new_quantity - position.quantity),
+            ))
+        if isinstance(payload, DividendEntitled):
+            qty = position.quantity if position else Decimal(0)
+            if qty == 0:
+                return state
+            money = config.cash_rules(payload.instrument.currency)
+            with localcontext() as ctx:
+                ctx.prec = 64
+                gross = money.settle(qty * payload.gross_per_share)
+                withheld = money.settle(gross * payload.withholding_fraction)
+                net = gross - withheld
+            return replace(state, dividend_receivables=(
+                *state.dividend_receivables,
+                DividendReceivable(payload.action_id, money.currency, qty,
+                                   gross, withheld, net, payload.effective_at),
+            ))
+        return replace(state, delisted_instruments=(
+            state.delisted_instruments | {payload.instrument.key}))
+    if isinstance(payload, DividendPaymentConfirmed):
+        pending = next((d for d in state.dividend_receivables
+                        if d.action_id == payload.action_id), None)
+        if pending is None or payload.action_id in state.paid_dividend_ids:
+            raise InvalidEvent("dividend payment has no unpaid entitlement")
+        balance = state.account(pending.currency)
+        return replace(
+            _set_cash(state, replace(balance, settled=balance.settled + pending.net)),
+            dividend_receivables=tuple(d for d in state.dividend_receivables
+                                        if d.action_id != payload.action_id),
+            paid_dividend_ids=state.paid_dividend_ids | {payload.action_id},
+        )
     if isinstance(payload, RiskObserved):
         evaluation = evaluate_monitor(state, payload.observation, limits)
         sessions = state.daily_loss_sessions
@@ -512,6 +588,10 @@ def reduce_trade_event(
         raise InvalidEvent("noncontiguous or duplicate trading event")
     if state.observed_at is not None and event.occurred_at < state.observed_at:
         raise InvalidEvent("trade event time reversed")
+    if isinstance(event.payload, (SplitApplied, DividendEntitled, DelistingObserved)):
+        if (event.occurred_at < event.payload.effective_at
+                or event.occurred_at < event.payload.available_at):
+            raise InvalidEvent("corporate action not yet effective or available")
     updated = _apply(state, event.payload, config, limits or RiskLimits())
     audit_trading_state(updated)
     # A single codec defines both the persisted wire event and state-chain hash.
@@ -584,15 +664,38 @@ def audit_trading_state(state: TradingState) -> None:
     fills_by_order: dict[str, Decimal] = {}
     shares_by_symbol: dict[str, Decimal] = {}
     for fill in state.fills:
-        fill_order = orders.get(fill.intent_id)
-        if fill_order is None:
+        order = orders.get(fill.intent_id)
+        if order is None:
             raise InvalidEvent("fill references unknown order")
         fills_by_order[fill.intent_id] = (
             fills_by_order.get(fill.intent_id, Decimal(0)) + fill.quantity
         )
-        key = fill_order.intent.instrument.key
-        delta = fill.quantity if fill_order.intent.side is Side.BUY else -fill.quantity
+        key = order.intent.instrument.key
+        delta = fill.quantity if order.intent.side is Side.BUY else -fill.quantity
         shares_by_symbol[key] = shares_by_symbol.get(key, Decimal(0)) + delta
+    if (len({name for name, _ in state.corporate_fingerprints})
+            != len(state.corporate_fingerprints)
+            or {name for name, _ in state.corporate_fingerprints}
+            != state.applied_corporate_ids):
+        raise InvalidEvent("corporate event identity mismatch")
+    if len({a.action_id for a in state.position_adjustments}) != len(state.position_adjustments):
+        raise InvalidEvent("duplicate share adjustment")
+    for adjustment in state.position_adjustments:
+        if adjustment.action_id not in state.applied_corporate_ids:
+            raise InvalidEvent("unregistered share adjustment")
+        shares_by_symbol[adjustment.instrument_key] = (
+            shares_by_symbol.get(adjustment.instrument_key, Decimal(0))
+            + adjustment.quantity_delta
+        )
+    receivables = {r.action_id for r in state.dividend_receivables}
+    if len(receivables) != len(state.dividend_receivables):
+        raise InvalidEvent("duplicate dividend receivable")
+    if (receivables & state.paid_dividend_ids
+            or not (receivables | state.paid_dividend_ids) <= state.applied_corporate_ids):
+        raise InvalidEvent("invalid dividend entitlement/payment state")
+    if any(r.net < 0 or r.gross != r.withheld + r.net
+           for r in state.dividend_receivables):
+        raise InvalidEvent("invalid dividend receivable arithmetic")
     for order in state.orders:
         qty = fills_by_order.get(order.intent.intent_id, Decimal(0))
         if qty != order.filled_quantity or qty > order.intent.quantity:

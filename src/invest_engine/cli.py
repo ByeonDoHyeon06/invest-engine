@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import timedelta
+from pathlib import Path
 
+from invest_engine.research.csv_import import import_ohlcv_csv, write_csv_import_manifest
 from invest_engine.core.fixtures import synthetic_ticks
 from invest_engine.core.replay import replay_events
 from invest_engine.domain.primitives import InstrumentId, Market
@@ -14,7 +17,7 @@ from invest_engine.research.stress import export_stress, run_cost_stress
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="invest-engine", description="E0 synthetic replay verifier; no orders or API calls"
+        prog="invest-engine", description="Offline-only market replay/backtest tools; no broker access"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     replay = subparsers.add_parser("replay-synthetic", help="Replay synthetic trades deterministically")
@@ -25,7 +28,35 @@ def main(argv: list[str] | None = None) -> int:
     stress = subparsers.add_parser("stress", help="Offline cost/volume assumptions sweep")
     stress.add_argument("--config", required=True)
     stress.add_argument("--output", required=True)
+    ingest = subparsers.add_parser("import-csv", help="Offline historical OHLCV import; never trades")
+    ingest.add_argument("--input", required=True)
+    ingest.add_argument("--output", required=True)
+    ingest.add_argument("--market", choices=["KR", "US"], required=True)
+    ingest.add_argument("--venue", required=True)
+    ingest.add_argument("--identifier", required=True)
+    ingest.add_argument("--symbol", required=True)
+    ingest.add_argument("--currency", required=True)
+    ingest.add_argument("--source", required=True)
+    ingest.add_argument("--interval-seconds", type=int, required=True)
+    ingest.add_argument("--volume-unit", choices=["SHARES", "TICK_COUNT"], required=True)
     args = parser.parse_args(argv)
+
+    if args.command == "import-csv":
+        market = Market(args.market)
+        instrument = InstrumentId(market, args.venue, args.identifier,
+                                  args.symbol, args.currency)
+        out = Path(args.output)
+        result = import_ohlcv_csv(
+            Path(args.input), out, instrument=instrument, source=args.source,
+            interval=timedelta(seconds=args.interval_seconds),
+            volume_unit=args.volume_unit,
+        )
+        write_csv_import_manifest(out.with_suffix(".import.json"), result, args.source)
+        print(json.dumps({"records": result.event_count,
+                          "events_sha256": result.output_sha256,
+                          "volume_unit": result.volume_unit,
+                          "execution_eligible": result.execution_eligible}, sort_keys=True))
+        return 0
 
     if args.command == "stress":
         report = run_cost_stress(args.config)

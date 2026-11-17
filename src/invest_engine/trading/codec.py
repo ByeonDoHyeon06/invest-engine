@@ -7,6 +7,9 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, cast
 
 from invest_engine.core.replay import _canonical
+from invest_engine.trading.actions import (
+    DelistingObserved, DividendEntitled, DividendPaymentConfirmed, SplitApplied,
+)
 from invest_engine.domain.errors import InvalidEvent, UnsupportedData
 from invest_engine.domain.primitives import AssetClass, InstrumentId, Market
 from invest_engine.trading.ledger import (
@@ -55,6 +58,23 @@ def _intent(data: dict[str, Any]) -> OrderIntent:
 
 
 def _payload(name: str, data: dict[str, Any]) -> Any:
+    if name == "SplitApplied":
+        return SplitApplied(data["action_id"], _instrument(_mapping(data["instrument"])),
+                            data["numerator"], data["denominator"],
+                            datetime.fromisoformat(data["effective_at"]),
+                            datetime.fromisoformat(data["available_at"]), data["source"])
+    if name == "DividendEntitled":
+        return DividendEntitled(data["action_id"], _instrument(_mapping(data["instrument"])),
+                                Decimal(data["gross_per_share"]),
+                                Decimal(data["withholding_fraction"]),
+                                datetime.fromisoformat(data["effective_at"]),
+                                datetime.fromisoformat(data["available_at"]), data["source"])
+    if name == "DividendPaymentConfirmed":
+        return DividendPaymentConfirmed(data["action_id"])
+    if name == "DelistingObserved":
+        return DelistingObserved(data["action_id"], _instrument(_mapping(data["instrument"])),
+                                 datetime.fromisoformat(data["effective_at"]),
+                                 datetime.fromisoformat(data["available_at"]), data["source"])
     if name == "CashSettlementConfirmed":
         return CashSettlementConfirmed(data["execution_id"])
     if name == "EntriesPaused":
