@@ -21,6 +21,7 @@ from invest_engine.research.audit import (
     audit_hash, file_sha256, inspect_dataset, source_tree_sha256,
 )
 from invest_engine.research.corporate_replay import SplitSchedule, load_splits
+from invest_engine.research.dividend_replay import DividendSchedule, load_dividends
 from invest_engine.research.fills import BarFillPolicy
 from invest_engine.research.fx import FxObservation, FxReportingPolicy, FxSeries
 from invest_engine.research.protection import ProtectionPolicy
@@ -79,7 +80,8 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
     required = {"schema_version", "run_id", "mode", "dataset", "sessions", "strategy",
                 "account", "risk", "fill_model", "code_sha", "output_dir"}
     if (not isinstance(raw_input, dict) or not required <= set(raw_input)
-        or not set(raw_input) <= required | {"fx_reporting", "pit_evidence", "split_replay"}):
+        or not set(raw_input) <= required | {"fx_reporting", "pit_evidence", "split_replay",
+                                                "dividend_replay"}):
         raise ValueError("unexpected or missing config fields")
     raw = cast(dict[str, Any], raw_input)
     if raw["schema_version"] != "e5-research-v1" or raw["mode"] != "BACKTEST":
@@ -137,6 +139,25 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                                spec_split["sha256"], known_instruments)
         schedule.preflight(events)
         split_file_hash = spec_split["sha256"]
+    dividend_schedule = DividendSchedule()
+    dividend_file_hash: str | None = None
+    if "dividend_replay" in raw:
+        if "pit_evidence" not in raw:
+            raise ValueError("DIVIDEND_REPLAY_REQUIRES_PIT_EVIDENCE")
+        spec_dividend = _object(raw["dividend_replay"], {
+            "records_jsonl", "sha256", "source", "license", "price_basis",
+        })
+        if spec_dividend["price_basis"] != "RAW_UNADJUSTED":
+            raise ValueError("DIVIDEND_REPLAY_REQUIRES_RAW_UNADJUSTED_BARS")
+        if not all(isinstance(spec_dividend[k], str) and spec_dividend[k].strip()
+                   for k in ("records_jsonl", "sha256", "source", "license")):
+            raise ValueError("dividend schedule provenance fields required")
+        known = {e.instrument_id.key: e.instrument_id
+                 for e in events if e.instrument_id is not None}
+        dividend_schedule = load_dividends((root / spec_dividend["records_jsonl"]).resolve(),
+                                           spec_dividend["sha256"], known)
+        dividend_schedule.preflight(events)
+        dividend_file_hash = spec_dividend["sha256"]
     pit_result = None
     pit_file_hash: str | None = None
     pit_source: str | None = None
@@ -151,7 +172,8 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         evidence, pit_file_hash = load_pit_evidence(evidence_file, spec["sha256"])
         # Validate before starting a strategy or writing any result artifacts.
         # These are caller declarations; they do not authenticate the provider.
-        pit_result = validate_pit_events(events, evidence, modeled_splits=schedule.splits)
+        pit_result = validate_pit_events(events, evidence, modeled_splits=schedule.splits,
+                                         modeled_dividends=dividend_schedule.entitlements)
         pit_source, pit_license = spec["source"], spec["license"]
     st = _object(raw["strategy"], {"id", "version", "parameters"})
     if declared == "TICK_COUNT" and st["id"] != "no-trade":
@@ -265,7 +287,7 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                                 opening_cash=cash, risk=limits, fill_policy=policy,
                                 protection_policy=protection, settings=settings,
                                 fx_series=fx_series, fx_policy=fx_policy,
-                                split_schedule=schedule)
+                                split_schedule=schedule, dividend_schedule=dividend_schedule)
     report = runner.run(events)
     output_dir = (root / raw["output_dir"]).resolve()
     if output_dir in (root, source_file):
@@ -310,6 +332,9 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         "split_replay_file_sha256": split_file_hash,
         "split_replay_count": len(schedule.splits),
         "split_replay_data_verified": False,
+        "dividend_replay_file_sha256": dividend_file_hash,
+        "dividend_replay_count": len(dividend_schedule.entitlements),
+        "dividend_replay_data_verified": False,
         "warnings": (list(report.notes) + list(audit.warnings)
                      + list(pit_result.reason_codes if pit_result else ("PIT_EVIDENCE_NOT_SUPPLIED",))
                      + (["VOLUME_IS_TICK_COUNT_NOT_TRADED_SHARES"] if declared == "TICK_COUNT" else [])
