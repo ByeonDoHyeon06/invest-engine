@@ -9,6 +9,7 @@ from invest_engine.core.fixtures import synthetic_ticks
 from invest_engine.core.replay import replay_events
 from invest_engine.domain.primitives import InstrumentId, Market
 from invest_engine.research.experiment import run_experiment
+from invest_engine.research.stress import export_stress, run_cost_stress
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -21,7 +22,18 @@ def main(argv: list[str] | None = None) -> int:
     replay.add_argument("--market", choices=["KR", "US"], default="KR")
     backtest = subparsers.add_parser("backtest", help="Offline historical market events; no broker access")
     backtest.add_argument("--config", required=True)
+    stress = subparsers.add_parser("stress", help="Offline cost/volume assumptions sweep")
+    stress.add_argument("--config", required=True)
+    stress.add_argument("--output", required=True)
     args = parser.parse_args(argv)
+
+    if args.command == "stress":
+        report = run_cost_stress(args.config)
+        export_stress(report, args.output, config_file=args.config)
+        print(json.dumps({"result_sha256": report.result_sha256,
+                          "scenario_count": len(report.outcomes),
+                          "output": str(args.output)}, sort_keys=True))
+        return 0
 
     if args.command == "backtest":
         result = run_experiment(args.config)
