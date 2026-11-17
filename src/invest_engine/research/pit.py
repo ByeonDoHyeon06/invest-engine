@@ -18,7 +18,7 @@ from invest_engine.core.replay import canonical_bytes
 from invest_engine.domain.events import Bar, EventEnvelope, MarketPayload
 from invest_engine.domain.primitives import utc_datetime
 from invest_engine.research.report import sha256
-from invest_engine.trading.actions import DividendEntitled, SplitApplied
+from invest_engine.trading.actions import DelistingObserved, DividendEntitled, SplitApplied
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,11 +155,12 @@ def validate_pit_events(
     events: tuple[EventEnvelope[MarketPayload], ...], evidence: PITEvidence,
     *, modeled_splits: tuple[SplitApplied, ...] = (),
     modeled_dividends: tuple[DividendEntitled, ...] = (),
+    modeled_delistings: tuple[DelistingObserved, ...] = (),
 ) -> PITGateResult:
-    """Reject retroactive universes/revisions and ANY in-window issuer action.
+    """Reject retroactive universes and any issuer action without a model.
 
-    This is a research gate. It never removes a delisted instrument to improve
-    a backtest and never applies guessed split/dividend adjustments.
+    Supported delisting only blocks an *unheld* security at a witnessed
+    terminal bar; held securities require separately verified cash recovery.
     """
     if not events:
         raise ValueError("PIT gate requires historical events")
@@ -169,6 +170,10 @@ def validate_pit_events(
     dividend_ids = {a.action_id: a for a in modeled_dividends}
     if len(dividend_ids) != len(modeled_dividends) or set(modeled_ids) & set(dividend_ids):
         raise ValueError("duplicate modeled corporate action IDs")
+    delisting_ids = {a.action_id: a for a in modeled_delistings}
+    if (len(delisting_ids) != len(modeled_delistings) or
+        (set(modeled_ids) | set(dividend_ids)) & set(delisting_ids)):
+        raise ValueError("duplicate modeled delisting action IDs")
     matched: set[str] = set()
     seen: set[str] = set()
     bounds: dict[str, tuple[datetime, datetime]] = {}
@@ -211,6 +216,7 @@ def validate_pit_events(
                 continue
             split = modeled_ids.get(action.action_id)
             dividend = dividend_ids.get(action.action_id)
+            delisting = delisting_ids.get(action.action_id)
             split_match = (
                 action.action_type == "SPLIT" and split is not None
                 and split.instrument.key == key and split.effective_at == action.effective_at
@@ -221,12 +227,19 @@ def validate_pit_events(
                 and dividend.instrument.key == key and dividend.effective_at == action.effective_at
                 and dividend.available_at == action.received_at and dividend.source == action.source
             )
-            if (not (split_match or dividend_match)
+            delisting_match = (
+                action.action_type == "DELIST" and delisting is not None
+                and delisting.instrument.key == key
+                and delisting.effective_at == action.effective_at
+                and delisting.available_at == action.received_at
+                and delisting.source == action.source
+            )
+            if (not (split_match or dividend_match or delisting_match)
                 or action.published_at > action.received_at
                 or action.received_at > action.effective_at):
                 raise ValueError(f"UNMODELED_CORPORATE_ACTION:{key}")
             matched.add(action.action_id)
-    if matched != (set(modeled_ids) | set(dividend_ids)):
+    if matched != (set(modeled_ids) | set(dividend_ids) | set(delisting_ids)):
         raise ValueError("ACTION_SCHEDULE_HAS_UNDECLARED_OR_OUT_OF_RANGE_ACTIONS")
     return PITGateResult(
         len(events), len(bounds), evidence.digest, reason_codes=(
@@ -238,6 +251,7 @@ def validate_pit_events(
             "PRICE_ADJUSTMENT_NOT_IMPLEMENTED",
             "RAW_UNADJUSTED_SPLIT_PRICE_CONVENTION_ASSUMED" if modeled_splits else
             "NO_SPLIT_REPLAY",
+            "DELISTING_NO_POSITION_ONLY" if modeled_delistings else "NO_DELISTING_REPLAY",
         ),
     )
 

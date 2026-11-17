@@ -13,6 +13,7 @@ from decimal import Decimal
 from invest_engine.core.replay import canonical_bytes
 from invest_engine.research.corporate_replay import SplitSchedule
 from invest_engine.research.dividend_replay import DividendSchedule
+from invest_engine.research.delisting_replay import DelistingSchedule
 from invest_engine.core.runtime import EventRuntime, RuntimeConfig
 from invest_engine.data.calendar import SessionCalendar
 from invest_engine.domain.errors import InvalidEvent
@@ -105,6 +106,7 @@ class HistoricalBacktest:
         fx_series: FxSeries | None = None, fx_policy: FxReportingPolicy | None = None,
         split_schedule: SplitSchedule | None = None,
         dividend_schedule: DividendSchedule | None = None,
+        delisting_schedule: DelistingSchedule | None = None,
     ) -> None:
         if not strategies or len({s.manifest.strategy_id for s in strategies}) != len(strategies):
             raise ValueError("at least one uniquely named strategy required")
@@ -129,6 +131,8 @@ class HistoricalBacktest:
         self.split_schedule = split_schedule if split_schedule is not None else SplitSchedule()
         self.dividend_schedule = (dividend_schedule if dividend_schedule is not None
                                   else DividendSchedule())
+        self.delisting_schedule = (delisting_schedule if delisting_schedule is not None
+                                   else DelistingSchedule())
         if self.split_schedule.splits and self.protection_policy.enabled:
             raise ValueError("PROTECTIVE_LOTS_NOT_SPLIT_ADJUSTED")
         self._used = False
@@ -141,6 +145,7 @@ class HistoricalBacktest:
             raise ValueError("historical market events required")
         self.split_schedule.preflight(events)
         self.dividend_schedule.preflight(events)
+        self.delisting_schedule.preflight(events)
         schedule_by_time = {(s.instrument.key, s.effective_at): s
                             for s in self.split_schedule.splits}
         if len(schedule_by_time) != len(self.split_schedule.splits):
@@ -152,24 +157,34 @@ class HistoricalBacktest:
                             for p in self.dividend_schedule.payments}
         used_entitlements: set[str] = set()
         used_payments: set[str] = set()
+        delist_by_time = {(d.instrument.key, d.effective_at): d
+                          for d in self.delisting_schedule.delistings}
+        used_delistings: set[str] = set()
         if len(entitlements_by_time) != len(self.dividend_schedule.entitlements):
             raise ValueError("duplicate dividend entitlement boundary")
         if len(payments_by_time) != len(self.dividend_schedule.payments):
             raise ValueError("duplicate dividend payment boundary")
+        if (set(delist_by_time) & set(schedule_by_time) or
+            set(delist_by_time) & set(entitlements_by_time) or
+            set(delist_by_time) & set(payments_by_time)):
+            raise ValueError("SIMULTANEOUS_DELISTING_AND_OTHER_ACTION_UNSUPPORTED")
         if set(entitlements_by_time) & set(schedule_by_time):
             raise ValueError("SIMULTANEOUS_SPLIT_AND_DIVIDEND_UNSUPPORTED")
         # Input source/license and calendar are verified by the caller; no network calls.
         data_sha = sha256(tuple(canonical_bytes(e).hex() for e in events))
-        config_sha = sha256((self.config, self.risk, self.fill_policy, self.protection_policy,
-                             self.allocation_policy, self.settings,
-                             # E4 ORB configuration differs from runtime snapshot; include both.
-                             self.fx_policy,
-                             self.fx_series.digest if self.fx_series is not None else None,
-                             self.split_schedule, self.dividend_schedule,
-                             tuple((s.manifest, getattr(s, "params", None), s.snapshot().hex())
-                                   for s in self.strategies),
-                             # StaticSessionCalendar fully serializes, others must pin a version.
-                             getattr(self.calendar, "sessions", None)))
+        identity = (self.config, self.risk, self.fill_policy, self.protection_policy,
+                    self.allocation_policy, self.settings,
+                    # E4 ORB configuration differs from runtime snapshot; include both.
+                    self.fx_policy,
+                    self.fx_series.digest if self.fx_series is not None else None,
+                    self.split_schedule, self.dividend_schedule,
+                    tuple((s.manifest, getattr(s, "params", None), s.snapshot().hex())
+                          for s in self.strategies),
+                    # StaticSessionCalendar fully serializes; other calendars must pin a version.
+                    getattr(self.calendar, "sessions", None))
+        # Preserve historical E5.9 config hashes when the new extension is unused.
+        config_sha = sha256((*identity, self.delisting_schedule)
+                            if self.delisting_schedule.delistings else identity)
         observation = EventRuntime(RuntimeConfig(self.settings.run_version))
         runners = tuple(StrategyRunner(s, self.calendar, max_bars=self.settings.max_strategy_bars)
                         for s in self.strategies)
@@ -196,6 +211,7 @@ class HistoricalBacktest:
             bar = event.payload if isinstance(event.payload, Bar) else None
             split_reason: tuple[str, ...] = ()
             dividend_reason: tuple[str, ...] = ()
+            delisting_reason: tuple[str, ...] = ()
             if bar is not None and event.instrument_id is not None:
                 entitled = entitlements_by_time.get((event.instrument_id.key, bar.start))
                 if entitled is not None:
@@ -372,8 +388,23 @@ class HistoricalBacktest:
                                                  OrderStatus.PARTIALLY_FILLED)):
                             trader.request_cancel(order.intent.intent_id, now)
                             trader.confirm_cancel(order.intent.intent_id, now)
+            if bar is not None and event.instrument_id is not None:
+                delisting = delist_by_time.get((event.instrument_id.key, bar.end))
+                if delisting is not None:
+                    position = trader.state.position(delisting.instrument)
+                    if position is not None and position.quantity > 0:
+                        raise InvalidEvent("DELISTED_HOLDINGS_REQUIRE_VERIFIED_TERMINAL_SETTLEMENT")
+                    if any(o.intent.instrument.key == delisting.instrument.key
+                           and o.status not in {OrderStatus.FILLED, OrderStatus.CANCELED,
+                                                OrderStatus.REJECTED}
+                           for o in trader.state.orders):
+                        raise InvalidEvent("DELISTING_WITH_UNRESOLVED_ORDERS")
+                    trader.flag_delisting(delisting, now)
+                    used_delistings.add(delisting.action_id)
+                    delisting_reason = ("DELISTING_BLOCKED:" + delisting.action_id,)
             outcomes = tuple(runner.accept(event) for runner in runners)
-            signals = tuple(signal for outcome in outcomes for signal in outcome.signals)
+            signals = tuple(signal for outcome in outcomes for signal in outcome.signals
+                            if signal.instrument.key not in trader.state.delisted_instruments)
             allocated = allocate_targets(signals, as_of=now, policy=self.allocation_policy)
             proposed = propose_simulated_intents(
                 allocated.plans, state=trader.state, config=self.config,
@@ -392,12 +423,15 @@ class HistoricalBacktest:
                     trader.accept_simulated(intent.intent_id, now)
             reason_codes = tuple(sorted({r for outcome in outcomes for r in outcome.reason_codes}
                                         | set(allocated.reason_codes) | protective_reasons
-                                        | set(split_reason) | set(dividend_reason)))
+                                        | set(split_reason) | set(dividend_reason)
+                                        | set(delisting_reason)))
             decisions.append(DecisionRecord(event.event_id, tuple(s.signal_id for s in signals),
                                             tuple(protective_intents) + tuple(i.intent_id for i in proposed),
                                             tuple(decision_items), tuple(matched_fills),
                                             reason_codes))
             equity.append(_equity(trader.state, marks, now, self.settings.max_mark_age))
+        if used_delistings != {d.action_id for d in self.delisting_schedule.delistings}:
+            raise InvalidEvent("DELISTING_SCHEDULE_NOT_COMPLETELY_REPLAYED")
         if used_splits != {s.action_id for s in self.split_schedule.splits}:
             raise InvalidEvent("SPLIT_SCHEDULE_NOT_COMPLETELY_REPLAYED")
         if used_entitlements != {d.action_id for d in self.dividend_schedule.entitlements}:
@@ -459,6 +493,7 @@ class HistoricalBacktest:
               "adverse-gap assumptions; these are synthetic, not broker orders."
               if self.protection_policy.enabled else
               "Stop prices are risk plans; this fill model does not place stops."),
+             "Delisted shares cannot receive an invented terminal value; held delistings abort.",
              "Multi-currency equity is not aggregated without a proven FX series.",
              "Run code SHA, data provider/license identifiers must be independently verified.",
              "FX-adjusted reporting is research-only; no FX buying power/fees or broker conversions.",
