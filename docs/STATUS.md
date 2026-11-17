@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-16
-**현재:** **E0~E4 검증 및 main 병합 완료**. E5.1 PR #23 main 병합 완료. E5.2 오프라인 연구 CLI/manifest PR #24 main 병합·CI 통과. E5 전체 미완료. E4 전략/Feature/ORB/allocator PR #21, Fill 귀속 가상장부 PR #22 완료. 자동 체결 모델·백테스트·실거래 없음.
-**현재 Stage:** [E5 Backtest Engine — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (IN PROGRESS: PR #23/#24 MERGED; E5.3 PR #25 awaiting GitHub CI); E4 Issue #5 VERIFIED (PR #21/#22). **LIVE NOT AUTHORIZED.**
+**현재:** E0~E4 완료. E5.1 (#23)·E5.2 (#24) main 병합; **E5.3 PR #25 GitHub CI Python 3.12/3.13 각각 216 passed**, Ruff/mypy/secrets 통과. E5.3 병합 직전이며 E5 전체 검증/데이터 근거 Gate는 여전히 미완료. LIVE 없음.
+**현재 Stage:** [E5 Backtest Engine — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (IN PROGRESS: PR #23/#24 MERGED; E5.3 PR #25 verified in CI; pending merge); E4 Issue #5 VERIFIED (PR #21/#22). **LIVE NOT AUTHORIZED.**
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -102,8 +102,8 @@
 
 - [PR #25](https://github.com/ByeonDoHyeon06/invest-engine/pull/25): `ProtectionPolicy` 기본 비활성, 관측된 매수 Fill 이후 다음 봉에서만 stop/target 평가, stop-first 충돌, 갭하락 불리한 체결, 엄격 target 관통, per-bar 참여 상한, 부분 청산, E3/E4 장부 귀속.
 - [E5_PROTECTION.md](E5_PROTECTION.md) · [ADR-0011](adr/0011-protective-ohlcv.md). 합성 정책은 증권사 실제 stop 주문이 아니며 가격·체결 보장 없음. 주문 충돌은 InvalidEvent로 fail-closed.
-- 로컬 Python 3.13: **213 passed, 3 skipped** (Hypothesis/PyArrow 미설치). GitHub CI 확인 전이며 E5 전체 아직 미완료.
-- **다음:** CI 검증 후 병합 및 E5 도메인/데이터/비용/보고서 잔여 Gate 검토. E6 ML/Walk-forward는 E5 릴리스 통과 후.
+- 로컬 Python 3.13: **213 passed, 3 skipped** (Hypothesis/PyArrow 미설치). GitHub CI [run 44050886947](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44050886947) Python 3.12/3.13 각각 **216 passed**, Ruff/mypy/secrets 성공. E5 전체는 아직 미완료.
+- **다음:** PR #25 main 병합 후 E5 도메인/데이터/비용/보고서 잔여 Gate 검토. E6 ML/Walk-forward는 E5 릴리스 통과 후.
 
 ## 변경 기록
 - 2026-11-16: E3.4 [PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20) merged `affe843`, main CI `43852453688` Python 3.12/3.13 each 160 passed + Ruff/mypy/secrets. E3 synthetic core complete, E4 Issue #5 NEXT.
