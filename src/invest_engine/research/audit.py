@@ -77,7 +77,7 @@ def inspect_dataset(
         if session is None or bar.end > session.end:
             raise ValueError('bar lies outside declared historical sessions')
         if bar.interval is None:
-            raise ValueError('time bar requires an explicit interval')
+            raise ValueError("time bar requires an explicit interval")
         step = bar.interval // timedelta(microseconds=1)
         key = (event.instrument_id.key, step, session.start.isoformat())
         groups.setdefault(key, []).append(bar)
@@ -127,6 +127,8 @@ def verify_exported_artifacts(directory: Path) -> bool:
                       'equity.jsonl', 'audit.json'}
     if manifest.get('fx_reporting_currency') is not None:
         expected_files.add('fx_equity.jsonl')
+    if manifest.get('pit_evidence_sha256') is not None:
+        expected_files.add('pit_gate.json')
     if not isinstance(hashes, dict) or set(hashes) != expected_files:
         raise ValueError('manifest lacks complete E5.4 artifact integrity record')
     for name, expected in hashes.items():
