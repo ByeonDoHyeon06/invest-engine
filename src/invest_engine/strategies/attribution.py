@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from decimal import Decimal, localcontext
 
 from invest_engine.domain.primitives import InstrumentId, _decimal
+from invest_engine.trading.actions import SplitApplied
 from invest_engine.strategies.allocation import AllocationPlan
 from invest_engine.trading.ledger import TradingState
 from invest_engine.trading.models import OrderIntent, Side, SimulatedFill
@@ -168,3 +169,20 @@ def audit_virtual_against_account(virtual: VirtualLedger, account: TradingState)
         actual_qty = actual.quantity if actual else Decimal(0)
         if virtual.instrument_quantity(inst) != actual_qty:
             raise ValueError(f"virtual attribution mismatch for {key}")
+
+
+def rebase_virtual_for_split(state: VirtualLedger, split: "SplitApplied") -> VirtualLedger:
+    """Conserve every virtual holding's acquisition basis after an E3-approved split.
+
+    No synthetic fills, cash, or realized PnL are created. Historical tickets
+    remain immutable; future sells take shares from the rebased positions.
+    """
+    with localcontext() as ctx:
+        ctx.prec = 64
+        positions = tuple(
+            replace(p, quantity=p.quantity * split.numerator / split.denominator,
+                    average_cost=p.average_cost * split.denominator / split.numerator)
+            if p.instrument == split.instrument and p.quantity > 0 else p
+            for p in state.positions
+        )
+    return replace(state, positions=positions)

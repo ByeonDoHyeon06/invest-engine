@@ -6,7 +6,9 @@ from datetime import datetime, timedelta
 
 from invest_engine.data.calendar import SessionCalendar
 from invest_engine.domain.errors import InvalidEvent
+from invest_engine.domain.primitives import InstrumentId
 from invest_engine.domain.events import Bar, EventEnvelope, MarketPayload
+from invest_engine.domain.primitives import utc_datetime
 from invest_engine.features.registry import FeatureRegistry
 from invest_engine.strategies.contracts import (
     BarObservation, Strategy, StrategyContext, StrategySignal,
@@ -41,6 +43,19 @@ class StrategyRunner:
         self._counts: dict[tuple[str, str, timedelta | None], int] = {}
         self._last_observed: dict[tuple[str, str, timedelta | None], datetime] = {}
         self._halt_reason: str | None = None
+
+    def invalidate_instrument_history(self, instrument: InstrumentId) -> None:
+        """Discard pre-split prices/volumes without changing stream audit identity.
+
+        Pre-split price scales must never flow into EMA/ATR/ORB signals. The
+        strategy's own state is not rewound; future warmup must be re-earned.
+        Only use at a validated session-open corporate action boundary.
+        """
+        self._bars = [b for b in self._bars if b.instrument.key != instrument.key]
+        self._counts = {k: v for k, v in self._counts.items()
+                        if k[0] != instrument.key}
+        self._last_observed = {k: v for k, v in self._last_observed.items()
+                               if k[0] != instrument.key}
 
     @property
     def halt_reason(self) -> str | None:

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from invest_engine.core.replay import canonical_bytes
+from invest_engine.research.corporate_replay import SplitSchedule
 from invest_engine.core.runtime import EventRuntime, RuntimeConfig
 from invest_engine.data.calendar import SessionCalendar
 from invest_engine.domain.errors import InvalidEvent
@@ -30,7 +31,7 @@ from invest_engine.strategies.allocation import (
 )
 from invest_engine.strategies.attribution import (
     AttributionTicket, VirtualLedger, audit_virtual_against_account,
-    record_simulated_fill, ticket_for_plan,
+    record_simulated_fill, ticket_for_plan, rebase_virtual_for_split,
 )
 from invest_engine.strategies.contracts import Strategy
 from invest_engine.strategies.runtime import StrategyRunner
@@ -97,6 +98,7 @@ class HistoricalBacktest:
         allocation_policy: AllocationPolicy | None = None,
         settings: BacktestSettings | None = None,
         fx_series: FxSeries | None = None, fx_policy: FxReportingPolicy | None = None,
+        split_schedule: SplitSchedule | None = None,
     ) -> None:
         if not strategies or len({s.manifest.strategy_id for s in strategies}) != len(strategies):
             raise ValueError("at least one uniquely named strategy required")
@@ -118,6 +120,9 @@ class HistoricalBacktest:
             raise ValueError("FX data and reporting policy must be explicitly supplied together")
         self.fx_series = fx_series
         self.fx_policy = fx_policy
+        self.split_schedule = split_schedule if split_schedule is not None else SplitSchedule()
+        if self.split_schedule.splits and self.protection_policy.enabled:
+            raise ValueError("PROTECTIVE_LOTS_NOT_SPLIT_ADJUSTED")
         self._used = False
 
     def run(self, events: tuple[EventEnvelope[MarketPayload], ...]) -> BacktestReport:
@@ -126,6 +131,12 @@ class HistoricalBacktest:
         self._used = True
         if not events:
             raise ValueError("historical market events required")
+        self.split_schedule.preflight(events)
+        schedule_by_time = {(s.instrument.key, s.effective_at): s
+                            for s in self.split_schedule.splits}
+        if len(schedule_by_time) != len(self.split_schedule.splits):
+            raise ValueError("multiple splits at same instrument/time unsupported")
+        used_splits: set[str] = set()
         # Input source/license and calendar are verified by the caller; no network calls.
         data_sha = sha256(tuple(canonical_bytes(e).hex() for e in events))
         config_sha = sha256((self.config, self.risk, self.fill_policy, self.protection_policy,
@@ -133,6 +144,7 @@ class HistoricalBacktest:
                              # E4 ORB configuration differs from runtime snapshot; include both.
                              self.fx_policy,
                              self.fx_series.digest if self.fx_series is not None else None,
+                             self.split_schedule,
                              tuple((s.manifest, getattr(s, "params", None), s.snapshot().hex())
                                    for s in self.strategies),
                              # StaticSessionCalendar fully serializes, others must pin a version.
@@ -161,7 +173,23 @@ class HistoricalBacktest:
             protective_decisions: list[tuple[str, str, tuple[str, ...]]] = []
             protective_reasons: set[str] = set()
             bar = event.payload if isinstance(event.payload, Bar) else None
+            split_reason: tuple[str, ...] = ()
             if bar is not None and event.instrument_id is not None:
+                split = schedule_by_time.get((event.instrument_id.key, bar.start))
+                if split is not None:
+                    session = self.calendar.session_for(event.instrument_id, bar.start)
+                    if session is None or session.start != split.effective_at:
+                        raise InvalidEvent("SPLIT_REQUIRES_SESSION_OPEN")
+                    if split.available_at > split.effective_at:
+                        raise InvalidEvent("SPLIT_TERMS_NOT_KNOWN_BEFORE_SESSION_OPEN")
+                    trader.apply_split(split, now)
+                    virtual = rebase_virtual_for_split(virtual, split)
+                    audit_virtual_against_account(virtual, trader.state)
+                    marks.pop(event.instrument_id.key, None)
+                    for runner in runners:
+                        runner.invalidate_instrument_history(event.instrument_id)
+                    used_splits.add(split.action_id)
+                    split_reason = ("SPLIT_APPLIED:" + split.action_id,)
                 if bar.end > now or event.event_time < bar.end:
                     raise InvalidEvent("bar not causally available at replay observation")
                 session_check = self.calendar.session_for(event.instrument_id, bar.start)
@@ -322,12 +350,15 @@ class HistoricalBacktest:
                     tickets[intent.intent_id] = ticket_for_plan(plan, intent)
                     trader.accept_simulated(intent.intent_id, now)
             reason_codes = tuple(sorted({r for outcome in outcomes for r in outcome.reason_codes}
-                                        | set(allocated.reason_codes) | protective_reasons))
+                                        | set(allocated.reason_codes) | protective_reasons
+                                        | set(split_reason)))
             decisions.append(DecisionRecord(event.event_id, tuple(s.signal_id for s in signals),
                                             tuple(protective_intents) + tuple(i.intent_id for i in proposed),
                                             tuple(decision_items), tuple(matched_fills),
                                             reason_codes))
             equity.append(_equity(trader.state, marks, now, self.settings.max_mark_age))
+        if used_splits != {s.action_id for s in self.split_schedule.splits}:
+            raise InvalidEvent("SPLIT_SCHEDULE_NOT_COMPLETELY_REPLAYED")
         audit_virtual_against_account(virtual, trader.state)
         point_end = equity[-1]
         if not point_end.complete:
@@ -381,6 +412,8 @@ class HistoricalBacktest:
              "Multi-currency equity is not aggregated without a proven FX series.",
              "Run code SHA, data provider/license identifiers must be independently verified.",
              "FX-adjusted reporting is research-only; no FX buying power/fees or broker conversions.",
+             "Split-only E5.8 requires independently sourced raw unadjusted bars; "
+             "pre-split feature history is invalidated and unsupported actions are rejected."
              "Incomplete FX observations suppress base-currency PnL and drawdown."
              if self.fx_policy is not None else "No verified FX series; multi-currency totals are separate."),
             fx_base_currency=self.fx_policy.base_currency if self.fx_policy else None,
