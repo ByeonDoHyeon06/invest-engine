@@ -168,7 +168,7 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                                 protection_policy=protection, settings=settings)
     report = runner.run(events)
     output_dir = (root / raw["output_dir"]).resolve()
-    if output_dir == root or output_dir == source_file:
+    if output_dir in (root, source_file):
         raise ValueError("report output must not overwrite experiment config/dataset")
     report.export(output_dir)
     manifest = {
