@@ -19,3 +19,5 @@
 - [ADR-0010](0010-bar-fill-assumptions.md) — E5.1 보수적 바 체결, stop/target 미구현 범위 (Accepted research-only)
 
 - [0011](0011-protective-ohlcv.md) — Accepted (offline simulation only): opt-in OHLCV stop-first/gap/volume model, no guaranteed execution.
+
+- [0012](0012-audit-stress.md) — Accepted (offline research only): dataset audit, artifact integrity hashes and synthetic cost/liquidity stress; real data remain unverified.

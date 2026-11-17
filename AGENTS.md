@@ -41,7 +41,7 @@
 - 계약 변경은 ADR 추가/기존 ADR 상태 변경. 주요 버전 반영.
 - Live credential을 요청하거나 commit하지 않는다.
 
-**현재 단계:** E0~E3 합성 엔진 검증·main 병합 완료 (PR #17~#20, CI 성공). **다음 E4 Strategy SDK (Issue #5).** STATUS/ROADMAP/PR/CI를 먼저 확인한다.
+**현재 단계:** E0~E4 완료. E5.1~E5.4 오프라인 백테스트/감사·비용 민감도 검증(PR #23~#26). **다음 E5.5 실제 데이터·비용·FX/기업행동 검증 게이트**, Issue #6 OPEN. STATUS/ROADMAP/PR/CI 먼저 확인.
 
 ## E3 구현 경계 및 남은 작업
 - E0~E2의 EventEnvelope는 시장 데이터용. E3는 별도 trading_event/event journal namespace에서 simulated order/fill을 구현; E2 시장 이벤트에 대한 실전 주문 전략 통합은 E4/E5 후속 작업.
@@ -80,3 +80,9 @@
 - Unknown bar path uses stop-first, opening gap may be worse than planned stop; target requires strict penetration and adverse fill assumptions; all price/volume assumptions are version-pinned.
 - If a competing existing SELL order conflicts with a protective trigger in the same OHLCV bar, fail with explicit InvalidEvent; do not fabricate a causal ordering.
 - E5 is still in-progress pending full robustness/data provenance/cost/FX gates; no Live transport.
+
+## E5.4 이후 지속 개발 규칙
+- [E5_ROBUSTNESS.md](docs/E5_ROBUSTNESS.md) · ADR-0012 참조. 4종 비용/유동성 스트레스는 합성 연구 가정이며 실제 브로커 체결/수수료의 검증 결과가 아니다.
+- data audit은 누락 Bar/partial session과 파일 해시만 검사한다. Corporate actions, PIT issuer/universe, 법적 데이터 라이선스, 실거래 비용·FX는 명시적으로 UNVERIFIED 처리한다.
+- 실험 manifest의 사용자 선언 code_sha와 실제 소스트리 sha256은 다르다. 암호서명이나 공급자 원본의 진위를 보증한다고 주장하지 않는다.
+- E5 Issue #6은 남은 PIT/FX/비용/Quote·Tick 모델 범위 결정을 완료하기 전까지 닫지 않는다. Live 금지.

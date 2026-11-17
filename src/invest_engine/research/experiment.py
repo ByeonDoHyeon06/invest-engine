@@ -17,6 +17,9 @@ from invest_engine.core.codec import decode_event
 from invest_engine.data.calendar import StaticSessionCalendar, TradingSession
 from invest_engine.domain.primitives import AssetClass, InstrumentId, Market, Money
 from invest_engine.research.backtest import BacktestSettings, HistoricalBacktest
+from invest_engine.research.audit import (
+    audit_hash, file_sha256, inspect_dataset, source_tree_sha256,
+)
 from invest_engine.research.fills import BarFillPolicy
 from invest_engine.research.protection import ProtectionPolicy
 from invest_engine.research.report import BacktestReport, canonical_json, sha256
@@ -172,6 +175,11 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
     if output_dir in (root, source_file):
         raise ValueError("report output must not overwrite experiment config/dataset")
     report.export(output_dir)
+    audit = inspect_dataset(events, calendar)
+    (output_dir / "audit.json").write_bytes(canonical_json(audit))
+    artifact_names = ("report.json", "decisions.jsonl", "fills.jsonl",
+                      "equity.jsonl", "audit.json")
+    artifact_hashes = {name: file_sha256(output_dir / name) for name in artifact_names}
     manifest = {
         "schema_version": "e5-research-v1", "run_id": raw["run_id"],
         "code_sha": raw["code_sha"], "dataset_file_sha256": file_hash,
@@ -182,7 +190,11 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         "protective_exit_version": protection.version if protection.enabled else None,
         "config_sha256": report.config_sha256,
         "run_sha256": report.run_sha256,
-        "warnings": list(report.notes),
+        "code_tree_sha256": source_tree_sha256(),
+        "audit_sha256": audit_hash(audit),
+        "artifact_sha256": artifact_hashes,
+        "research_data_release_verified": False,
+        "warnings": list(report.notes) + list(audit.warnings),
     }
     manifest_sha = sha256(manifest)
     (output_dir / "manifest.json").write_bytes(canonical_json(manifest))

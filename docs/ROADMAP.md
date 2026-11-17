@@ -113,7 +113,11 @@
 
 **E5 통합 의존:** strategy decision/attribution ticket의 영속성, E2→E4→E3 실행기, 체결모델 및 Backtest report. **E4가 Live 안전성을 뜻하지 않는다.**
 
-### E5 — Backtest Engine & Reporting
+### E5 — Backtest Engine & Reporting [E5.4 VERIFIED; final gate OPEN]
+**E5.4 research reliability:** [PR #26](https://github.com/ByeonDoHyeon06/invest-engine/pull/26), [E5_ROBUSTNESS.md](E5_ROBUSTNESS.md), [ADR-0012](adr/0012-audit-stress.md). Historical data gap/partial-session coverage, audit warnings (license, corporate action, PIT universe, real fees/FX unverified), file SHA256/source tree fingerprint, deterministic 4-case cost/liquidity stress. **GitHub CI run 44052899012 Python 3.12/3.13 each 224 passed, Ruff/mypy/secrets success.** No broker credentials or Live code. Original market files and baseline artifacts remain unchanged by stress runner. 
+
+**E5.5 next gate:** real PIT market/issuer/corporate-action & delisting data contract, market-specific fee/tax/FX/timezone policy and Tick/Quote-assisted fill model scope, E5 acceptance decision. These have not been verified or implemented. Do not close E5 Issue #6 merely on synthetic data.
+
 **E5.3 code PR:** [#25](https://github.com/ByeonDoHyeon06/invest-engine/pull/25) (merged c4adfc6; GitHub PR CI Python 3.12/3.13 each 216 passed); [E5_PROTECTION](E5_PROTECTION.md) / [ADR-0011](adr/0011-protective-ohlcv.md). 보호청산은 기본 비활성·합성 OHLCV 가정; Live stop 주문과 다름. 충돌은 stop-first, 갭 하락은 adverse open 기준, 기존 미체결 SELL 충돌은 fail-closed. E5 전체 DoD는 E5.4에서 별도 점검 필요. 다음: 실험 manifest 재현/seed·FX/세금·다중시장 cost sensitivity·corporate actions/data vintage 검증.
 
 **Implementation status (E5.1 merged PR #23, E5.2 merged PR #24):** 역사 이벤트→E2→E4 전략·Feature→E3 위험·가상 주문/체결 연결. 지정가 strict penetration, volume participation cap, fee/tax 및 별도 통화별 리포트. [E5_BACKTEST.md](E5_BACKTEST.md), [ADR-0010](adr/0010-bar-fill-assumptions.md). **E5 전체 검증/종료 아님.** E5.2 stop/target 겹침·갭·민감도, E5.2 오프라인 RunRequest/CLI/JSONL·manifest를 구현한 PR #24 GitHub CI 204 passed (Python 3.12/3.13) 후 병합 완료. E5.3은 stop/target 겹침·갭 손절과 비용/체결 강건성 검증 및 golden 테스트를 우선한다.
@@ -121,11 +125,17 @@
 
 **작업:**
 - [ ] Event replay runner, next-eligible-event execution, no look-ahead
-- [ ] Market-specific fees/tax/FX + slippage/spread sensitivity
+- [ ] Market-specific fees/tax/FX + slippage/spread sensitivity (**synthetic sensitivity verified E5.4**, real KR/US cost/FX rules unverified)
 - [ ] OHLCV bar-based conservative fill vs Tick/Quote-assisted fill interface
 - [x] partial fill/participation cap, unknown intrabar stop/take-profit ordering worst-case ([PR #25](https://github.com/ByeonDoHyeon06/invest-engine/pull/25), offline synthetic OHLCV only)
-- [ ] experiment manifest = git commit + config + dataset hash + seeds + assumption versions
+- [ ] experiment manifest = git commit + config + dataset hash + seeds + assumption versions (**actual source tree SHA/file digests verified in E5.4, user-supplied code_sha not authenticated; no randomized fills/seed yet**)
 - [ ] equity, drawdown, CAGR(적절한 경우), PF, expectancy, turnover, trade log export
+
+**E5.4 verified additions:**
+- [x] Synthetic same-dataset cost/liquidity stress scenarios, ORB signal and fill sensitivity tests — PR #26 / CI 44052899012
+- [x] Intraday bar gap/partial session warnings and unchanged historical inputs — PR #26
+- [x] Output audit.json, file SHA-256 and actual Python source tree hash; tampering detection — PR #26
+- [ ] Verified real-data point-in-time corporate adjustments/issuer universe and exchange/FX/fees provenance (E5.5 or explicit ADR scope decision)
 
 **DoD:** 합성 체결 golden cases/경계 테스트, 미래 봉 가격 이용한 동시 체결 금지, 동일 실험 결과 재현, 수수료/슬리피지 변경이 결과에 반영.
 
