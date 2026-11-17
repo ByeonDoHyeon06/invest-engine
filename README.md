@@ -4,7 +4,7 @@
 
 국내·미국 주식 대상으로 시장 데이터, 전략, 위험관리, 주문·체결, 포트폴리오, 연구·자기개선을 분리한 독립형 적응형 트레이딩 엔진.
 
-**현재 상태:** **E0~E4 엔진/전략 기반 검증 완료** (E4 PR #21·#22, [CI 43857703057](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43857703057) Python 3.12/3.13 각 191 passed). **다음 E5 Backtest Engine**. 실제 브로커 주문·시장 자동 체결·수익 검증은 미구현.
+**현재 상태:** E0~E4 합성 엔진 검증, E5.1~E5.4 오프라인 백테스트·실험 감사 구현. E5 실데이터/PIT 기업행동·수수료/FX 검증 게이트는 미완료. **실거래 기능 없음.** 자세한 진행 현황은 [STATUS](docs/STATUS.md) 참고.
 
 ## 설계 원칙
 - 해상도 비종속: Tick/Quote/OrderBook/Bar/재무·공시 이벤트를 각각 정확한 타입으로 처리한다. 1분봉은 전략 설정이지 엔진 제한이 아니다.
@@ -37,6 +37,7 @@
 - [위험·주문·포트폴리오](docs/RISK_EXECUTION.md)
 - [백테스트·Forward·검증 게이트](docs/VALIDATION.md)
 - [E5 보수적 손절·익절 체결 연구 정책](docs/E5_PROTECTION.md)
+- **[E5.4 데이터 공백/무결성 감사·비용 스트레스 검증](docs/E5_ROBUSTNESS.md)**
 - [외부 데이터·증권사 연동](docs/INTEGRATIONS.md)
 - [개발·리뷰 규칙](docs/CONTRIBUTING.md)
 - [ADR 인덱스](docs/adr/README.md)
