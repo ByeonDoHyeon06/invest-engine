@@ -1,12 +1,15 @@
 # 프로젝트 현황 및 재개 지점
 
+**최신 E5.7 진행 (2026-11-17):** [PR #29](https://github.com/ByeonDoHyeon06/invest-engine/pull/29) 코드를 GitHub에 제출. 기업행동 합성 ledger/codec/저널 및 오프라인 CSV 변환기·거래량 단위 경계. 로컬 Python 3.13 **257 passed, 3 skipped**; GitHub CI 및 merge 검증 대기. AAPL README 공개 미리보기 5개 봉으로 NoTrade 오프라인 파이프라인 시험(체결 0, PnL USD 0) 완료. **실제 ORB 수익성/데이터 원본 완전성 검증 아님.** E5.6 PIT는 여전히 기업행동 있으면 fail-closed; E5 Issue #6 OPEN, E7 forward paper 및 E8 Live 미착수.
+
+
 **E5.6 (2026-11-17) [PR #28](https://github.com/ByeonDoHyeon06/invest-engine/pull/28):** PIT issuer/universe/vintage input gate implemented and local regression verified (242 passed, 3 skipped); GitHub PR CI [44057649091](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44057649091) verified: Python 3.12/3.13 **245 passed each**, Ruff/mypy/secret guard passed. [PR #28](https://github.com/ByeonDoHyeon06/invest-engine/pull/28) **main merged** as [98eb43c](https://github.com/ByeonDoHyeon06/invest-engine/commit/98eb43c34a8c1774020549e4bab00b097c597fb8). Next E5.7: actual issuer adjustment/accounting and market provider coverage verification; E5 Issue #6 still OPEN. See [E5_PIT_EVIDENCE](E5_PIT_EVIDENCE.md), [ADR-0014](adr/0014-pit-universe-vintage-gate.md). Optional synthetic-only evidence file; action-in-window abort and no silent delisted-symbol exclusion. **Real provider evidence, splits/dividends, exchange fees, tick/quote execution and E5 acceptance still OPEN.**
 
 
 **기준일:** 2026-11-17
 **현재:** E0~E4 완료. E5.1/#23·E5.2/#24·E5.3/#25 병합, **E5.4 PR #26 main 병합 (cac9bfede) / 최종 PR CI 통과** (Python 3.12/3.13 각 225 passed; Ruff/mypy/secrets green). E5 최종 신뢰성 게이트는 실제 시장별 비용·FX·PIT 기업행동/유니버스 검증 불완전으로 열어 둔다. 실거래 없음.
 **E5.5 완료(2026-11-17, 연구 범위):** [PR #27](https://github.com/ByeonDoHyeon06/invest-engine/pull/27) main 병합 [e638133](https://github.com/ByeonDoHyeon06/invest-engine/commit/e6381333d4dbe74694c482d75e33ab113842256e). Python 3.12/3.13 각 232 passed·Ruff/mypy/secrets 성공 ([CI #44055595945](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44055595945)). [FX 명세](E5_FX_REPORTING.md)/[ADR-0013](adr/0013-point-in-time-fx-reporting.md). E5 실제 데이터 적격성 Gate OPEN.
-**현재 Stage:** [E5 Backtest — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (E5.4 PR #26 verified; E5.5 PIT FX 연구용 보고 검증·병합 완료; 실제 공급원/비용/기업행동 검증은 미완료). E6 별도 연구는 E5 게이트 이후. **LIVE NOT AUTHORIZED.**
+**현재 Stage:** [E5 Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (E5.7 synthetic issuer ledger + CSV smoke PR #29 IN REVIEW). E5 real-provider PIT/actual share volume/action-price-adjustment gates OPEN; LIVE NOT AUTHORIZED.
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)

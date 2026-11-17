@@ -25,3 +25,5 @@
 - [0013](0013-point-in-time-fx-reporting.md) — Accepted (offline research): direct-pair as-of FX valuation, no order execution or implied buying power.
 
 - [0014](0014-pit-universe-vintage-gate.md) — Accepted (offline research metadata gate only): fail-closed as-of membership/vintage and issuer-action coverage. Provider completeness/rights and corporate accounting not verified.
+
+- [0015](0015-synthetic-corporate-action-ledger.md) — Accepted for synthetic/offline E5.7 research only: journaled issuer action/accounting and explicit CSV volume semantics; PIT action-aware backtest not yet authorized.

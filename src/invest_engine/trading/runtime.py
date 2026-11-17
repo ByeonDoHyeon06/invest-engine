@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 from decimal import Decimal, localcontext
 
 from invest_engine.domain.errors import InvalidEvent
+from invest_engine.trading.actions import (
+    DelistingObserved, DividendEntitled, DividendPaymentConfirmed, SplitApplied, action_fingerprint,
+)
 from invest_engine.domain.primitives import InstrumentId, Money, _decimal, utc_datetime
 from invest_engine.trading.journal import SQLiteTradingJournal
 from invest_engine.trading.monitoring import MonitorInput, MonitorResult
@@ -93,6 +96,44 @@ class TradingRuntime:
                 with suppress(Exception):
                     self.journal.record_halt(self._halt_reason)
             raise
+
+    def apply_split(self, action: SplitApplied, at: datetime) -> bool:
+        """Explicit synthetic event only; no provider inference or order repricing."""
+        if action.action_id in self.state.applied_corporate_ids:
+            previous = dict(self.state.corporate_fingerprints)[action.action_id]
+            if previous != action_fingerprint(action):
+                self._force_halt("conflicting corporate action identity")
+                raise InvalidEvent("conflicting repeated corporate action")
+            return False
+        self._emit(action, at, "corporate:split:" + action.action_id)
+        return True
+
+    def record_dividend(self, action: DividendEntitled, at: datetime) -> bool:
+        if action.action_id in self.state.applied_corporate_ids:
+            previous = dict(self.state.corporate_fingerprints)[action.action_id]
+            if previous != action_fingerprint(action):
+                self._force_halt("conflicting corporate action identity")
+                raise InvalidEvent("conflicting repeated corporate action")
+            return False
+        self._emit(action, at, "corporate:dividend:" + action.action_id)
+        return True
+
+    def confirm_dividend_payment(self, action_id: str, at: datetime) -> bool:
+        if action_id in self.state.paid_dividend_ids:
+            return False
+        self._emit(DividendPaymentConfirmed(action_id), at,
+                   "corporate:dividend-paid:" + action_id)
+        return True
+
+    def flag_delisting(self, action: DelistingObserved, at: datetime) -> bool:
+        if action.action_id in self.state.applied_corporate_ids:
+            previous = dict(self.state.corporate_fingerprints)[action.action_id]
+            if previous != action_fingerprint(action):
+                self._force_halt("conflicting corporate action identity")
+                raise InvalidEvent("conflicting repeated corporate action")
+            return False
+        self._emit(action, at, "corporate:delist:" + action.action_id)
+        return True
 
     def confirm_cash_settlement(self, execution_id: str, at: datetime) -> bool:
         """Confirm a synthetic SELL receivable; never infer broker settlement.
@@ -209,6 +250,9 @@ class TradingRuntime:
             decision = RiskDecision(
                 intent.intent_id, DecisionStatus.REJECTED, reason_codes=("NEW_ENTRIES_PAUSED",)
             )
+        elif intent.instrument.key in self.state.delisted_instruments:
+            decision = RiskDecision(intent.intent_id, DecisionStatus.REJECTED,
+                                    reason_codes=("INSTRUMENT_DELISTED",))
         elif intent.account_id != self.config.account_id:
             decision = RiskDecision(intent.intent_id, DecisionStatus.REJECTED, reason_codes=("ACCOUNT_MISMATCH",))
         else:

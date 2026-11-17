@@ -125,3 +125,9 @@ E3의 합성 Fill을 여러 전략의 가상 포지션·취득원가·실현손�
 
 ### E5.5 연구용 환율 보고
 [Point-in-Time FX 연구 보고](docs/E5_FX_REPORTING.md)는 선택적 기준 통화 환산 기능입니다. 실제 환전·거래 수수료·시장별 기업행동 데이터가 검증되었다는 뜻이 아닙니다.
+
+## 실데이터 백테스트 시험 / E5.7
+
+- [CSV OHLCV 오프라인 가져오기](docs/E5_REAL_MARKET_SMOKE.md): `invest-engine import-csv`로 CSV→canonical market event JSONL 변환. 거래량이 TICK_COUNT이면 NoTrade 데이터 경로 시험만 허용; ORB 성과 평가 금지.
+- [합성 기업행동 장부](docs/E5_CORPORATE_ACTIONS.md): Split/Dividend/Delisting을 E3 이벤트 저널로 재생. **E5 PIT 검증은 기업행동 있는 실제 기간을 여전히 차단**하므로 전 구간 기업행동 처리된 실데이터 백테스트는 미완성.
+- [ADR-0015](docs/adr/0015-synthetic-corporate-action-ledger.md): 적용 가능한 범위/데이터 출처 검증 경계. 실제 증권사 주문 불가; 포워드 페이퍼는 E7의 별도 단계.

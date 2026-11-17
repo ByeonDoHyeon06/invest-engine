@@ -1,5 +1,8 @@
 # AGENTS.md — 작업 에이전트용 지속 컨텍스트
 
+**Latest / 2026-11-17, E5.7 PR #29:** Review docs/E5_CORPORATE_ACTIONS.md, docs/E5_REAL_MARKET_SMOKE.md, ADR-0015. Synthetic issuer events are supported in E3 journal but E5.6 PIT run refuses all in-window corporate actions until explicit validated price-adjustment + E4 attribution bridge. `import-csv` is offline only; TICK_COUNT is not share volume and forbids strategy execution except NoTrade smoke. Actual AAPL preview five rows were used in local pipeline smoke, not profit validation. E5 Issue #6 OPEN. LIVE NOT AUTHORIZED.
+
+
 이 파일은 채팅 메모리에 의존하지 않고 invest-engine을 이어 개발하기 위한 작업 규칙이다.
 
 ## 매번 시작
