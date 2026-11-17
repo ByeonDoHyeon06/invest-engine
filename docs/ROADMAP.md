@@ -114,7 +114,7 @@
 **E5 통합 의존:** strategy decision/attribution ticket의 영속성, E2→E4→E3 실행기, 체결모델 및 Backtest report. **E4가 Live 안전성을 뜻하지 않는다.**
 
 ### E5 — Backtest Engine & Reporting [E5.4 VERIFIED; final gate OPEN]
-**E5.4 research reliability:** [PR #26](https://github.com/ByeonDoHyeon06/invest-engine/pull/26), [E5_ROBUSTNESS.md](E5_ROBUSTNESS.md), [ADR-0012](adr/0012-audit-stress.md). Historical data gap/partial-session coverage, audit warnings (license, corporate action, PIT universe, real fees/FX unverified), file SHA256/source tree fingerprint, deterministic 4-case cost/liquidity stress. **GitHub CI run 44052899012 Python 3.12/3.13 each 224 passed, Ruff/mypy/secrets success.** No broker credentials or Live code. Original market files and baseline artifacts remain unchanged by stress runner. 
+**E5.4 research reliability:** [PR #26](https://github.com/ByeonDoHyeon06/invest-engine/pull/26), [E5_ROBUSTNESS.md](E5_ROBUSTNESS.md), [ADR-0012](adr/0012-audit-stress.md). Historical data gap/partial-session coverage, audit warnings (license, corporate action, PIT universe, real fees/FX unverified), file SHA256/source tree fingerprint, deterministic 4-case cost/liquidity stress. **PR #26 MERGED: [cac9bfe](https://github.com/ByeonDoHyeon06/invest-engine/commit/cac9bfede31f6ffc5bee555ee8be1913a4485c9f). Final PR [CI 44053364040](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44053364040): Python 3.12/3.13 each 225 passed, Ruff/mypy/secrets success.** No broker credentials or Live code. Original market files and baseline artifacts remain unchanged by stress runner. 
 
 **E5.5 next gate:** real PIT market/issuer/corporate-action & delisting data contract, market-specific fee/tax/FX/timezone policy and Tick/Quote-assisted fill model scope, E5 acceptance decision. These have not been verified or implemented. Do not close E5 Issue #6 merely on synthetic data.
 
@@ -132,7 +132,7 @@
 - [ ] equity, drawdown, CAGR(적절한 경우), PF, expectancy, turnover, trade log export
 
 **E5.4 verified additions:**
-- [x] Synthetic same-dataset cost/liquidity stress scenarios, ORB signal and fill sensitivity tests — PR #26 / CI 44052899012
+- [x] Synthetic same-dataset cost/liquidity stress scenarios, ORB signal and fill sensitivity tests — PR #26 / CI 44053364040
 - [x] Intraday bar gap/partial session warnings and unchanged historical inputs — PR #26
 - [x] Output audit.json, file SHA-256 and actual Python source tree hash; tampering detection — PR #26
 - [ ] Verified real-data point-in-time corporate adjustments/issuer universe and exchange/FX/fees provenance (E5.5 or explicit ADR scope decision)
