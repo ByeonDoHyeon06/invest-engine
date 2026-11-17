@@ -17,6 +17,7 @@ from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.events import Bar, EventEnvelope, MarketPayload
 from invest_engine.domain.primitives import Money
 from invest_engine.research.fills import BarFillPolicy, eligible_fill
+from invest_engine.research.fx import FxReportingPolicy, FxSeries, base_drawdown
 from invest_engine.research.protection import (
     ProtectionLot, ProtectionPolicy, consume_oldest, consume_protection,
     new_protected_lot, protective_exit,
@@ -95,6 +96,7 @@ class HistoricalBacktest:
         protection_policy: ProtectionPolicy | None = None,
         allocation_policy: AllocationPolicy | None = None,
         settings: BacktestSettings | None = None,
+        fx_series: FxSeries | None = None, fx_policy: FxReportingPolicy | None = None,
     ) -> None:
         if not strategies or len({s.manifest.strategy_id for s in strategies}) != len(strategies):
             raise ValueError("at least one uniquely named strategy required")
@@ -112,6 +114,10 @@ class HistoricalBacktest:
                                   else ProtectionPolicy())
         self.allocation_policy = allocation_policy if allocation_policy is not None else AllocationPolicy()
         self.settings = settings if settings is not None else BacktestSettings()
+        if (fx_series is None) != (fx_policy is None):
+            raise ValueError("FX data and reporting policy must be explicitly supplied together")
+        self.fx_series = fx_series
+        self.fx_policy = fx_policy
         self._used = False
 
     def run(self, events: tuple[EventEnvelope[MarketPayload], ...]) -> BacktestReport:
@@ -125,6 +131,8 @@ class HistoricalBacktest:
         config_sha = sha256((self.config, self.risk, self.fill_policy, self.protection_policy,
                              self.allocation_policy, self.settings,
                              # E4 ORB configuration differs from runtime snapshot; include both.
+                             self.fx_policy,
+                             self.fx_series.digest if self.fx_series is not None else None,
                              tuple((s.manifest, getattr(s, "params", None), s.snapshot().hex())
                                    for s in self.strategies),
                              # StaticSessionCalendar fully serializes, others must pin a version.
@@ -342,6 +350,20 @@ class HistoricalBacktest:
             gross_loss = sum((-v for v in values if v < 0), Decimal(0))
             factors.append((currency, gross_win / gross_loss if gross_loss else None))
             expectations.append((currency, sum(values, Decimal(0)) / len(values) if values else None))
+        fx_points = tuple(
+            self.fx_series.value_at(point, self.fx_policy) for point in equity
+        ) if self.fx_series is not None and self.fx_policy is not None else ()
+        fx_complete = bool(fx_points) and all(p.complete for p in fx_points)
+        fx_net = None
+        fx_dd = None
+        if fx_complete and self.fx_series is not None and self.fx_policy is not None:
+            first = self.fx_series.value_at(
+                EquityPoint(equity[0].at, start, True), self.fx_policy,
+            )
+            if first.complete and first.value is not None:
+                assert fx_points[-1].value is not None
+                fx_net = fx_points[-1].value - first.value
+                fx_dd = base_drawdown(fx_points)
         return BacktestReport(
             data_sha, config_sha, trader.state.digest, run_sha,
             len(events), start, point_end.by_currency, dds,
@@ -357,5 +379,11 @@ class HistoricalBacktest:
               if self.protection_policy.enabled else
               "Stop prices are risk plans; this fill model does not place stops."),
              "Multi-currency equity is not aggregated without a proven FX series.",
-             "Run code SHA, data provider/license identifiers must be independently verified."),
+             "Run code SHA, data provider/license identifiers must be independently verified.",
+             "FX-adjusted reporting is research-only; no FX buying power/fees or broker conversions.",
+             "Incomplete FX observations suppress base-currency PnL and drawdown."
+             if self.fx_policy is not None else "No verified FX series; multi-currency totals are separate."),
+            fx_base_currency=self.fx_policy.base_currency if self.fx_policy else None,
+            fx_data_sha256=self.fx_series.digest if self.fx_series else None,
+            fx_equity=fx_points, fx_net_pnl=fx_net, fx_max_drawdown=fx_dd,
         )
