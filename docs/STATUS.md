@@ -1,6 +1,6 @@
 # 프로젝트 현황 및 재개 지점
 
-**E5.6 (2026-11-17) PR #28:** PIT issuer/universe/vintage input gate implemented and local regression verified (242 passed, 3 skipped); GitHub CI/merge verification pending. See [E5_PIT_EVIDENCE](E5_PIT_EVIDENCE.md), [ADR-0014](adr/0014-pit-universe-vintage-gate.md). Optional synthetic-only evidence file; action-in-window abort and no silent delisted-symbol exclusion. **Real provider evidence, splits/dividends, exchange fees, tick/quote execution and E5 acceptance still OPEN.**
+**E5.6 (2026-11-17) [PR #28](https://github.com/ByeonDoHyeon06/invest-engine/pull/28):** PIT issuer/universe/vintage input gate implemented and local regression verified (242 passed, 3 skipped); GitHub PR CI 44057468935 verified: Python 3.12/3.13 **245 passed each**, Ruff/mypy/secret guard passed. PR #28 merge pending. See [E5_PIT_EVIDENCE](E5_PIT_EVIDENCE.md), [ADR-0014](adr/0014-pit-universe-vintage-gate.md). Optional synthetic-only evidence file; action-in-window abort and no silent delisted-symbol exclusion. **Real provider evidence, splits/dividends, exchange fees, tick/quote execution and E5 acceptance still OPEN.**
 
 
 **기준일:** 2026-11-17
