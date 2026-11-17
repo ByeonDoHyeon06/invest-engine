@@ -361,3 +361,40 @@ def test_e5_target_touch_only_not_assumed_filled():
     result = protection_runner().run(events)
     assert result.exit_fill_count == 0
     assert all(x.reason_code != "TARGET_TRIGGERED" for x in result.fills)
+
+
+def test_optional_multicurrency_fx_reporting_and_strict_miss():
+    from invest_engine.research.fx import FxObservation, FxReportingPolicy, FxSeries
+
+    inst_usd = InstrumentId(Market.US, "XNAS", "US-SYN-E5", "SYNU", "USD")
+    cfg = TradingConfig("sim", (
+        MonetaryRules("KRW", D("1")), MonetaryRules("USD", D("0.01")),
+    ), ((INST.key, InstrumentRules(D("1"), D("1"))),
+        (inst_usd.key, InstrumentRules(D("0.01"), D("1")))), fee_rate=D("0.001"))
+    calendar = StaticSessionCalendar((TradingSession(Market.KR, "KRX", T,
+                                              T + timedelta(hours=1)),))
+    one, two = T + STEP, T + STEP*2
+    fx = FxSeries((FxObservation("usd1", "USD", "KRW", D("1300"),
+                        one, one, one, "synthetic"),
+                   FxObservation("usd2", "USD", "KRW", D("1400"),
+                        two, two, two, "synthetic")))
+
+    def run(series: FxSeries, max_age: timedelta):
+        return HistoricalBacktest(calendar=calendar,
+            strategies=(NoTradeStrategy(DataRequirement("market.bar", STEP)),),
+            config=cfg, opening_cash=(Money(D("100000"), "KRW"),
+                                      Money(D("100"), "USD")),
+            fx_series=series, fx_policy=FxReportingPolicy("KRW", max_age)).run(feed()[:2])
+
+    report = run(fx, timedelta(minutes=2))
+    assert report.fx_base_currency == "KRW"
+    assert [x.value for x in report.fx_equity] == [D("230000"), D("240000")]
+    assert report.fx_net_pnl == D("10000")
+    assert report.fx_max_drawdown == 0
+    assert report.fx_data_sha256 == fx.digest
+    assert run(fx, timedelta(minutes=2)).run_sha256 == report.run_sha256
+    incomplete = run(FxSeries((fx.observations[1],)), timedelta(minutes=2))
+    assert incomplete.fx_net_pnl is None
+    assert incomplete.fx_max_drawdown is None
+    assert incomplete.fx_equity[0].value is None
+    assert incomplete.by_currency_end == report.by_currency_end

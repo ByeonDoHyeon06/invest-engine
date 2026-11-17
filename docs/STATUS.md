@@ -2,7 +2,8 @@
 
 **기준일:** 2026-11-17
 **현재:** E0~E4 완료. E5.1/#23·E5.2/#24·E5.3/#25 병합, **E5.4 PR #26 main 병합 (cac9bfede) / 최종 PR CI 통과** (Python 3.12/3.13 각 225 passed; Ruff/mypy/secrets green). E5 최종 신뢰성 게이트는 실제 시장별 비용·FX·PIT 기업행동/유니버스 검증 불완전으로 열어 둔다. 실거래 없음.
-**현재 Stage:** [E5 Backtest — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (E5.4 PR #26 verified; E5.5 real-data/cost/FX gate NEXT). E6 별도 연구는 E5 게이트 이후. **LIVE NOT AUTHORIZED.**
+**E5.5 업데이트(2026-11-17):** [PIT FX 명세](E5_FX_REPORTING.md)와 [ADR-0013](adr/0013-point-in-time-fx-reporting.md), PR #27. FX 환산은 연구 보고 전용. 실제 시장 데이터와 증권사 비용 검증 게이트 OPEN.
+**현재 Stage:** [E5 Backtest — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (E5.4 PR #26 verified; E5.5 PIT FX 연구용 보고 구현·CI 검토 중; 실제 공급원/비용/기업행동 검증은 미완료). E6 별도 연구는 E5 게이트 이후. **LIVE NOT AUTHORIZED.**
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -152,3 +153,9 @@
 ## E5.2 CLI/manifest (2026-11-16)
 - [PR #24](https://github.com/ByeonDoHyeon06/invest-engine/pull/24): `invest-engine backtest --config`와 strict e5-research-v1 JSON, canonical market JSONL·dataset SHA256, 명시적 sessions/strategy/risk/cost, manifest/report export. LIVE 입력 금지. 테스트 ORB 21-session end-to-end 추가.
 - 로컬 전체 테스트 201 passed, 3 skipped (선택 Hypothesis/PyArrow 부재). [GitHub CI #43862781540](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43862781540) Python 3.12/3.13 각 204 passed, Ruff/mypy/secrets 통과. [PR #24](https://github.com/ByeonDoHyeon06/invest-engine/pull/24) squash [12823e7](https://github.com/ByeonDoHyeon06/invest-engine/commit/12823e755dbbacba6898711d6e0dbb01021fbd71) main 병합. E5 완료 처리는 보류.
+
+## E5.5 PIT FX 연구 보고 (2026-11-17)
+- [PR #27](https://github.com/ByeonDoHyeon06/invest-engine/pull/27): 옵트인 FX JSONL, direct pair/as-of 시간/파일 해시 검증 및 기준 통화 연구 평가. 불완전한 FX 이력은 `fx_net_pnl`·`fx_max_drawdown`을 null로 반환.
+- [E5_FX_REPORTING](E5_FX_REPORTING.md), [ADR-0013](adr/0013-point-in-time-fx-reporting.md) 참고. FX 실거래·매수 가능 금액 계산 미포함.
+- **E5 최종 게이트 OPEN:** 시장별 실제 수수료·세금, 역사적 기업행동·상장폐지/유니버스(PIT), 틱·호가 체결 가정 실증. E6 및 실거래 진입 승인 아님.
+- **다음 작업:** corporate-action & point-in-time instrument-universe 데이터 적격성 계약, historical tick/quote fill 모델 검증의 범위 분리. E5 Issue #6 OPEN.

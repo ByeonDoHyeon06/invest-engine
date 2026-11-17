@@ -125,6 +125,8 @@ def verify_exported_artifacts(directory: Path) -> bool:
     hashes = manifest.get('artifact_sha256')
     expected_files = {'report.json', 'decisions.jsonl', 'fills.jsonl',
                       'equity.jsonl', 'audit.json'}
+    if manifest.get('fx_reporting_currency') is not None:
+        expected_files.add('fx_equity.jsonl')
     if not isinstance(hashes, dict) or set(hashes) != expected_files:
         raise ValueError('manifest lacks complete E5.4 artifact integrity record')
     for name, expected in hashes.items():

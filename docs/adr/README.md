@@ -21,3 +21,5 @@
 - [0011](0011-protective-ohlcv.md) — Accepted (offline simulation only): opt-in OHLCV stop-first/gap/volume model, no guaranteed execution.
 
 - [0012](0012-audit-stress.md) — Accepted (offline research only): dataset audit, artifact integrity hashes and synthetic cost/liquidity stress; real data remain unverified.
+
+- [0013](0013-point-in-time-fx-reporting.md) — Accepted (offline research): direct-pair as-of FX valuation, no order execution or implied buying power.

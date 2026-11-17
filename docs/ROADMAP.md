@@ -113,6 +113,8 @@
 
 **E5 통합 의존:** strategy decision/attribution ticket의 영속성, E2→E4→E3 실행기, 체결모델 및 Backtest report. **E4가 Live 안전성을 뜻하지 않는다.**
 
+**E5.5 진행:** [E5_FX_REPORTING](E5_FX_REPORTING.md) · [ADR-0013](adr/0013-point-in-time-fx-reporting.md) · PR #27. 사용자 제공 환율 자료를 신뢰 가능한 시각 이후에만 연구 보고에 사용하며, 누락 환율은 기본 통화 손익/MDD를 산출하지 않는다. 실제 비용/FX 공급원·기업행동·상폐/유니버스·틱/호가 검증 게이트는 여전히 OPEN.
+
 ### E5 — Backtest Engine & Reporting [E5.4 VERIFIED; final gate OPEN]
 **E5.4 research reliability:** [PR #26](https://github.com/ByeonDoHyeon06/invest-engine/pull/26), [E5_ROBUSTNESS.md](E5_ROBUSTNESS.md), [ADR-0012](adr/0012-audit-stress.md). Historical data gap/partial-session coverage, audit warnings (license, corporate action, PIT universe, real fees/FX unverified), file SHA256/source tree fingerprint, deterministic 4-case cost/liquidity stress. **PR #26 MERGED: [cac9bfe](https://github.com/ByeonDoHyeon06/invest-engine/commit/cac9bfede31f6ffc5bee555ee8be1913a4485c9f). Final PR [CI 44053364040](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44053364040): Python 3.12/3.13 each 225 passed, Ruff/mypy/secrets success.** No broker credentials or Live code. Original market files and baseline artifacts remain unchanged by stress runner. 
 

@@ -12,6 +12,10 @@ from typing import Any
 
 from invest_engine.domain.primitives import InstrumentId
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from invest_engine.research.fx import FxEquityPoint
+
 
 def json_value(value: Any) -> Any:
     if isinstance(value, timedelta):
@@ -90,6 +94,11 @@ class BacktestReport:
     profit_factor: tuple[tuple[str, Decimal | None], ...]
     exit_fill_expectancy: tuple[tuple[str, Decimal | None], ...]
     notes: tuple[str, ...]
+    fx_base_currency: str | None = None
+    fx_data_sha256: str | None = None
+    fx_equity: tuple[FxEquityPoint, ...] = ()
+    fx_net_pnl: Decimal | None = None
+    fx_max_drawdown: Decimal | None = None
 
     def export(self, directory: str | Path) -> None:
         """Write reproducible artifacts for research; caller controls private storage."""
@@ -102,6 +111,10 @@ class BacktestReport:
         ):
             data = b"".join(canonical_json(record) + b"\n" for record in records)
             (output / name).write_bytes(data)
+        if self.fx_base_currency is not None:
+            (output / "fx_equity.jsonl").write_bytes(b"".join(
+                canonical_json(item) + b"\n" for item in self.fx_equity
+            ))
         (output / "report.json").write_bytes(canonical_json(self))
 
 

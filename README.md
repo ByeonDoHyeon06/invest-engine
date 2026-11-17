@@ -122,3 +122,6 @@ E3의 합성 Fill을 여러 전략의 가상 포지션·취득원가·실현손�
 ## E5 offline research CLI (PR #23 + #24)
 
 입력은 API 키가 아닌 자체 데이터/명시적인 거래세션/전략·위험 설정이다. `invest-engine backtest --config <run.json>`으로 `report.json`, `manifest.json`, `equity.jsonl`, `decisions.jsonl`, `fills.jsonl`을 만들 수 있다. [E5_EXPERIMENT.md](docs/E5_EXPERIMENT.md) 참조. **실행 가능한 stop/target/gap model 및 실거래는 지원하지 않는다.**
+
+### E5.5 연구용 환율 보고
+[Point-in-Time FX 연구 보고](docs/E5_FX_REPORTING.md)는 선택적 기준 통화 환산 기능입니다. 실제 환전·거래 수수료·시장별 기업행동 데이터가 검증되었다는 뜻이 아닙니다.

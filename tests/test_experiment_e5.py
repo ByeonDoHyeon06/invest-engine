@@ -146,3 +146,42 @@ def test_reject_invalid_protection_json_without_fallback(tmp_path: Path):
     path.write_text(json.dumps(raw), encoding="utf-8")
     with pytest.raises(ValueError, match="unexpected"):
         run_experiment(path)
+
+
+def test_optional_fx_reporting_file_hash_and_artifact_integrity(tmp_path: Path):
+    from invest_engine.research.audit import verify_exported_artifacts
+
+    path = make_spec(tmp_path)
+    data = json.loads(path.read_text())
+    fx_file = tmp_path / "usdkrw.jsonl"
+    sample = {
+        "observation_id": "r1", "base": "USD", "quote": "KRW", "rate": "1300",
+        "event_time": START.isoformat(), "available_at": START.isoformat(),
+        "received_at": START.isoformat(), "source": "synthetic-test",
+    }
+    fx_file.write_text(json.dumps(sample) + "\n", encoding="utf-8")
+    data["account"]["cash"].append({"currency": "USD", "amount": "100"})
+    data["account"]["cash_rules"].append({"currency": "USD", "cash_step": "0.01"})
+    data["fx_reporting"] = {
+        "base_currency": "KRW", "max_age_seconds": 3600,
+        "observations_jsonl": fx_file.name,
+        "sha256": hashlib.sha256(fx_file.read_bytes()).hexdigest(),
+        "source": "synthetic-test", "license": "synthetic",
+    }
+    path.write_text(json.dumps(data), encoding="utf-8")
+    run = run_experiment(path)
+    assert run.report.fx_net_pnl == 0
+    assert run.report.fx_base_currency == "KRW"
+    assert run.report.fx_equity[0].value == D("230000")
+    assert verify_exported_artifacts(run.output_dir)
+    fx_lines = (run.output_dir / "fx_equity.jsonl").read_text().splitlines()
+    assert len(fx_lines) == 3
+    manifest = json.loads((run.output_dir / "manifest.json").read_text())
+    assert manifest["fx_dataset_file_sha256"] == data["fx_reporting"]["sha256"]
+    assert not manifest["fx_data_release_verified"]
+    (run.output_dir / "fx_equity.jsonl").write_text("tampered")
+    with pytest.raises(ValueError, match="artifact mismatch"):
+        verify_exported_artifacts(run.output_dir)
+    fx_file.write_text(fx_file.read_text() + " ")
+    with pytest.raises(ValueError, match="FX observation file hash"):
+        run_experiment(path)
