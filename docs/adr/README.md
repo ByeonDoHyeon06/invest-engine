@@ -27,3 +27,5 @@
 - [0014](0014-pit-universe-vintage-gate.md) — Accepted (offline research metadata gate only): fail-closed as-of membership/vintage and issuer-action coverage. Provider completeness/rights and corporate accounting not verified.
 
 - [0015](0015-synthetic-corporate-action-ledger.md) — Accepted for synthetic/offline E5.7 research only: journaled issuer action/accounting and explicit CSV volume semantics; PIT action-aware backtest not yet authorized.
+
+- [0016](0016-session-open-split-replay.md) — Accepted (offline research only): as-of session-open split with E3/E4 inventory parity and feature invalidation. All other issuer actions blocked.

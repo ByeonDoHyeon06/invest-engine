@@ -102,3 +102,8 @@
 - E5.6 only validates input metadata; no broker/Live route or E6 automatic strategy promotion.
 
 **E5.6 verified PR CI:** [GitHub Actions 44057468935](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44057468935) passed 245 tests on Python 3.12/3.13, Ruff, mypy and basic secret guard. Next E5.7: independent provider vintage, corporate-action adjusted portfolio accounting, real market fee/tax validation and Tick/Quote execution. Do not mark E5 or Live as verified.
+
+## E5.8 research replay guard (2026-11-17)
+- [PR #30](https://github.com/ByeonDoHyeon06/invest-engine/pull/30), [CI 44067166215](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44067166215). Strict SHA/PIT matched session-open RAW_UNADJUSTED share split only.
+- E3/E4 quantity and cost basis parity; invalidate E4 pre-split feature history; reject dividends, delistings, mergers, intraday actions and active protective-lot modeling.
+- docs/E5_SPLIT_REPLAY.md and ADR-0016 authoritative. Provider completeness / price convention remain caller-attested, not independently verified. E5 Issue #6 OPEN; LIVE not authorized.

@@ -1,5 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
+**E5.8 verified (2026-11-17, PR #30):** [PR #30](https://github.com/ByeonDoHyeon06/invest-engine/pull/30) PIT evidence + SHA-pinned raw session-open share split replay: E3 trading account / E4 virtual attribution and feature history transition, unsupported issuer actions rejected. [CI 44067166215](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44067166215): Python 3.12/3.13 each 266 passed, Ruff/mypy/secrets passed. [E5_SPLIT_REPLAY.md](E5_SPLIT_REPLAY.md), [ADR-0016](adr/0016-session-open-split-replay.md). 2026-10 AAPL 22 daily bars regression retains USD 100,148.49 final synthetic research valuation (NOT 1m ORB). Real provider completeness, broker costs, dividends/delistings and protected lots UNVERIFIED; E5 Issue #6 OPEN; LIVE NOT AUTHORIZED.
+
+
 **최신 E5.7 완료 (2026-11-17):** [PR #29](https://github.com/ByeonDoHyeon06/invest-engine/pull/29) **main squash 병합 [cf1227b](https://github.com/ByeonDoHyeon06/invest-engine/commit/cf1227b167610e8d9324ccc2b4b0f0024eded452)**. 기업행동 합성 ledger/codec/저널 및 오프라인 CSV 변환기·거래량 단위 경계. 로컬 Python 3.13 **257 passed, 3 skipped**, GitHub Actions [44060129801](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44060129801) Python 3.12/3.13 **각 260 passed**, Ruff/mypy/secrets 성공. AAPL README 공개 미리보기 5개 봉으로 NoTrade 오프라인 파이프라인 시험(체결 0, PnL USD 0) 완료. **실제 ORB 수익성/데이터 원본 완전성 검증 아님.** E5.6 PIT는 여전히 기업행동 있으면 fail-closed; E5 Issue #6 OPEN, E7 forward paper 및 E8 Live 미착수.
 
 
