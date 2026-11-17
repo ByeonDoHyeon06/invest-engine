@@ -181,8 +181,19 @@ def test_stress_cannot_overwrite_input_config_or_dataset(tmp_path: Path) -> None
 
     original_config = spec.read_bytes()
     original_dataset = (tmp_path / 'bars.jsonl').read_bytes()
-    for path in (spec, tmp_path / 'bars.jsonl'):
+    for path in (spec, tmp_path / 'bars.jsonl', tmp_path / 'report-out/report.json'):
         with pytest.raises(ValueError, match='overwrite'):
             export_stress(report, path, config_file=spec)
     assert original_config == spec.read_bytes()
     assert original_dataset == (tmp_path / 'bars.jsonl').read_bytes()
+
+
+def test_integrity_verifier_requires_all_five_artifact_hashes(tmp_path: Path) -> None:
+    run_experiment(make_spec(tmp_path))
+    root = tmp_path / 'report-out'
+    manifest_path = root / 'manifest.json'
+    data = json.loads(manifest_path.read_text())
+    del data['artifact_sha256']['fills.jsonl']
+    manifest_path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match='complete E5.4'):
+        verify_exported_artifacts(root)
