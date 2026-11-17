@@ -23,3 +23,5 @@
 - [0012](0012-audit-stress.md) — Accepted (offline research only): dataset audit, artifact integrity hashes and synthetic cost/liquidity stress; real data remain unverified.
 
 - [0013](0013-point-in-time-fx-reporting.md) — Accepted (offline research): direct-pair as-of FX valuation, no order execution or implied buying power.
+
+- [0014](0014-pit-universe-vintage-gate.md) — Accepted (offline research metadata gate only): fail-closed as-of membership/vintage and issuer-action coverage. Provider completeness/rights and corporate accounting not verified.

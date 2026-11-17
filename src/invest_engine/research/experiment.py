@@ -23,6 +23,7 @@ from invest_engine.research.audit import (
 from invest_engine.research.fills import BarFillPolicy
 from invest_engine.research.fx import FxObservation, FxReportingPolicy, FxSeries
 from invest_engine.research.protection import ProtectionPolicy
+from invest_engine.research.pit import load_pit_evidence, validate_pit_events
 from invest_engine.research.report import BacktestReport, canonical_json, sha256
 from invest_engine.strategies.baselines import NoTradeStrategy
 from invest_engine.strategies.contracts import DataRequirement, Strategy
@@ -76,8 +77,8 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
     raw_input = json.loads(path.read_text(encoding="utf-8"))
     required = {"schema_version", "run_id", "mode", "dataset", "sessions", "strategy",
                 "account", "risk", "fill_model", "code_sha", "output_dir"}
-    if not isinstance(raw_input, dict) or set(raw_input) not in (required,
-                                                                required | {"fx_reporting"}):
+    if (not isinstance(raw_input, dict) or not required <= set(raw_input)
+        or not set(raw_input) <= required | {"fx_reporting", "pit_evidence"}):
         raise ValueError("unexpected or missing config fields")
     raw = cast(dict[str, Any], raw_input)
     if raw["schema_version"] != "e5-research-v1" or raw["mode"] != "BACKTEST":
@@ -109,6 +110,22 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         sessions.append(TradingSession(Market(s["market"]), s["venue"],
                                        _utc(s["start"]), _utc(s["end"])))
     calendar = StaticSessionCalendar(tuple(sessions))
+    pit_result = None
+    pit_file_hash: str | None = None
+    pit_source: str | None = None
+    pit_license: str | None = None
+    if "pit_evidence" in raw:
+        spec = _object(raw["pit_evidence"], {
+            "records_jsonl", "sha256", "source", "license",
+        })
+        if not all(isinstance(spec[k], str) and spec[k].strip() for k in spec):
+            raise ValueError("PIT evidence origin, license, and hash required")
+        evidence_file = (root / spec["records_jsonl"]).resolve()
+        evidence, pit_file_hash = load_pit_evidence(evidence_file, spec["sha256"])
+        # Validate before starting a strategy or writing any result artifacts.
+        # These are caller declarations; they do not authenticate the provider.
+        pit_result = validate_pit_events(events, evidence)
+        pit_source, pit_license = spec["source"], spec["license"]
     st = _object(raw["strategy"], {"id", "version", "parameters"})
     params = _object(st["parameters"], {"interval"}) if st["id"] == "no-trade" else None
     strategy: Strategy
@@ -226,10 +243,14 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
     report.export(output_dir)
     audit = inspect_dataset(events, calendar)
     (output_dir / "audit.json").write_bytes(canonical_json(audit))
+    if pit_result is not None:
+        (output_dir / "pit_gate.json").write_bytes(canonical_json(pit_result))
     artifact_names: tuple[str, ...] = ("report.json", "decisions.jsonl", "fills.jsonl",
                       "equity.jsonl", "audit.json")
     if fx_policy is not None:
         artifact_names += ("fx_equity.jsonl",)
+    if pit_result is not None:
+        artifact_names += ("pit_gate.json",)
     artifact_hashes = {name: file_sha256(output_dir / name) for name in artifact_names}
     manifest = {
         "schema_version": "e5-research-v1", "run_id": raw["run_id"],
@@ -250,7 +271,13 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         "fx_reporting_currency": fx_policy.base_currency if fx_policy is not None else None,
         "fx_source": fx_source, "fx_license": fx_license,
         "fx_data_release_verified": False,
-        "warnings": list(report.notes) + list(audit.warnings),
+        "pit_dataset_file_sha256": pit_file_hash,
+        "pit_evidence_sha256": pit_result.evidence_sha256 if pit_result else None,
+        "pit_gate_checked_events": pit_result.event_count if pit_result else None,
+        "pit_source": pit_source, "pit_license": pit_license,
+        "pit_data_release_verified": False,
+        "warnings": (list(report.notes) + list(audit.warnings)
+                     + list(pit_result.reason_codes if pit_result else ("PIT_EVIDENCE_NOT_SUPPLIED",))),
     }
     manifest_sha = sha256(manifest)
     (output_dir / "manifest.json").write_bytes(canonical_json(manifest))

@@ -91,3 +91,11 @@
 - docs/E5_FX_REPORTING.md: research-only direct-pair as-of FX marks. Never use converted equity as broker buying power or E3 risk input.
 - Missing/stale/unreleased FX implies null base-currency PnL/drawdown; do not silently invert, interpolate, backfill or convert.
 - E5 real provider fees, corporate actions, point-in-time universe and tick/quote fill verification gates remain OPEN. LIVE NOT AUTHORIZED.
+
+## E5.6 point-in-time research gate (2026-11-17)
+- [PR #28](https://github.com/ByeonDoHyeon06/invest-engine/pull/28), [E5_PIT_EVIDENCE.md](docs/E5_PIT_EVIDENCE.md), [ADR-0014](docs/adr/0014-pit-universe-vintage-gate.md): source-declared membership/vintage/corporate-action catalogue proof is an optional, strictly validated research-only boundary.
+- A split, dividend, delisting, merger or symbol change effective in a test window **blocks the whole experiment**, not an individual symbol. This cannot silently filter out delisted firms. Never create prices/dividends/adjustment ratios.
+- Metadata hashes/declared dates DO NOT authenticate provider origin, historical universe completeness or rights. Source may be dishonest; all source-release flags remain false. E5 and real market readiness gates stay OPEN.
+- E5.6 only validates input metadata; no broker/Live route or E6 automatic strategy promotion.
+
+**E5.6 verified PR CI:** [GitHub Actions 44057468935](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44057468935) passed 245 tests on Python 3.12/3.13, Ruff, mypy and basic secret guard. Next E5.7: independent provider vintage, corporate-action adjusted portfolio accounting, real market fee/tax validation and Tick/Quote execution. Do not mark E5 or Live as verified.

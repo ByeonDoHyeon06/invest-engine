@@ -1,5 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
+**E5.6 (2026-11-17) [PR #28](https://github.com/ByeonDoHyeon06/invest-engine/pull/28):** PIT issuer/universe/vintage input gate implemented and local regression verified (242 passed, 3 skipped); GitHub PR CI 44057468935 verified: Python 3.12/3.13 **245 passed each**, Ruff/mypy/secret guard passed. PR #28 merge pending. See [E5_PIT_EVIDENCE](E5_PIT_EVIDENCE.md), [ADR-0014](adr/0014-pit-universe-vintage-gate.md). Optional synthetic-only evidence file; action-in-window abort and no silent delisted-symbol exclusion. **Real provider evidence, splits/dividends, exchange fees, tick/quote execution and E5 acceptance still OPEN.**
+
+
 **기준일:** 2026-11-17
 **현재:** E0~E4 완료. E5.1/#23·E5.2/#24·E5.3/#25 병합, **E5.4 PR #26 main 병합 (cac9bfede) / 최종 PR CI 통과** (Python 3.12/3.13 각 225 passed; Ruff/mypy/secrets green). E5 최종 신뢰성 게이트는 실제 시장별 비용·FX·PIT 기업행동/유니버스 검증 불완전으로 열어 둔다. 실거래 없음.
 **E5.5 완료(2026-11-17, 연구 범위):** [PR #27](https://github.com/ByeonDoHyeon06/invest-engine/pull/27) main 병합 [e638133](https://github.com/ByeonDoHyeon06/invest-engine/commit/e6381333d4dbe74694c482d75e33ab113842256e). Python 3.12/3.13 각 232 passed·Ruff/mypy/secrets 성공 ([CI #44055595945](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44055595945)). [FX 명세](E5_FX_REPORTING.md)/[ADR-0013](adr/0013-point-in-time-fx-reporting.md). E5 실제 데이터 적격성 Gate OPEN.
