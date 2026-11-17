@@ -18,6 +18,7 @@ from invest_engine.core.replay import canonical_bytes
 from invest_engine.domain.events import Bar, EventEnvelope, MarketPayload
 from invest_engine.domain.primitives import utc_datetime
 from invest_engine.research.report import sha256
+from invest_engine.trading.actions import SplitApplied
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,8 +130,8 @@ class PITEvidence:
         for i, coverage in enumerate(self.action_coverages):
             for other_coverage in self.action_coverages[i + 1:]:
                 if (coverage.instrument_key == other_coverage.instrument_key and
-                    coverage.start < other_coverage.end
-                    and other_coverage.start < coverage.end):
+                    coverage.start < other_coverage.end and
+                    other_coverage.start < coverage.end):
                     raise ValueError("overlapping action coverage declarations")
 
     @property
@@ -152,6 +153,7 @@ class PITGateResult:
 
 def validate_pit_events(
     events: tuple[EventEnvelope[MarketPayload], ...], evidence: PITEvidence,
+    *, modeled_splits: tuple[SplitApplied, ...] = (),
 ) -> PITGateResult:
     """Reject retroactive universes/revisions and ANY in-window issuer action.
 
@@ -160,6 +162,10 @@ def validate_pit_events(
     """
     if not events:
         raise ValueError("PIT gate requires historical events")
+    modeled_ids = {a.action_id: a for a in modeled_splits}
+    if len(modeled_ids) != len(modeled_splits):
+        raise ValueError("duplicate modeled split IDs")
+    matched: set[str] = set()
     seen: set[str] = set()
     bounds: dict[str, tuple[datetime, datetime]] = {}
     vintages = {row.event_id: row for row in evidence.vintages}
@@ -196,10 +202,28 @@ def validate_pit_events(
                   and r.published_at <= beginning and r.received_at <= beginning]
         if len(covers) != 1:
             raise ValueError(f"PIT_ACTION_COVERAGE_UNVERIFIED:{key}")
-        if any(a.instrument_key == key and beginning <= a.effective_at <= end
-               for a in evidence.actions):
-            raise ValueError(f"UNMODELED_CORPORATE_ACTION:{key}")
-    return PITGateResult(len(events), len(bounds), evidence.digest)
+        for action in evidence.actions:
+            if action.instrument_key != key or not beginning <= action.effective_at <= end:
+                continue
+            split = modeled_ids.get(action.action_id)
+            if (action.action_type != "SPLIT" or split is None
+                or split.instrument.key != key or split.effective_at != action.effective_at
+                or split.available_at != action.received_at or split.source != action.source
+                or action.published_at > action.received_at
+                or action.received_at > action.effective_at):
+                raise ValueError(f"UNMODELED_CORPORATE_ACTION:{key}")
+            matched.add(split.action_id)
+    if matched != set(modeled_ids):
+        raise ValueError("SPLIT_SCHEDULE_HAS_UNDECLARED_OR_OUT_OF_RANGE_ACTIONS")
+    return PITGateResult(
+        len(events), len(bounds), evidence.digest, reason_codes=(
+            "EXTERNAL_SOURCE_AND_CORPORATE_ACTION_COMPLETENESS_UNVERIFIED",
+            "RAW_UNADJUSTED_SPLIT_PRICE_CONVENTION_ASSUMED",
+        ) if modeled_splits else (
+            "EXTERNAL_SOURCE_AND_CORPORATE_ACTION_COMPLETENESS_UNVERIFIED",
+            "PRICE_ADJUSTMENT_NOT_IMPLEMENTED",
+        ),
+    )
 
 
 def _object(value: object, keys: set[str]) -> dict[str, Any]:

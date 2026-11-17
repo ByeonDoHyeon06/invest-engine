@@ -40,3 +40,7 @@ The CLI prints the run ID, run hash, manifest hash, and local artifact directory
 ## Outstanding E5 closure gate
 
 Stop/target collision and gap-through-stop execution are **not modeled**. Complex partial-fill queue/slippage and FX conversion remain unverified. They must be validated and documented in a future PR before claiming E5 complete; do not substitute the limit-fill crossing model for a guaranteed stop-order execution.
+
+## E5.8 split replay request (optional)
+
+The offline BACKTEST request may include a split_replay object with records_jsonl, sha256, source, license, and price_basis set to RAW_UNADJUSTED, with matching pit_evidence required. Split events appear in the decisions trail and are bound to the run manifest; dividends and delisting remain disallowed. See [E5_SPLIT_REPLAY.md](E5_SPLIT_REPLAY.md).

@@ -56,3 +56,7 @@ No live brokerage or operational credentials are introduced.
 ## E5.7 후속 메모 (2026-11-17)
 
 [E5_CORPORATE_ACTIONS.md](E5_CORPORATE_ACTIONS.md)의 E3 장부는 합성적인 split, dividend entitlement/payment, delisting 이벤트를 독립 처리할 수 있다. **이 문서의 E5.6 PIT 전수 게이트는 기업행동이 있는 실데이터 백테스트를 계속 중단한다.** 발행사 확인 기업행동 조건, 가격/거래량 보정, 가상 전략별 잔고 귀속, vintage/지급·정산 일정을 결합한 통합 테스트 전에는 우회하지 않는다. PR #29.
+
+## E5.8 narrow split-only exception
+
+An optional SHA-pinned split schedule matching the full existing PIT issuer-action record allows only already-known, raw-price, session-open share splits. Every other action remains a hard failure; absent schedule retains the E5.6 default. This does not independently attest data providers. See [E5_SPLIT_REPLAY.md](E5_SPLIT_REPLAY.md) and ADR-0016.

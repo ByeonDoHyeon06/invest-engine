@@ -20,3 +20,7 @@
 ## Test evidence
 
 `tests/test_actions_e5.py`: split cost conservation, post-split sale, gross/withholding/net dividend, payment idempotency, delisting entry blocks, future action rejection, open-order conflict, fractional shares, conflicting replay ID, canonical codec and SQLite restart. Synthetic scenarios only.
+
+## E5.8 limited historical bridge
+
+E5.7 initially had no backtest bridge. [PR #30](https://github.com/ByeonDoHyeon06/invest-engine/pull/30) now integrates ONLY PIT-declared, SHA-pinned raw, session-open SPLIT events into E5/E3/E4 replay. Dividend, delisting, merger, other actions, and protective stop/target repricing remain unsupported; see [E5_SPLIT_REPLAY.md](E5_SPLIT_REPLAY.md).

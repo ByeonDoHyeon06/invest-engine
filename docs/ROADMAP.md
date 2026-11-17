@@ -115,7 +115,11 @@
 
 **E5.5 검증·병합 (PR #27, e638133; CI #44055595945 Python 3.12/3.13 232 passed):** [E5_FX_REPORTING](E5_FX_REPORTING.md) · [ADR-0013](adr/0013-point-in-time-fx-reporting.md) · PR #27. 사용자 제공 환율 자료를 신뢰 가능한 시각 이후에만 연구 보고에 사용하며, 누락 환율은 기본 통화 손익/MDD를 산출하지 않는다. 실제 비용/FX 공급원·기업행동·상폐/유니버스·틱/호가 검증 게이트는 여전히 OPEN.
 
-### E5 — Backtest Engine & Reporting [E5.6 PIT metadata contract; real-data gate OPEN]
+### E5 — Backtest Engine & Reporting
+
+**E5.8 split-only PIT replay:** [PR #30](https://github.com/ByeonDoHyeon06/invest-engine/pull/30) · [CI 44067166215](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44067166215) Python 3.12/3.13 each 266 passed. Session-open, known-in-advance share split from SHA-pinned raw unadjusted price inputs and PIT evidence; E3/E4 inventory change and E4 history reset. [Spec](E5_SPLIT_REPLAY.md) / [ADR-0016](adr/0016-session-open-split-replay.md). Unsupported issuer events / standing protection still blocked. Real market provider completeness, dividends/delistings, Tick/Quote, and live fees remain UNVERIFIED. E5 epic remains OPEN.
+
+ [E5.6 PIT metadata contract; real-data gate OPEN]
 
 **E5.6 research contract ([PR #28](https://github.com/ByeonDoHyeon06/invest-engine/pull/28), [PR CI 44057468935](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44057468935), Python 3.12/3.13 each 245 passed):** optional SHA-pinned `pit_evidence` JSONL validates as-of universe membership and per-event canonical vintage hashes; dated corporate-action coverage; SPLIT/DIVIDEND/DELIST/MERGER/SYMBOL_CHANGE abort the entire backtest until actual portfolio adjustments exist. Generates `pit_gate.json` + manifest hashes; prior synthetic CLI remains valid with explicit missing-evidence warning. [Contract](E5_PIT_EVIDENCE.md) / [ADR-0014](adr/0014-pit-universe-vintage-gate.md). **Provider truth/completeness, broker fees, real corporate-action accounting and Tick/Quote execution are NOT VERIFIED. Issue #6 remains OPEN.**
 
