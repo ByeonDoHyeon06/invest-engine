@@ -588,10 +588,10 @@ def reduce_trade_event(
         raise InvalidEvent("noncontiguous or duplicate trading event")
     if state.observed_at is not None and event.occurred_at < state.observed_at:
         raise InvalidEvent("trade event time reversed")
-    if isinstance(event.payload, (SplitApplied, DividendEntitled, DelistingObserved)):
-        if (event.occurred_at < event.payload.effective_at
-                or event.occurred_at < event.payload.available_at):
-            raise InvalidEvent("corporate action not yet effective or available")
+    if (isinstance(event.payload, (SplitApplied, DividendEntitled, DelistingObserved))
+            and (event.occurred_at < event.payload.effective_at
+                 or event.occurred_at < event.payload.available_at)):
+        raise InvalidEvent("corporate action not yet effective or available")
     updated = _apply(state, event.payload, config, limits or RiskLimits())
     audit_trading_state(updated)
     # A single codec defines both the persisted wire event and state-chain hash.
