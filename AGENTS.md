@@ -73,3 +73,10 @@
 - E4 virtual positions are in-memory and research-only. No automatic market fills, brokerage interaction or integrated E2/E4/E3 replay.
 - NEXT: E5 Issue #6. First implement deterministic coordination and transaction/recording boundary for strategy signals, allocation tickets and simulated fills, then conservative OHLCV fill+fees/slippage, baseline report and experiment manifest.
 - Trusted internal strategies only; no Python code sandbox. LIVE NOT AUTHORIZED.
+
+## E5.3 protection boundary (2026-11-17)
+- Read `docs/E5_PROTECTION.md` / ADR-0011 before changing bar-fill/protection logic.
+- Protective stop/target is opt-in offline stress approximation, not a broker order; activated only **after** a confirmed entry Fill observation, never same entry bar.
+- Unknown bar path uses stop-first, opening gap may be worse than planned stop; target requires strict penetration and adverse fill assumptions; all price/volume assumptions are version-pinned.
+- If a competing existing SELL order conflicts with a protective trigger in the same OHLCV bar, fail with explicit InvalidEvent; do not fabricate a causal ordering.
+- E5 is still in-progress pending full robustness/data provenance/cost/FX gates; no Live transport.
