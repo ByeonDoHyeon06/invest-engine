@@ -97,3 +97,5 @@
 - A split, dividend, delisting, merger or symbol change effective in a test window **blocks the whole experiment**, not an individual symbol. This cannot silently filter out delisted firms. Never create prices/dividends/adjustment ratios.
 - Metadata hashes/declared dates DO NOT authenticate provider origin, historical universe completeness or rights. Source may be dishonest; all source-release flags remain false. E5 and real market readiness gates stay OPEN.
 - E5.6 only validates input metadata; no broker/Live route or E6 automatic strategy promotion.
+
+**E5.6 verified PR CI:** [GitHub Actions 44057468935](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44057468935) passed 245 tests on Python 3.12/3.13, Ruff, mypy and basic secret guard. Next E5.7: independent provider vintage, corporate-action adjusted portfolio accounting, real market fee/tax validation and Tick/Quote execution. Do not mark E5 or Live as verified.
