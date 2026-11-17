@@ -112,3 +112,8 @@
 - [E5_DIVIDEND_REPLAY.md](docs/E5_DIVIDEND_REPLAY.md) / ADR-0017: PIT/SHA-gated ex-date entitlement at witnessed session-open; payment at a later witnessed bar.
 - Net unpaid dividend contributes to research equity but never E3 buying power. Raw unadjusted bars required; tax fraction synthetic.
 - PIT delisting/merger remains fail-closed without verified settlement proceeds. E5 Issue #6 OPEN, LIVE NOT AUTHORIZED.
+
+### E5.9 verified status and next gate (2026-11-17)
+- [PR #31](https://github.com/ByeonDoHyeon06/invest-engine/pull/31) main merged 963743d. main CI 44070594750: 3.12/3.13 275 passed each; lint/type/secrets passed.
+- Next E5.10: decide validated issuer-delisting cash resolution or preserve fail-closed; obtain licensed actual-share-volume 1m market data and independent corporate action and fee provenance before ORB conclusions.
+- E5 Issue #6 stays OPEN. E7 realtime forward paper and E8 live remain unimplemented/unauthorized.
