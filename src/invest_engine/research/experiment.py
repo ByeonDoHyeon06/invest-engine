@@ -226,7 +226,7 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
     report.export(output_dir)
     audit = inspect_dataset(events, calendar)
     (output_dir / "audit.json").write_bytes(canonical_json(audit))
-    artifact_names = ("report.json", "decisions.jsonl", "fills.jsonl",
+    artifact_names: tuple[str, ...] = ("report.json", "decisions.jsonl", "fills.jsonl",
                       "equity.jsonl", "audit.json")
     if fx_policy is not None:
         artifact_names += ("fx_equity.jsonl",)
