@@ -22,6 +22,7 @@ from invest_engine.research.audit import (
 )
 from invest_engine.research.corporate_replay import SplitSchedule, load_splits
 from invest_engine.research.dividend_replay import DividendSchedule, load_dividends
+from invest_engine.research.delisting_replay import DelistingSchedule, load_delistings
 from invest_engine.research.fills import BarFillPolicy
 from invest_engine.research.fx import FxObservation, FxReportingPolicy, FxSeries
 from invest_engine.research.protection import ProtectionPolicy
@@ -81,7 +82,7 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                 "account", "risk", "fill_model", "code_sha", "output_dir"}
     if (not isinstance(raw_input, dict) or not required <= set(raw_input)
         or not set(raw_input) <= required | {"fx_reporting", "pit_evidence", "split_replay",
-                                                "dividend_replay"}):
+                                                "dividend_replay", "delisting_replay"}):
         raise ValueError("unexpected or missing config fields")
     raw = cast(dict[str, Any], raw_input)
     if raw["schema_version"] != "e5-research-v1" or raw["mode"] != "BACKTEST":
@@ -158,6 +159,24 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                                            spec_dividend["sha256"], known)
         dividend_schedule.preflight(events)
         dividend_file_hash = spec_dividend["sha256"]
+    delisting_schedule = DelistingSchedule()
+    delisting_file_hash: str | None = None
+    if "delisting_replay" in raw:
+        if "pit_evidence" not in raw:
+            raise ValueError("DELISTING_REPLAY_REQUIRES_PIT_EVIDENCE")
+        dl = _object(raw["delisting_replay"], {
+            "records_jsonl", "sha256", "source", "license",
+        })
+        if not all(isinstance(dl[k], str) and dl[k].strip()
+                   for k in ("records_jsonl", "sha256", "source", "license")):
+            raise ValueError("delisting schedule origin and license required")
+        instruments = {e.instrument_id.key: e.instrument_id
+                       for e in events if e.instrument_id is not None}
+        delisting_schedule = load_delistings(
+            (root / dl["records_jsonl"]).resolve(), dl["sha256"], instruments,
+        )
+        delisting_schedule.preflight(events)
+        delisting_file_hash = dl["sha256"]
     pit_result = None
     pit_file_hash: str | None = None
     pit_source: str | None = None
@@ -173,7 +192,8 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         # Validate before starting a strategy or writing any result artifacts.
         # These are caller declarations; they do not authenticate the provider.
         pit_result = validate_pit_events(events, evidence, modeled_splits=schedule.splits,
-                                         modeled_dividends=dividend_schedule.entitlements)
+                                         modeled_dividends=dividend_schedule.entitlements,
+                                         modeled_delistings=delisting_schedule.delistings)
         pit_source, pit_license = spec["source"], spec["license"]
     st = _object(raw["strategy"], {"id", "version", "parameters"})
     if declared == "TICK_COUNT" and st["id"] != "no-trade":
@@ -287,7 +307,8 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                                 opening_cash=cash, risk=limits, fill_policy=policy,
                                 protection_policy=protection, settings=settings,
                                 fx_series=fx_series, fx_policy=fx_policy,
-                                split_schedule=schedule, dividend_schedule=dividend_schedule)
+                                split_schedule=schedule, dividend_schedule=dividend_schedule,
+                                delisting_schedule=delisting_schedule)
     report = runner.run(events)
     output_dir = (root / raw["output_dir"]).resolve()
     if output_dir in (root, source_file):
@@ -324,6 +345,7 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         "fx_reporting_currency": fx_policy.base_currency if fx_policy is not None else None,
         "fx_source": fx_source, "fx_license": fx_license,
         "fx_data_release_verified": False,
+        "delisting_schedule_sha256": delisting_file_hash,
         "pit_dataset_file_sha256": pit_file_hash,
         "pit_evidence_sha256": pit_result.evidence_sha256 if pit_result else None,
         "pit_gate_checked_events": pit_result.event_count if pit_result else None,

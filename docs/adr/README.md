@@ -30,4 +30,4 @@
 
 - [0016](0016-session-open-split-replay.md) — Accepted (offline research only): as-of session-open split with E3/E4 inventory parity and feature invalidation. All other issuer actions blocked.
 
-- [0017](0017-dividend-research-replay.md) — Accepted offline research only: PIT entitlement/payment and net receivable; delisted holdings unsupported.
+- [0017](0017-dividend-research-replay.md) — Accepted offline research only: PIT entitlement/payment and net receivable; delisted holdings unsupported.\n\n- [0018](0018-delisting-terminal-bar-research.md) — Accepted (offline research): PIT-pinned unheld terminal delisting; held shares/unsettled orders fail closed, no implied recovery.\n
