@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-16
-**현재:** **E0~E4 검증 및 main 병합 완료**. E5.1 PR #23 main 병합 완료. E5.2 오프라인 연구 CLI/manifest PR #24 main 병합·CI 통과. E5 전체 미완료. E4 전략/Feature/ORB/allocator PR #21, Fill 귀속 가상장부 PR #22 완료. 자동 체결 모델·백테스트·실거래 없음.
-**현재 Stage:** [E5 Backtest Engine — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (IN PROGRESS: PR #23/#24 MERGED; next E5.3); E4 Issue #5 VERIFIED (PR #21/#22). **LIVE NOT AUTHORIZED.**
+**현재:** E0~E4 완료. E5.1 (#23)·E5.2 (#24) main 병합; **E5.3 PR #25 GitHub CI Python 3.12/3.13 각각 216 passed**, Ruff/mypy/secrets 통과. E5.3 병합 직전이며 E5 전체 검증/데이터 근거 Gate는 여전히 미완료. LIVE 없음.
+**현재 Stage:** [E5 Backtest Engine — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (IN PROGRESS: PR #23/#24 MERGED; E5.3 PR #25 verified in CI; pending merge); E4 Issue #5 VERIFIED (PR #21/#22). **LIVE NOT AUTHORIZED.**
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -20,7 +20,7 @@
 - **E2 구현:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) immutable State/Reducer + pure observation routing, DAG scheduler skeleton, SQLite event journal/atomic checkpoints/restart verification, fail-closed halt.
 - **E2 CI:** [run 43834211614](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834211614): Python 3.12/3.13 각각 99 passed + Ruff/mypy/secret guard. 로컬은 96 passed, 3 skipped (선택 라이브러리 미설치).
 - **E2 병합 증거:** [PR #15](https://github.com/ByeonDoHyeon06/invest-engine/pull/15) squash commit [7d1b814](https://github.com/ByeonDoHyeon06/invest-engine/commit/7d1b814366cb5b4c4976db04ecbddf764c65ef82). 최종 PR CI [43834608280](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43834608280), Python 3.12/3.13 각 99 passed, Ruff/mypy/secret guard green.
-- **다음 단일 작업:** E5.3에서 stop/target·gap 동시 봉 보수모델과 견고성 테스트를 분리 구현. [E5 Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6)에서 E2 관측 저널 → E4 전략 신호/배분 → E3 합성 OrderIntent/Fill/virtual attribution의 **결정론적 통합 Replay**를 먼저 설계하고, bar-only 보수적 체결모델과 cost/experiment manifest를 별도 PR로 구현. E4 연구 코드를 Live로 자동연결하지 않음.
+- **다음 단일 작업:** [E5.3 PR #25](https://github.com/ByeonDoHyeon06/invest-engine/pull/25)의 Ruff/mypy/pytest CI 검증·문서 반영 후 병합. 이후 E5 전체 게이트 감사(비용·FX/세금·데이터 계보/진입 청산 동시성 한계)와 E6 준비. [E5 Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6)에서 E2 관측 저널 → E4 전략 신호/배분 → E3 합성 OrderIntent/Fill/virtual attribution의 **결정론적 통합 Replay**를 먼저 설계하고, bar-only 보수적 체결모델과 cost/experiment manifest를 별도 PR로 구현. E4 연구 코드를 Live로 자동연결하지 않음.
 - 미래 개선 TODO: Decimal 자릿수/통화별 반올림 정책은 E3 money ledger 이전에 별도 ADR 결정. 단순 범위 제한된 속성 테스트를 모든 입력에 대한 임의 정밀도 보장으로 해석하지 말 것.
 - LIVE: NOT AUTHORIZED, 브로커 주문 호출 경로 없음.
 
@@ -97,6 +97,13 @@
 - **최종 E4 PR CI:** [43857703057](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/43857703057) Python 3.12/3.13 각각 191 passed, Ruff/mypy/secret guard green. 로컬 Python 3.13 188 passed + 3 skipped (선택 패키지 미설치).
 - **E5로 이월:** 전략 신호/귀속 티켓의 영속 트랜잭션 경계, E2/E4/E3 replay orchestration, actual fill model, fee/slippage stress, report/Run API.
 - LIVE: NOT AUTHORIZED; 토스증권 연결 없음.
+
+## E5.3 합성 보호청산 모델 (2026-11-17 · PR #25 검증 중)
+
+- [PR #25](https://github.com/ByeonDoHyeon06/invest-engine/pull/25): `ProtectionPolicy` 기본 비활성, 관측된 매수 Fill 이후 다음 봉에서만 stop/target 평가, stop-first 충돌, 갭하락 불리한 체결, 엄격 target 관통, per-bar 참여 상한, 부분 청산, E3/E4 장부 귀속.
+- [E5_PROTECTION.md](E5_PROTECTION.md) · [ADR-0011](adr/0011-protective-ohlcv.md). 합성 정책은 증권사 실제 stop 주문이 아니며 가격·체결 보장 없음. 주문 충돌은 InvalidEvent로 fail-closed.
+- 로컬 Python 3.13: **213 passed, 3 skipped** (Hypothesis/PyArrow 미설치). GitHub CI [run 44050886947](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44050886947) Python 3.12/3.13 각각 **216 passed**, Ruff/mypy/secrets 성공. E5 전체는 아직 미완료.
+- **다음:** PR #25 main 병합 후 E5 도메인/데이터/비용/보고서 잔여 Gate 검토. E6 ML/Walk-forward는 E5 릴리스 통과 후.
 
 ## 변경 기록
 - 2026-11-16: E3.4 [PR #20](https://github.com/ByeonDoHyeon06/invest-engine/pull/20) merged `affe843`, main CI `43852453688` Python 3.12/3.13 each 160 passed + Ruff/mypy/secrets. E3 synthetic core complete, E4 Issue #5 NEXT.

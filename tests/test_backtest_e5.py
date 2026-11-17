@@ -208,3 +208,156 @@ def test_real_orb_plugin_causal_integration_21_synthetic_sessions():
     assert result.decisions[-2].fills == ()
     assert result.decisions[-1].fills
     assert result.entry_fill_count == 1
+
+
+def protection_runner(*, reward: str | None = "1.5", adverse: str = "0",
+                      participation: str = "0.05", exit_on: int | None = None) -> HistoricalBacktest:
+    """Opt-in OHLCV protection: no live stop order or brokerage assumption."""
+    from invest_engine.research.protection import ProtectionPolicy
+
+    config = TradingConfig(
+        "sim", (MonetaryRules("KRW", D("1")),),
+        ((INST.key, InstrumentRules(D("1"), D("1"))),), fee_rate=D("0.001"),
+    )
+    return HistoricalBacktest(
+        calendar=StaticSessionCalendar((TradingSession(Market.KR, "KRX", T, T+timedelta(hours=1)),)),
+        strategies=(SignalOnFirstBar(exit_on=exit_on),), config=config,
+        opening_cash=(Money(D("100000"), "KRW"),),
+        risk=RiskLimits(per_trade_planned_loss=D("0.5"),
+                        max_symbol_cost_fraction=D("0.2"), max_total_cost_fraction=D("0.5")),
+        fill_policy=BarFillPolicy(participation=D(participation)),
+        protection_policy=ProtectionPolicy(
+            enabled=True, reward_multiple=D(reward) if reward is not None else None,
+            adverse_bps=D(adverse)),
+    )
+
+
+def test_e5_protection_collision_stop_first_and_reproducible():
+    events = feed(prices=(
+        ("100", "100", "100", "100", "1000"),
+        ("101", "103", "95", "101", "1000"),
+        ("101", "120", "80", "101", "1000"),
+    ))
+    result = protection_runner().run(events)
+    assert result.entry_fill_count == 1
+    assert result.exit_fill_count == 1
+    assert result.fills[-1].reason_code == "STOP_FIRST_COLLISION"
+    assert result.fills[-1].price == D("90")  # not favorable 115 target
+    assert dict(result.by_currency_end) == {"KRW": D("99490")}
+    assert result.decisions[1].fills and result.decisions[2].fills
+    assert protection_runner().run(events).run_sha256 == result.run_sha256
+
+
+def test_e5_gap_below_stop_is_not_filled_at_favorable_stop():
+    events = feed(prices=(
+        ("100", "100", "100", "100", "1000"),
+        ("101", "103", "95", "101", "1000"),
+        ("70", "80", "60", "70", "1000"),
+    ))
+    normal = protection_runner().run(events)
+    adverse = protection_runner(adverse="100").run(events)
+    assert normal.fills[-1].price == D("70")
+    assert normal.fills[-1].reason_code == "GAP_BELOW_STOP"
+    assert adverse.fills[-1].price == D("69")  # 69.3 -> floor to one KRW tick
+    assert dict(adverse.net_pnl)["KRW"] < dict(normal.net_pnl)["KRW"]
+
+
+def test_e5_only_target_reached_conservative_no_price_improvement():
+    events = feed(prices=(
+        ("100", "100", "100", "100", "1000"),
+        ("101", "103", "95", "101", "1000"),
+        ("116", "120", "98", "117", "1000"),
+    ))
+    result = protection_runner().run(events)
+    assert result.fills[-1].reason_code == "TARGET_TRIGGERED"
+    assert result.fills[-1].price == D("115")  # no generous gap-open improvement
+    assert dict(result.net_pnl)["KRW"] > 0
+
+
+def test_e5_protection_begins_after_entry_observation_not_same_bar():
+    events = feed(prices=(
+        ("100", "100", "100", "100", "1000"),
+        ("101", "103", "70", "101", "100000"),  # full entry at observation; no protection yet
+        ("101", "103", "91", "101", "1000"),
+    ))
+    result = protection_runner().run(events)
+    assert result.entry_fill_count == 1
+    assert result.exit_fill_count == 0
+    assert all(not v.reason_code.startswith("STOP_") for v in result.fills)
+
+
+def test_e5_volume_limited_protection_partial_across_bars():
+    events = feed(prices=(
+        ("100", "100", "100", "100", "1000"),
+        ("101", "103", "95", "101", "100000"),  # enough to fully fill BUY
+        ("101", "103", "85", "90", "20"),
+        ("89", "95", "80", "89", "20"),
+        ("89", "96", "78", "88", "2000"),
+    ))
+    result = protection_runner(participation="0.10").run(events)
+    assert result.entry_fill_count == 1
+    assert result.exit_fill_count == 3
+    assert tuple(x.quantity for x in result.fills[1:]) == (D("2"), D("2"), D("96"))
+    assert result.fills[1].price == D("90")
+    assert result.fills[2].price == D("89")
+    assert result.fills[3].price == D("89")  # open gap below stop in final bar
+    assert dict(result.by_currency_end)["KRW"] < D("100000")
+
+
+def test_e5_protection_policy_validation_and_explicit_sell_conflict():
+    from invest_engine.research.protection import ProtectionPolicy
+
+    with pytest.raises(ValueError):
+        ProtectionPolicy(enabled=True, reward_multiple=D("-1"))
+    with pytest.raises(ValueError):
+        ProtectionPolicy(enabled=True, adverse_bps=D("10000"))
+    with pytest.raises(ValueError):
+        ProtectionPolicy(enabled=True, adverse_bps=D("NaN"))
+
+
+def test_e5_rejects_unresolvable_intrabar_competing_sell():
+    events = feed(prices=(
+        ("100", "100", "100", "100", "1000"),
+        ("101", "103", "95", "101", "100000"),  # full entry
+        ("101", "103", "95", "101", "1000"),  # strategy EXIT proposed at close
+        ("100", "103", "80", "100", "1000"),  # existing SELL and stop both eligible
+    ))
+    with pytest.raises(InvalidEvent, match="unresolvable protective exit"):
+        protection_runner(exit_on=2).run(events)
+
+
+def test_e5_no_target_when_reward_multiple_not_configured():
+    events = feed(prices=(
+        ("100", "100", "100", "100", "1000"),
+        ("101", "103", "95", "101", "100000"),
+        ("115", "125", "91", "119", "1000"),
+    ))
+    result = protection_runner(reward=None).run(events)
+    assert result.exit_fill_count == 0  # high >= 115 is NOT an automatic target
+
+
+def test_e5_filled_strategy_exit_releases_protection_before_later_stop():
+    events = feed(prices=(
+        ("100", "100", "100", "100", "1000"),
+        ("101", "103", "95", "101", "100000"),
+        ("101", "103", "95", "101", "1000"),
+        ("101", "103", "99", "101", "100000"),
+        ("89", "95", "80", "89", "1000"),
+    ))
+    result = protection_runner(exit_on=2).run(events)
+    assert result.entry_fill_count == 1
+    assert result.exit_fill_count == 1
+    assert result.fills[-1].reason_code == "LIMIT_FILLED"
+    assert all(x.reason_code != "GAP_BELOW_STOP" for x in result.fills)
+    assert dict(result.net_pnl)["KRW"] > 0
+
+
+def test_e5_target_touch_only_not_assumed_filled():
+    events = feed(prices=(
+        ("100", "100", "100", "100", "1000"),
+        ("101", "103", "95", "101", "100000"),
+        ("110", "115", "91", "114", "1000"),  # exactly touches target=115
+    ))
+    result = protection_runner().run(events)
+    assert result.exit_fill_count == 0
+    assert all(x.reason_code != "TARGET_TRIGGERED" for x in result.fills)

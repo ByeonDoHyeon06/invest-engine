@@ -1,4 +1,4 @@
-# E5 — Historical backtest runner (E5.1)
+# E5 — Historical backtest runner (E5.1–E5.3)
 
 **Status:** Initial implementation, synthetic/offline only. No brokerage access or live orders.
 
@@ -29,7 +29,7 @@ Events are processed at the **observation time**, not retroactively at each intr
 - E5.1 supports **finalized time-bar LIMIT orders only**. The bar's low must **strictly penetrate below** BUY limit minus `(spread_bps+impact_bps)` buffer. SELL requires high to exceed limit plus buffer. A price touch alone is not considered a fill.
 - Price is the order's **limit** (never a better execution price invented from OHLC); the spread/impact parameter increases the amount of required price penetration and can turn a candidate into no fill. This is a deliberately simplified fill probability proxy, **not a market microstructure or slippage reconstruction**.
 - Max participation is a fraction of historical bar volume, rounded down to the instrument lot size. Volume availability is shared among orders in deterministic order. Partial fills are allowed, fees/taxes are charged by E3.
-- Stops from E4 are **risk proposals**, not executable protective stop orders; same-bar stop/target collision and gap-loss fill logic are **not implemented** in E5.1. A strategy's EXIT produces a new SELL limit proposal, which can execute only on subsequent bars.
+- Stops from E4 are **risk proposals** by default. E5.3 adds an **opt-in offline-only protection hypothesis**, described in [E5_PROTECTION.md](E5_PROTECTION.md), for stop-first collision handling, adverse gaps, volume-limited partial exits, and no same-entry-bar protection. No actual broker stop is submitted. A strategy's EXIT still produces a later SELL limit proposal; an unresolvable same-bar conflict with protection errors rather than inventing an intrabar sequence.
 - DAY limit orders are canceled on the final bar of a declared session; no instant fills inferred from market status/zero-volume bars. If a dataset ends during a session, open reservations remain and must be interpreted as incomplete research.
 - Tick/quote-assisted execution, dynamic transaction-cost model, exchange-realistic partial queue modeling, real-data license validation and settlement-aware forward simulation remain separate E5.2+ tasks.
 
@@ -46,7 +46,8 @@ Events are processed at the **observation time**, not retroactively at each intr
 
 - Synthetic no-trade, rejection, no-look-ahead, same-bar no-fill, strictly penetrated limit, volume cap + partial fills, fee and spread sensitivity, exit after later bar, deterministic rerun.
 - Must pass full E0~E4 regression tests on Python 3.12/3.13 + Ruff/mypy/secrets CI.
-- E5.2: implement stop/target ambiguity with conservative adverse fill and gap/participation tests; provider-specific fee/FX/time-zone and realistic historical universe; report trade pairing and research benchmark metrics.
-- E5.3: CLI RunRequest/RunResult + experiment manifest code/calendar/fill/dataset/version pinning, persisted trade and decision replay, golden fixtures, property-based stress.
+- E5.2: CLI RunRequest/RunResult with code/calendar/fill/dataset/version identifiers and deterministic report artifacts (implemented; see [E5_EXPERIMENT.md](E5_EXPERIMENT.md)).
+- E5.3: opt-in synthetic protective stop/target ambiguity, adverse gaps, volume caps, reason tracing and repeatability (see [E5_PROTECTION.md](E5_PROTECTION.md)).
+- Still needed before final E5 sign-off: wider cross-market cost stress, realistic historical data/fee/FX/corporate-action provenance, tick/quote interfaces and open-order conflict-model improvements.
 
 **E5 is not complete at E5.1.** Neither positive PnL nor backtest hash is evidence of live profitability.

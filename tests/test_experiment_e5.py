@@ -111,3 +111,38 @@ def test_unapproved_model_and_float_amount_rejected(tmp_path: Path):
     path.write_text(json.dumps(record))
     with pytest.raises(ValueError, match="decimal"):
         run_experiment(path)
+
+
+def test_optional_protective_exit_contract_and_legacy_run_compatibility(tmp_path: Path):
+    """The E5.2 spec remains valid; E5.3 protection requires explicit opt-in."""
+    path = make_spec(tmp_path)
+    original = run_experiment(path)
+    raw = json.loads(path.read_text())
+    raw["fill_model"]["protective_exit"] = {
+        "enabled": True, "reward_multiple": "1.5", "adverse_bps": "10",
+        "version": "protective-ohlcv-v1",
+    }
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    enabled = run_experiment(path)
+    assert enabled.report.run_sha256 != original.report.run_sha256
+    manifest = json.loads((tmp_path / "report-out" / "manifest.json").read_text())
+    assert manifest["protective_exit_version"] == "protective-ohlcv-v1"
+    assert enabled.manifest_sha256 != original.manifest_sha256
+    assert run_experiment(path).report.run_sha256 == enabled.report.run_sha256
+
+
+def test_reject_invalid_protection_json_without_fallback(tmp_path: Path):
+    path = make_spec(tmp_path)
+    raw = json.loads(path.read_text())
+    raw["fill_model"]["protective_exit"] = {
+        "enabled": "true", "reward_multiple": "1.5", "adverse_bps": "0",
+        "version": "protective-ohlcv-v1",
+    }
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(ValueError, match="boolean"):
+        run_experiment(path)
+    raw["fill_model"]["protective_exit"]["enabled"] = True
+    raw["fill_model"]["protective_exit"]["unsupported"] = "anything"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(ValueError, match="unexpected"):
+        run_experiment(path)

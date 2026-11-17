@@ -18,6 +18,7 @@ from invest_engine.data.calendar import StaticSessionCalendar, TradingSession
 from invest_engine.domain.primitives import AssetClass, InstrumentId, Market, Money
 from invest_engine.research.backtest import BacktestSettings, HistoricalBacktest
 from invest_engine.research.fills import BarFillPolicy
+from invest_engine.research.protection import ProtectionPolicy
 from invest_engine.research.report import BacktestReport, canonical_json, sha256
 from invest_engine.strategies.baselines import NoTradeStrategy
 from invest_engine.strategies.contracts import DataRequirement, Strategy
@@ -137,14 +138,35 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                         max_symbol_cost_fraction=_decimal(risk["max_symbol_cost_fraction"]),
                         max_total_cost_fraction=_decimal(risk["max_total_cost_fraction"]),
                         max_open_positions=int(risk["max_open_positions"]))
-    fill = _object(raw["fill_model"], {"version", "participation", "spread_bps", "impact_bps"})
+    fill_required = {"version", "participation", "spread_bps", "impact_bps"}
+    fields = raw["fill_model"]
+    if not isinstance(fields, dict):
+        raise ValueError("fill_model must be an object")
+    if set(fields) not in (fill_required, fill_required | {"protective_exit"}):
+        raise ValueError("unexpected or missing fill model fields")
+    fill = cast(dict[str, Any], fields)
     policy = BarFillPolicy(_decimal(fill["participation"]), _decimal(fill["spread_bps"]),
                            _decimal(fill["impact_bps"]), version=fill["version"])
+    protection = ProtectionPolicy()
+    # Opt-in extension; the original E5 research-v1 schema remains readable.
+    if "protective_exit" in raw["fill_model"]:
+        protection_raw = _object(raw["fill_model"]["protective_exit"], {
+            "enabled", "reward_multiple", "adverse_bps", "version",
+        })
+        if not isinstance(protection_raw["enabled"], bool):
+            raise ValueError("protection.enabled must be a JSON boolean")
+        multiple = protection_raw["reward_multiple"]
+        protection = ProtectionPolicy(
+            enabled=protection_raw["enabled"],
+            reward_multiple=_decimal(multiple) if multiple is not None else None,
+            adverse_bps=_decimal(protection_raw["adverse_bps"]),
+            version=protection_raw["version"],
+        )
     settings = BacktestSettings(code_sha=raw["code_sha"], dataset_source=dataset["source"],
                                 data_license=dataset["license"])
     runner = HistoricalBacktest(calendar=calendar, strategies=(strategy,), config=trading,
                                 opening_cash=cash, risk=limits, fill_policy=policy,
-                                settings=settings)
+                                protection_policy=protection, settings=settings)
     report = runner.run(events)
     output_dir = (root / raw["output_dir"]).resolve()
     if output_dir in (root, source_file):
@@ -156,7 +178,9 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         "dataset_event_sha256": report.dataset_sha256,
         "dataset_source": dataset["source"], "data_license": dataset["license"],
         "strategy_id": st["id"], "strategy_version": st["version"],
-        "fill_model_version": policy.version, "config_sha256": report.config_sha256,
+        "fill_model_version": policy.version,
+        "protective_exit_version": protection.version if protection.enabled else None,
+        "config_sha256": report.config_sha256,
         "run_sha256": report.run_sha256,
         "warnings": list(report.notes),
     }

@@ -36,6 +36,7 @@
 - [E4 Strategy SDK 및 ORB 가설 구현](docs/E4_STRATEGY.md)
 - [위험·주문·포트폴리오](docs/RISK_EXECUTION.md)
 - [백테스트·Forward·검증 게이트](docs/VALIDATION.md)
+- [E5 보수적 손절·익절 체결 연구 정책](docs/E5_PROTECTION.md)
 - [외부 데이터·증권사 연동](docs/INTEGRATIONS.md)
 - [개발·리뷰 규칙](docs/CONTRIBUTING.md)
 - [ADR 인덱스](docs/adr/README.md)
