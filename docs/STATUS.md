@@ -1,8 +1,8 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-17
-**현재:** E0~E4 완료. E5.1 (#23)·E5.2 (#24) main 병합; **E5.3 PR #25 main 병합, GitHub PR CI Python 3.12/3.13 각각 216 passed**, Ruff/mypy/secrets 통과. E5.3 검증 완료. E5 전체 데이터·비용·실험 견고성 Gate는 아직 미완료. LIVE 없음.
-**현재 Stage:** [E5 Backtest Engine — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (IN PROGRESS: PR #23/#24 MERGED; E5.3 PR #25 MERGED; E5.4 verification gate NEXT); E4 Issue #5 VERIFIED (PR #21/#22). **LIVE NOT AUTHORIZED.**
+**현재:** E0~E4 완료. E5.1/#23·E5.2/#24·E5.3/#25 병합, **E5.4 PR #26 CI 통과** (Python 3.12/3.13 각 224 passed; Ruff/mypy/secrets green). E5 최종 신뢰성 게이트는 실제 시장별 비용·FX·PIT 기업행동/유니버스 검증 불완전으로 열어 둔다. 실거래 없음.
+**현재 Stage:** [E5 Backtest — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (E5.4 PR #26 verified; E5.5 real-data/cost/FX gate NEXT). E6 별도 연구는 E5 게이트 이후. **LIVE NOT AUTHORIZED.**
 **실거래 승인 상태:** NOT AUTHORIZED
 
 ## 완료된 E0/E1와 다음 실행 지점 (2026-11-15)
@@ -104,6 +104,14 @@
 - [E5_PROTECTION.md](E5_PROTECTION.md) · [ADR-0011](adr/0011-protective-ohlcv.md). 합성 정책은 증권사 실제 stop 주문이 아니며 가격·체결 보장 없음. 주문 충돌은 InvalidEvent로 fail-closed.
 - 로컬 Python 3.13: **213 passed, 3 skipped** (Hypothesis/PyArrow 미설치). GitHub CI [run 44050886947](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44050886947) Python 3.12/3.13 각각 **216 passed**, Ruff/mypy/secrets 성공. E5 전체는 아직 미완료.
 - **다음:** E5.4 데이터 계보·비용·보고서·시장 모델 잔여 Gate 검토. E6 ML/Walk-forward는 E5 릴리스 통과 후.
+
+## E5.4 데이터 감사·비용 민감도 검증 (2026-11-17)
+
+- [PR #26](https://github.com/ByeonDoHyeon06/invest-engine/pull/26): 종목·시간봉·세션별 BAR_GAP/partial coverage 검사, 무검증 자료의 명시적 경고, `audit.json`·artifact file SHA-256·코드 소스트리 fingerprint, `invest-engine stress` 4단 비용/유동성 가정 비교.
+- **GitHub CI [run 44052899012](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44052899012): Python 3.12와 3.13 각각 224 passed + Ruff/mypy/secret guard 통과.** 첫 PR run의 mypy Optional interval 오류는 후속 커밋에서 수정·재검증.
+- 로컬 Python 3.13: 221 passed, 3 skipped (Hypothesis/PyArrow 미설치).
+- [E5_ROBUSTNESS.md](E5_ROBUSTNESS.md) · [ADR-0012](adr/0012-audit-stress.md). 합성 ORB 시나리오와 데이터 훼손/기존 결과 보호 테스트 포함.
+- **미검증:** 실제 시장별 수수료·세금·FX, PIT 기업행동/상폐 종목·원본 라이선스, Tick/Quote 체결 모델. E5 Issue #6 아직 OPEN; LIVE NOT AUTHORIZED.
 
 ## 변경 기록
 - 2026-11-17: E5.3 [PR #25](https://github.com/ByeonDoHyeon06/invest-engine/pull/25) squash merged [c4adfc6](https://github.com/ByeonDoHyeon06/invest-engine/commit/c4adfc6d55a010dbd0fa57e24fd48f828fac1556); final PR [CI 44051089001](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44051089001) Python 3.12/3.13 각 216 passed, Ruff/mypy/secret guard 성공. E5.4 gate audit NEXT.
