@@ -17,6 +17,10 @@ from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.events import Bar, EventEnvelope, MarketPayload
 from invest_engine.domain.primitives import Money
 from invest_engine.research.fills import BarFillPolicy, eligible_fill
+from invest_engine.research.protection import (
+    ProtectionLot, ProtectionPolicy, consume_oldest, consume_protection,
+    new_protected_lot, protective_exit,
+)
 from invest_engine.research.report import (
     BacktestReport, DecisionRecord, EquityPoint, FillTrace, drawdown, sha256,
 )
@@ -31,7 +35,7 @@ from invest_engine.strategies.contracts import Strategy
 from invest_engine.strategies.runtime import StrategyRunner
 from invest_engine.trading.ledger import TradingState
 from invest_engine.trading.models import (
-    DecisionStatus, OrderStatus, SellSettlementMode, Side, TradingConfig,
+    DecisionStatus, OrderIntent, OrderStatus, SellSettlementMode, Side, TradingConfig,
 )
 from invest_engine.trading.monitoring import MarketMark
 from invest_engine.trading.policy import RiskLimits
@@ -79,7 +83,8 @@ class HistoricalBacktest:
 
     All input is caller-supplied, historically ordered, finalized market events.
     A fresh instance of each strategy is required per independent run.
-    Stops in E4 are risk sizing plans, NOT executable stop orders in this model.
+    E4 stops remain plans unless the explicitly opt-in offline protection
+    simulator is enabled. No real protective orders are ever sent.
     """
 
     def __init__(
@@ -87,6 +92,7 @@ class HistoricalBacktest:
         config: TradingConfig, opening_cash: tuple[Money, ...],
         risk: RiskLimits | None = None,
         fill_policy: BarFillPolicy | None = None,
+        protection_policy: ProtectionPolicy | None = None,
         allocation_policy: AllocationPolicy | None = None,
         settings: BacktestSettings | None = None,
     ) -> None:
@@ -102,6 +108,8 @@ class HistoricalBacktest:
         if self.risk.require_monitoring:
             raise ValueError("E5 does not yet supply the E3 monitored risk snapshot")
         self.fill_policy = fill_policy if fill_policy is not None else BarFillPolicy()
+        self.protection_policy = (protection_policy if protection_policy is not None
+                                  else ProtectionPolicy())
         self.allocation_policy = allocation_policy if allocation_policy is not None else AllocationPolicy()
         self.settings = settings if settings is not None else BacktestSettings()
         self._used = False
@@ -114,7 +122,7 @@ class HistoricalBacktest:
             raise ValueError("historical market events required")
         # Input source/license and calendar are verified by the caller; no network calls.
         data_sha = sha256(tuple(canonical_bytes(e).hex() for e in events))
-        config_sha = sha256((self.config, self.risk, self.fill_policy,
+        config_sha = sha256((self.config, self.risk, self.fill_policy, self.protection_policy,
                              self.allocation_policy, self.settings,
                              # E4 ORB configuration differs from runtime snapshot; include both.
                              tuple((s.manifest, getattr(s, "params", None), s.snapshot().hex())
@@ -134,12 +142,16 @@ class HistoricalBacktest:
         exit_results: dict[str, list[Decimal]] = {}
         turnover: dict[str, Decimal] = {}
         fill_trace: list[FillTrace] = []
+        protection_lots: tuple[ProtectionLot, ...] = ()
         entries = exits = 0
         for event in events:
             # E2 strict ordering and quality gating precede every strategy or fill.
             observation.accept(event)
             now = max(event.available_at, event.received_at)
             matched_fills: list[str] = []
+            protective_intents: list[str] = []
+            protective_decisions: list[tuple[str, str, tuple[str, ...]]] = []
+            protective_reasons: set[str] = set()
             bar = event.payload if isinstance(event.payload, Bar) else None
             if bar is not None and event.instrument_id is not None:
                 if bar.end > now or event.event_time < bar.end:
@@ -149,6 +161,79 @@ class HistoricalBacktest:
                     raise InvalidEvent("bar outside authoritative historical session")
                 # Existing orders are handled BEFORE any strategy sees this bar.
                 volume_used = Decimal(0)
+                # A position's standing synthetic protection was armed only
+                # after an earlier observed fill. No intrabar look-ahead for
+                # positions established at the end of this bar.
+                if self.protection_policy.enabled:
+                    for lot in tuple(protection_lots):
+                        rule = self.config.rules_for(lot.instrument)
+                        available = bar.volume * self.fill_policy.participation - volume_used
+                        candidate_exit = protective_exit(
+                            lot, event, rule, self.protection_policy,
+                            remaining_volume=max(available, Decimal(0)),
+                        )
+                        if candidate_exit is None:
+                            continue
+                        # An existing SELL reservation could already have
+                        # executed intrabar. Without quotes there is no
+                        # causal resolution; refuse an optimistic simulation.
+                        if any(
+                            o.intent.instrument == lot.instrument
+                            and o.intent.side is Side.SELL
+                            and o.status not in (
+                                OrderStatus.FILLED, OrderStatus.CANCELED,
+                                OrderStatus.REJECTED,
+                            )
+                            for o in trader.state.orders
+                        ):
+                            raise InvalidEvent(
+                                "unresolvable protective exit vs existing SELL order"
+                            )
+                        exit_id = f"e5:protect:{event.event_id}:{lot.source_execution_id}"
+                        protective_intent = OrderIntent(
+                            exit_id, self.config.account_id, "e5:standing-protection",
+                            lot.instrument, Side.SELL, candidate_exit.quantity,
+                            candidate_exit.price, candidate_exit.observed_at,
+                        )
+                        approved = trader.submit(protective_intent)
+                        if approved.decision.decision is not DecisionStatus.APPROVED:
+                            raise InvalidEvent("synthetic protection denied by risk")
+                        protective_intents.append(exit_id)
+                        protective_decisions.append((
+                            exit_id, DecisionStatus.APPROVED.value,
+                            (candidate_exit.reason_code,),
+                        ))
+                        protective_reasons.add(candidate_exit.reason_code)
+                        trader.accept_simulated(exit_id, candidate_exit.observed_at)
+                        existing = trader.state.position(lot.instrument)
+                        old_realized = existing.realized_pnl if existing else Decimal(0)
+                        trader.fill_simulated(
+                            exit_id, price=candidate_exit.price,
+                            quantity=candidate_exit.quantity,
+                            execution_id=exit_id, at=candidate_exit.observed_at,
+                        )
+                        filled = trader.state.fills[-1]
+                        ticket = AttributionTicket(exit_id, lot.instrument, Side.SELL,
+                                                   filled.quantity)
+                        virtual = record_simulated_fill(virtual, ticket, filled)
+                        protection_lots = consume_protection(
+                            protection_lots, lot.source_execution_id, filled.quantity,
+                        )
+                        current = trader.state.position(lot.instrument)
+                        realized_delta = (current.realized_pnl if current else Decimal(0)) - old_realized
+                        currency = lot.instrument.currency
+                        realized[currency] = realized.get(currency, Decimal(0)) + realized_delta
+                        exit_results.setdefault(currency, []).append(realized_delta)
+                        charge = trader.state.charges[-1]
+                        turnover[currency] = turnover.get(currency, Decimal(0)) + charge.gross
+                        exits += 1
+                        volume_used += filled.quantity
+                        fill_trace.append(FillTrace(
+                            exit_id, exit_id, event.event_id, Side.SELL.value,
+                            filled.quantity, filled.price, filled.fee, charge.tax,
+                            realized_delta, candidate_exit.reason_code,
+                        ))
+                        matched_fills.append(exit_id)
                 for order in tuple(trader.state.orders):
                     rule = self.config.rules_for(order.intent.instrument)
                     candidate = eligible_fill(order, event, rule, self.fill_policy,
@@ -167,7 +252,21 @@ class HistoricalBacktest:
                         virtual = record_simulated_fill(virtual, tickets[actual.intent_id], actual)
                     if order.intent.side is Side.BUY:
                         entries += 1
+                        if self.protection_policy.enabled:
+                            stop = order.intent.stop_price
+                            if stop is None:
+                                raise InvalidEvent("protected research requires explicit stop")
+                            protection_lots += (new_protected_lot(
+                                order.intent.instrument, source_execution_id=fill_id,
+                                quantity=actual.quantity, entry_price=actual.price,
+                                stop_price=stop, armed_at=candidate.observed_at,
+                                policy=self.protection_policy,
+                            ),)
                     else:
+                        if self.protection_policy.enabled:
+                            protection_lots = consume_oldest(
+                                protection_lots, order.intent.instrument, actual.quantity,
+                            )
                         exits += 1
                         after = trader.state.position(order.intent.instrument)
                         value = (after.realized_pnl if after else Decimal(0)) - old_realized
@@ -204,7 +303,7 @@ class HistoricalBacktest:
                 marks=tuple(marks.values()), as_of=now,
                 max_mark_age=self.settings.max_mark_age,
             ) if allocated.plans else ()
-            decision_items: list[tuple[str, str, tuple[str, ...]]] = []
+            decision_items: list[tuple[str, str, tuple[str, ...]]] = list(protective_decisions)
             for intent in proposed:
                 result = trader.submit(intent)
                 decision_items.append((intent.intent_id, result.decision.decision.value,
@@ -215,9 +314,9 @@ class HistoricalBacktest:
                     tickets[intent.intent_id] = ticket_for_plan(plan, intent)
                     trader.accept_simulated(intent.intent_id, now)
             reason_codes = tuple(sorted({r for outcome in outcomes for r in outcome.reason_codes}
-                                        | set(allocated.reason_codes)))
+                                        | set(allocated.reason_codes) | protective_reasons))
             decisions.append(DecisionRecord(event.event_id, tuple(s.signal_id for s in signals),
-                                            tuple(i.intent_id for i in proposed),
+                                            tuple(protective_intents) + tuple(i.intent_id for i in proposed),
                                             tuple(decision_items), tuple(matched_fills),
                                             reason_codes))
             equity.append(_equity(trader.state, marks, now, self.settings.max_mark_age))
@@ -253,7 +352,10 @@ class HistoricalBacktest:
             ("Offline research; no live order or broker connection.",
              "Limit touches do not guarantee fills; strict penetration/volume assumptions.",
              "Recorded fills occur at bar observation, not historical intrabar timestamps.",
-             "Stop prices are risk plans; this fill model does not place stops.",
+             ("E5.3 opt-in standing stops/targets use stop-first ambiguous-bar and "
+              "adverse-gap assumptions; these are synthetic, not broker orders."
+              if self.protection_policy.enabled else
+              "Stop prices are risk plans; this fill model does not place stops."),
              "Multi-currency equity is not aggregated without a proven FX series.",
              "Run code SHA, data provider/license identifiers must be independently verified."),
         )

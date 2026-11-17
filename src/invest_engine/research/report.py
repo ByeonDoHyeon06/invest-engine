@@ -64,6 +64,7 @@ class FillTrace:
     fee: Decimal
     tax: Decimal
     realized_pnl: Decimal
+    reason_code: str = "LIMIT_FILLED"
 
 
 @dataclass(frozen=True, slots=True)
