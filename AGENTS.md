@@ -86,3 +86,8 @@
 - data audit은 누락 Bar/partial session과 파일 해시만 검사한다. Corporate actions, PIT issuer/universe, 법적 데이터 라이선스, 실거래 비용·FX는 명시적으로 UNVERIFIED 처리한다.
 - 실험 manifest의 사용자 선언 code_sha와 실제 소스트리 sha256은 다르다. 암호서명이나 공급자 원본의 진위를 보증한다고 주장하지 않는다.
 - E5 Issue #6은 남은 PIT/FX/비용/Quote·Tick 모델 범위 결정을 완료하기 전까지 닫지 않는다. Live 금지.
+
+### E5.5 FX reporting guard
+- docs/E5_FX_REPORTING.md: research-only direct-pair as-of FX marks. Never use converted equity as broker buying power or E3 risk input.
+- Missing/stale/unreleased FX implies null base-currency PnL/drawdown; do not silently invert, interpolate, backfill or convert.
+- E5 real provider fees, corporate actions, point-in-time universe and tick/quote fill verification gates remain OPEN. LIVE NOT AUTHORIZED.
