@@ -187,7 +187,11 @@ def export_stress(
     if not isinstance(dataset, dict) or not isinstance(dataset.get("events_jsonl"), str):
         raise ValueError("invalid dataset path")
     data_path = (spec_path.parent / dataset["events_jsonl"]).resolve()
-    if dest in (spec_path, data_path):
-        raise ValueError("refusing to overwrite source config or market dataset")
+    original_out = raw.get('output_dir')
+    if not isinstance(original_out, str) or not original_out.strip():
+        raise ValueError('invalid original experiment output directory')
+    baseline_directory = (spec_path.parent / original_out).resolve()
+    if dest in (spec_path, data_path) or dest.is_relative_to(baseline_directory):
+        raise ValueError("refusing to overwrite source config, dataset or baseline report")
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(canonical_json(report))
