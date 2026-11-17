@@ -1,7 +1,7 @@
 # 프로젝트 현황 및 재개 지점
 
 **기준일:** 2026-11-17
-**현재:** E0~E4 완료. E5.1/#23·E5.2/#24·E5.3/#25 병합, **E5.4 PR #26 CI 통과** (Python 3.12/3.13 각 224 passed; Ruff/mypy/secrets green). E5 최종 신뢰성 게이트는 실제 시장별 비용·FX·PIT 기업행동/유니버스 검증 불완전으로 열어 둔다. 실거래 없음.
+**현재:** E0~E4 완료. E5.1/#23·E5.2/#24·E5.3/#25 병합, **E5.4 PR #26 main 병합 (cac9bfede) / 최종 PR CI 통과** (Python 3.12/3.13 각 225 passed; Ruff/mypy/secrets green). E5 최종 신뢰성 게이트는 실제 시장별 비용·FX·PIT 기업행동/유니버스 검증 불완전으로 열어 둔다. 실거래 없음.
 **현재 Stage:** [E5 Backtest — Issue #6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) (E5.4 PR #26 verified; E5.5 real-data/cost/FX gate NEXT). E6 별도 연구는 E5 게이트 이후. **LIVE NOT AUTHORIZED.**
 **실거래 승인 상태:** NOT AUTHORIZED
 
@@ -108,8 +108,8 @@
 ## E5.4 데이터 감사·비용 민감도 검증 (2026-11-17)
 
 - [PR #26](https://github.com/ByeonDoHyeon06/invest-engine/pull/26): 종목·시간봉·세션별 BAR_GAP/partial coverage 검사, 무검증 자료의 명시적 경고, `audit.json`·artifact file SHA-256·코드 소스트리 fingerprint, `invest-engine stress` 4단 비용/유동성 가정 비교.
-- **GitHub CI [run 44052899012](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44052899012): Python 3.12와 3.13 각각 224 passed + Ruff/mypy/secret guard 통과.** 첫 PR run의 mypy Optional interval 오류는 후속 커밋에서 수정·재검증.
-- 로컬 Python 3.13: 221 passed, 3 skipped (Hypothesis/PyArrow 미설치).
+- **최종 GitHub PR CI [run 44053364040](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44053364040): Python 3.12/3.13 각각 225 passed + Ruff/mypy/secret guard 통과. 병합 커밋 [cac9bfe](https://github.com/ByeonDoHyeon06/invest-engine/commit/cac9bfede31f6ffc5bee555ee8be1913a4485c9f).** 첫 PR run의 mypy Optional interval 오류는 후속 커밋에서 수정·재검증.
+- 로컬 Python 3.13: 222 passed, 3 skipped (Hypothesis/PyArrow 미설치).
 - [E5_ROBUSTNESS.md](E5_ROBUSTNESS.md) · [ADR-0012](adr/0012-audit-stress.md). 합성 ORB 시나리오와 데이터 훼손/기존 결과 보호 테스트 포함.
 - **미검증:** 실제 시장별 수수료·세금·FX, PIT 기업행동/상폐 종목·원본 라이선스, Tick/Quote 체결 모델. E5 Issue #6 아직 OPEN; LIVE NOT AUTHORIZED.
 
