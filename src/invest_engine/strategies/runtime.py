@@ -8,7 +8,6 @@ from invest_engine.data.calendar import SessionCalendar
 from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.primitives import InstrumentId
 from invest_engine.domain.events import Bar, EventEnvelope, MarketPayload
-from invest_engine.domain.primitives import utc_datetime
 from invest_engine.features.registry import FeatureRegistry
 from invest_engine.strategies.contracts import (
     BarObservation, Strategy, StrategyContext, StrategySignal,

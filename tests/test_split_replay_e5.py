@@ -19,10 +19,7 @@ from invest_engine.domain.primitives import Money
 from invest_engine.research.backtest import HistoricalBacktest
 from invest_engine.research.corporate_replay import SplitSchedule
 from invest_engine.research.experiment import run_experiment
-from invest_engine.research.pit import load_pit_evidence, validate_pit_events
 from invest_engine.research.protection import ProtectionPolicy
-from invest_engine.strategies.contracts import DataRequirement
-from invest_engine.strategies.baselines import NoTradeStrategy
 from invest_engine.trading.actions import SplitApplied
 from invest_engine.trading.models import TradingConfig
 from invest_engine.trading.money import InstrumentRules, MonetaryRules
