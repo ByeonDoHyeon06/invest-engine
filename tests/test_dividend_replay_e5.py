@@ -211,7 +211,7 @@ def test_pit_rejects_delist_even_when_dividend_modeled(tmp_path: Path):
     path = prepare_cli_dividend(tmp_path)
     config = json.loads(path.read_text())
     evidence_path = tmp_path/"pit.jsonl"
-    records = [json.loads(l) for l in evidence_path.read_text().splitlines()]
+    records = [json.loads(line) for line in evidence_path.read_text().splitlines()]
     action = next(x for x in records if x["kind"] == "corporate_action")
     action["action_type"] = "DELIST"
     evidence_path.write_text("".join(json.dumps(row, sort_keys=True)+"\n" for row in records))
