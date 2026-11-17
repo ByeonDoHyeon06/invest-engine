@@ -117,6 +117,9 @@
 
 ### E5 — Backtest Engine & Reporting
 
+**E5.9 PR #31 (GitHub CI verified, merge pending):** Optional PIT-declared dividend entitlement and later witnessed synthetic payment; net receivable in research equity, not spendable cash. Delisted position handling and one-month actual 1m share-volume ORB, verified real KR/US fee/tax/issuer data remain blockers. [E5_DIVIDEND_REPLAY](E5_DIVIDEND_REPLAY.md)/[ADR-0017](adr/0017-dividend-research-replay.md). Do not close E5 Issue #6 on synthetic evidence alone.
+
+
 **E5.8 split-only PIT replay:** [PR #30](https://github.com/ByeonDoHyeon06/invest-engine/pull/30) · [CI 44067166215](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44067166215) Python 3.12/3.13 each 266 passed. Session-open, known-in-advance share split from SHA-pinned raw unadjusted price inputs and PIT evidence; E3/E4 inventory change and E4 history reset. [Spec](E5_SPLIT_REPLAY.md) / [ADR-0016](adr/0016-session-open-split-replay.md). Unsupported issuer events / standing protection still blocked. Real market provider completeness, dividends/delistings, Tick/Quote, and live fees remain UNVERIFIED. E5 epic remains OPEN.
 
  [E5.6 PIT metadata contract; real-data gate OPEN]

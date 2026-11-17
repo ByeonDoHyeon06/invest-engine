@@ -12,6 +12,7 @@ from decimal import Decimal
 
 from invest_engine.core.replay import canonical_bytes
 from invest_engine.research.corporate_replay import SplitSchedule
+from invest_engine.research.dividend_replay import DividendSchedule
 from invest_engine.core.runtime import EventRuntime, RuntimeConfig
 from invest_engine.data.calendar import SessionCalendar
 from invest_engine.domain.errors import InvalidEvent
@@ -66,6 +67,10 @@ def _equity(state: TradingState, marks: dict[str, MarketMark], now: datetime,
             max_age: timedelta) -> EquityPoint:
     """No invented last price or FX. Incomplete valuation is not reported as zero."""
     cash = {c.currency: c.settled+c.unsettled for c in state.cash}
+    # Dividend entitlements are assets, not settled cash / buying power.
+    # Including net receivables prevents an artificial equity drop before pay date.
+    for receivable in state.dividend_receivables:
+        cash[receivable.currency] = cash.get(receivable.currency, Decimal(0)) + receivable.net
     complete = True
     for position in state.positions:
         if position.quantity <= 0:
@@ -99,6 +104,7 @@ class HistoricalBacktest:
         settings: BacktestSettings | None = None,
         fx_series: FxSeries | None = None, fx_policy: FxReportingPolicy | None = None,
         split_schedule: SplitSchedule | None = None,
+        dividend_schedule: DividendSchedule | None = None,
     ) -> None:
         if not strategies or len({s.manifest.strategy_id for s in strategies}) != len(strategies):
             raise ValueError("at least one uniquely named strategy required")
@@ -121,6 +127,8 @@ class HistoricalBacktest:
         self.fx_series = fx_series
         self.fx_policy = fx_policy
         self.split_schedule = split_schedule if split_schedule is not None else SplitSchedule()
+        self.dividend_schedule = (dividend_schedule if dividend_schedule is not None
+                                  else DividendSchedule())
         if self.split_schedule.splits and self.protection_policy.enabled:
             raise ValueError("PROTECTIVE_LOTS_NOT_SPLIT_ADJUSTED")
         self._used = False
@@ -132,11 +140,24 @@ class HistoricalBacktest:
         if not events:
             raise ValueError("historical market events required")
         self.split_schedule.preflight(events)
+        self.dividend_schedule.preflight(events)
         schedule_by_time = {(s.instrument.key, s.effective_at): s
                             for s in self.split_schedule.splits}
         if len(schedule_by_time) != len(self.split_schedule.splits):
             raise ValueError("multiple splits at same instrument/time unsupported")
         used_splits: set[str] = set()
+        entitlements_by_time = {(d.instrument.key, d.effective_at): d
+                                for d in self.dividend_schedule.entitlements}
+        payments_by_time = {(p.instrument.key, p.paid_at): p
+                            for p in self.dividend_schedule.payments}
+        used_entitlements: set[str] = set()
+        used_payments: set[str] = set()
+        if len(entitlements_by_time) != len(self.dividend_schedule.entitlements):
+            raise ValueError("duplicate dividend entitlement boundary")
+        if len(payments_by_time) != len(self.dividend_schedule.payments):
+            raise ValueError("duplicate dividend payment boundary")
+        if set(entitlements_by_time) & set(schedule_by_time):
+            raise ValueError("SIMULTANEOUS_SPLIT_AND_DIVIDEND_UNSUPPORTED")
         # Input source/license and calendar are verified by the caller; no network calls.
         data_sha = sha256(tuple(canonical_bytes(e).hex() for e in events))
         config_sha = sha256((self.config, self.risk, self.fill_policy, self.protection_policy,
@@ -144,7 +165,7 @@ class HistoricalBacktest:
                              # E4 ORB configuration differs from runtime snapshot; include both.
                              self.fx_policy,
                              self.fx_series.digest if self.fx_series is not None else None,
-                             self.split_schedule,
+                             self.split_schedule, self.dividend_schedule,
                              tuple((s.manifest, getattr(s, "params", None), s.snapshot().hex())
                                    for s in self.strategies),
                              # StaticSessionCalendar fully serializes, others must pin a version.
@@ -174,7 +195,27 @@ class HistoricalBacktest:
             protective_reasons: set[str] = set()
             bar = event.payload if isinstance(event.payload, Bar) else None
             split_reason: tuple[str, ...] = ()
+            dividend_reason: tuple[str, ...] = ()
             if bar is not None and event.instrument_id is not None:
+                entitled = entitlements_by_time.get((event.instrument_id.key, bar.start))
+                if entitled is not None:
+                    session = self.calendar.session_for(event.instrument_id, bar.start)
+                    if session is None or session.start != entitled.effective_at:
+                        raise InvalidEvent("DIVIDEND_REQUIRES_SESSION_OPEN_ENTITLEMENT")
+                    trader.record_dividend(entitled, now)
+                    used_entitlements.add(entitled.action_id)
+                    dividend_reason = ("DIVIDEND_ENTITLED:" + entitled.action_id,)
+                payment = payments_by_time.get((event.instrument_id.key, bar.start))
+                if payment is not None:
+                    if payment.action_id not in used_entitlements:
+                        raise InvalidEvent("DIVIDEND_PAYMENT_PRECEDES_ENTITLEMENT")
+                    if any(d.action_id == payment.action_id
+                           for d in trader.state.dividend_receivables):
+                        trader.confirm_dividend_payment(payment.action_id, now)
+                        dividend_reason += ("DIVIDEND_PAID:" + payment.action_id,)
+                    else:
+                        dividend_reason += ("DIVIDEND_NO_HOLDINGS:" + payment.action_id,)
+                    used_payments.add(payment.action_id)
                 split = schedule_by_time.get((event.instrument_id.key, bar.start))
                 if split is not None:
                     session = self.calendar.session_for(event.instrument_id, bar.start)
@@ -351,7 +392,7 @@ class HistoricalBacktest:
                     trader.accept_simulated(intent.intent_id, now)
             reason_codes = tuple(sorted({r for outcome in outcomes for r in outcome.reason_codes}
                                         | set(allocated.reason_codes) | protective_reasons
-                                        | set(split_reason)))
+                                        | set(split_reason) | set(dividend_reason)))
             decisions.append(DecisionRecord(event.event_id, tuple(s.signal_id for s in signals),
                                             tuple(protective_intents) + tuple(i.intent_id for i in proposed),
                                             tuple(decision_items), tuple(matched_fills),
@@ -359,6 +400,15 @@ class HistoricalBacktest:
             equity.append(_equity(trader.state, marks, now, self.settings.max_mark_age))
         if used_splits != {s.action_id for s in self.split_schedule.splits}:
             raise InvalidEvent("SPLIT_SCHEDULE_NOT_COMPLETELY_REPLAYED")
+        if used_entitlements != {d.action_id for d in self.dividend_schedule.entitlements}:
+            raise InvalidEvent("DIVIDEND_ENTITLEMENTS_NOT_COMPLETELY_REPLAYED")
+        # Future payment dates may be beyond the experiment's last observation;
+        # the receivable remains in equity but never enters settled buying power.
+        latest = max((e.payload.end for e in events if isinstance(e.payload, Bar)),
+                     default=None)
+        for payment in self.dividend_schedule.payments:
+            if latest is not None and payment.paid_at < latest and payment.action_id not in used_payments:
+                raise InvalidEvent("DIVIDEND_PAYMENT_NOT_REPLAYED")
         audit_virtual_against_account(virtual, trader.state)
         point_end = equity[-1]
         if not point_end.complete:
@@ -412,6 +462,8 @@ class HistoricalBacktest:
              "Multi-currency equity is not aggregated without a proven FX series.",
              "Run code SHA, data provider/license identifiers must be independently verified.",
              "FX-adjusted reporting is research-only; no FX buying power/fees or broker conversions.",
+             "Dividend entitlement/pay dates are declared, not issuer-verified; net receivables "
+             "count in research equity but not settled cash or buying power.",
              "Split-only E5.8 requires independently sourced raw unadjusted bars; "
              "pre-split feature history is invalidated and unsupported actions are rejected."
              "Incomplete FX observations suppress base-currency PnL and drawdown."

@@ -18,7 +18,7 @@ from invest_engine.core.replay import canonical_bytes
 from invest_engine.domain.events import Bar, EventEnvelope, MarketPayload
 from invest_engine.domain.primitives import utc_datetime
 from invest_engine.research.report import sha256
-from invest_engine.trading.actions import SplitApplied
+from invest_engine.trading.actions import DividendEntitled, SplitApplied
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,6 +154,7 @@ class PITGateResult:
 def validate_pit_events(
     events: tuple[EventEnvelope[MarketPayload], ...], evidence: PITEvidence,
     *, modeled_splits: tuple[SplitApplied, ...] = (),
+    modeled_dividends: tuple[DividendEntitled, ...] = (),
 ) -> PITGateResult:
     """Reject retroactive universes/revisions and ANY in-window issuer action.
 
@@ -165,6 +166,9 @@ def validate_pit_events(
     modeled_ids = {a.action_id: a for a in modeled_splits}
     if len(modeled_ids) != len(modeled_splits):
         raise ValueError("duplicate modeled split IDs")
+    dividend_ids = {a.action_id: a for a in modeled_dividends}
+    if len(dividend_ids) != len(modeled_dividends) or set(modeled_ids) & set(dividend_ids):
+        raise ValueError("duplicate modeled corporate action IDs")
     matched: set[str] = set()
     seen: set[str] = set()
     bounds: dict[str, tuple[datetime, datetime]] = {}
@@ -206,22 +210,34 @@ def validate_pit_events(
             if action.instrument_key != key or not beginning <= action.effective_at <= end:
                 continue
             split = modeled_ids.get(action.action_id)
-            if (action.action_type != "SPLIT" or split is None
-                or split.instrument.key != key or split.effective_at != action.effective_at
-                or split.available_at != action.received_at or split.source != action.source
+            dividend = dividend_ids.get(action.action_id)
+            split_match = (
+                action.action_type == "SPLIT" and split is not None
+                and split.instrument.key == key and split.effective_at == action.effective_at
+                and split.available_at == action.received_at and split.source == action.source
+            )
+            dividend_match = (
+                action.action_type == "CASH_DIVIDEND" and dividend is not None
+                and dividend.instrument.key == key and dividend.effective_at == action.effective_at
+                and dividend.available_at == action.received_at and dividend.source == action.source
+            )
+            if (not (split_match or dividend_match)
                 or action.published_at > action.received_at
                 or action.received_at > action.effective_at):
                 raise ValueError(f"UNMODELED_CORPORATE_ACTION:{key}")
-            matched.add(split.action_id)
-    if matched != set(modeled_ids):
-        raise ValueError("SPLIT_SCHEDULE_HAS_UNDECLARED_OR_OUT_OF_RANGE_ACTIONS")
+            matched.add(action.action_id)
+    if matched != (set(modeled_ids) | set(dividend_ids)):
+        raise ValueError("ACTION_SCHEDULE_HAS_UNDECLARED_OR_OUT_OF_RANGE_ACTIONS")
     return PITGateResult(
         len(events), len(bounds), evidence.digest, reason_codes=(
             "EXTERNAL_SOURCE_AND_CORPORATE_ACTION_COMPLETENESS_UNVERIFIED",
             "RAW_UNADJUSTED_SPLIT_PRICE_CONVENTION_ASSUMED",
-        ) if modeled_splits else (
+        ) if modeled_splits and not modeled_dividends else (
             "EXTERNAL_SOURCE_AND_CORPORATE_ACTION_COMPLETENESS_UNVERIFIED",
+            "DIVIDEND_ENTITLEMENT_AND_PAYMENT_SYNTHETIC" if modeled_dividends else
             "PRICE_ADJUSTMENT_NOT_IMPLEMENTED",
+            "RAW_UNADJUSTED_SPLIT_PRICE_CONVENTION_ASSUMED" if modeled_splits else
+            "NO_SPLIT_REPLAY",
         ),
     )
 
