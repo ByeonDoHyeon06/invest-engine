@@ -8,7 +8,7 @@ from decimal import Decimal, localcontext
 
 from invest_engine.domain.errors import InvalidEvent
 from invest_engine.trading.actions import (
-    DelistingObserved, DividendEntitled, DividendPaymentConfirmed, SplitApplied, action_fingerprint,
+    DelistingObserved, DelistingCashResolved, DividendEntitled, DividendPaymentConfirmed, SplitApplied, action_fingerprint,
 )
 from invest_engine.domain.primitives import InstrumentId, Money, _decimal, utc_datetime
 from invest_engine.trading.journal import SQLiteTradingJournal
@@ -133,6 +133,19 @@ class TradingRuntime:
                 raise InvalidEvent("conflicting repeated corporate action")
             return False
         self._emit(action, at, "corporate:delist:" + action.action_id)
+        return True
+
+    def resolve_delisted_cash(self, resolution: DelistingCashResolved, at: datetime) -> bool:
+        """Persist independently declared net cash recovery; no synthetic price."""
+        if any(row.action_id == resolution.action_id
+               for row in self.state.delisting_resolutions):
+            previous = next(row for row in self.state.delisting_resolutions
+                            if row.action_id == resolution.action_id)
+            if previous.terms_sha256 != action_fingerprint(resolution):
+                self._force_halt("conflicting terminal settlement")
+                raise InvalidEvent("conflicting terminal settlement")
+            return False
+        self._emit(resolution, at, "corporate:delisting-recovery:" + resolution.action_id)
         return True
 
     def confirm_cash_settlement(self, execution_id: str, at: datetime) -> bool:

@@ -94,6 +94,53 @@ class DelistingObserved:
 
 
 @dataclass(frozen=True, slots=True)
+class DelistingCashResolved:
+    """Explicitly evidenced NET cash receipt, never a synthetic market fill.
+
+    E5.11's historical runner only permits receipts proven available and paid
+    by the terminal historical bar. Later settlements require a separate
+    chronological cash-event replay (not yet supported).
+    """
+    action_id: str
+    instrument: InstrumentId
+    quantity: Decimal
+    net_cash: Decimal
+    paid_at: datetime
+    available_at: datetime
+    source: str
+    evidence_sha256: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.instrument, InstrumentId):
+            raise ValueError("settlement instrument required")
+        if not isinstance(self.action_id, str) or not self.action_id.strip():
+            raise ValueError("settlement action identity required")
+        if not isinstance(self.source, str) or not self.source.strip():
+            raise ValueError("settlement provenance required")
+        _decimal(self.quantity, field="resolution.quantity", positive=True)
+        _decimal(self.net_cash, field="resolution.net_cash")
+        if self.net_cash < 0:
+            raise ValueError("delisting payout cannot be negative")
+        if (not isinstance(self.evidence_sha256, str) or len(self.evidence_sha256) != 64
+            or any(c not in "0123456789abcdef" for c in self.evidence_sha256)):
+            raise ValueError("resolution requires SHA-256 receipt fingerprint")
+        object.__setattr__(self, "paid_at", utc_datetime(self.paid_at))
+        object.__setattr__(self, "available_at", utc_datetime(self.available_at))
+
+
+@dataclass(frozen=True, slots=True)
+class DelistingResolutionRecord:
+    action_id: str
+    instrument_key: str
+    currency: str
+    quantity: Decimal
+    net_cash: Decimal
+    realized_pnl: Decimal
+    evidence_sha256: str
+    terms_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
 class PositionAdjustment:
     action_id: str
     instrument_key: str
@@ -111,7 +158,9 @@ class DividendReceivable:
     recorded_at: datetime
 
 
-def action_fingerprint(action: SplitApplied | DividendEntitled | DelistingObserved) -> str:
+def action_fingerprint(
+    action: SplitApplied | DividendEntitled | DelistingObserved | DelistingCashResolved,
+) -> str:
     """Bind an action ID to immutable terms; prevents silently changing history."""
     encoded = json.dumps(_canonical(action), sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()

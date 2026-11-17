@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 from decimal import Decimal, localcontext
 
 from invest_engine.domain.primitives import InstrumentId, _decimal
-from invest_engine.trading.actions import SplitApplied
+from invest_engine.trading.actions import DelistingCashResolved, SplitApplied
 from invest_engine.strategies.allocation import AllocationPlan
 from invest_engine.trading.ledger import TradingState
 from invest_engine.trading.models import OrderIntent, Side, SimulatedFill
@@ -186,3 +186,29 @@ def rebase_virtual_for_split(state: VirtualLedger, split: "SplitApplied") -> Vir
             for p in state.positions
         )
     return replace(state, positions=positions)
+
+
+def resolve_virtual_delisting(state: VirtualLedger,
+                              resolution: DelistingCashResolved) -> VirtualLedger:
+    """Clear matched strategy holdings, conserving exact declared total recovery."""
+    holdings = sorted((p for p in state.positions if p.instrument == resolution.instrument
+                       and p.quantity > 0), key=lambda p: p.strategy_id)
+    if sum((p.quantity for p in holdings), Decimal(0)) != resolution.quantity:
+        raise ValueError("delisting resolution does not match virtual attribution")
+    with localcontext() as ctx:
+        ctx.prec = 64
+        rest = resolution.net_cash
+        replacements: dict[str, VirtualPosition] = {}
+        for p in holdings[:-1]:
+            cash = resolution.net_cash * p.quantity / resolution.quantity
+            rest -= cash
+            replacements[p.strategy_id] = replace(
+                p, quantity=Decimal(0), average_cost=Decimal(0),
+                realized_pnl=p.realized_pnl + cash - p.quantity*p.average_cost)
+        last = holdings[-1]
+        replacements[last.strategy_id] = replace(
+            last, quantity=Decimal(0), average_cost=Decimal(0),
+            realized_pnl=last.realized_pnl + rest - last.quantity*last.average_cost)
+        return replace(state, positions=tuple(
+            replacements.get(p.strategy_id, p) if p.instrument == resolution.instrument else p
+            for p in state.positions))

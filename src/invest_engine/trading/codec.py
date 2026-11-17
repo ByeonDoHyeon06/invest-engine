@@ -8,7 +8,7 @@ from typing import Any, cast
 
 from invest_engine.core.replay import _canonical
 from invest_engine.trading.actions import (
-    DelistingObserved, DividendEntitled, DividendPaymentConfirmed, SplitApplied,
+    DelistingObserved, DelistingCashResolved, DividendEntitled, DividendPaymentConfirmed, SplitApplied,
 )
 from invest_engine.domain.errors import InvalidEvent, UnsupportedData
 from invest_engine.domain.primitives import AssetClass, InstrumentId, Market
@@ -75,6 +75,14 @@ def _payload(name: str, data: dict[str, Any]) -> Any:
         return DelistingObserved(data["action_id"], _instrument(_mapping(data["instrument"])),
                                  datetime.fromisoformat(data["effective_at"]),
                                  datetime.fromisoformat(data["available_at"]), data["source"])
+    if name == "DelistingCashResolved":
+        return DelistingCashResolved(
+            data["action_id"], _instrument(_mapping(data["instrument"])),
+            Decimal(data["quantity"]), Decimal(data["net_cash"]),
+            datetime.fromisoformat(data["paid_at"]),
+            datetime.fromisoformat(data["available_at"]), data["source"],
+            data["evidence_sha256"],
+        )
     if name == "CashSettlementConfirmed":
         return CashSettlementConfirmed(data["execution_id"])
     if name == "EntriesPaused":

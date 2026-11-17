@@ -362,6 +362,9 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                      + (["VOLUME_IS_TICK_COUNT_NOT_TRADED_SHARES"] if declared == "TICK_COUNT" else [])
                      + (["VOLUME_UNIT_NOT_DECLARED"] if declared is None else [])),
     }
+    if delisting_schedule.resolutions:
+        manifest["terminal_settlement_count"] = len(delisting_schedule.resolutions)
+        manifest["terminal_settlement_data_verified"] = False
     manifest_sha = sha256(manifest)
     (output_dir / "manifest.json").write_bytes(canonical_json(manifest))
     return ExperimentResult(report, raw["run_id"], output_dir, manifest_sha)

@@ -15,12 +15,13 @@ from typing import Any, cast
 
 from invest_engine.domain.events import Bar, EventEnvelope, MarketPayload
 from invest_engine.domain.primitives import InstrumentId, utc_datetime
-from invest_engine.trading.actions import DelistingObserved
+from invest_engine.trading.actions import DelistingObserved, DelistingCashResolved
 
 
 @dataclass(frozen=True, slots=True)
 class DelistingSchedule:
     delistings: tuple[DelistingObserved, ...] = ()
+    resolutions: tuple[DelistingCashResolved, ...] = ()
 
     def __post_init__(self) -> None:
         keys = [a.action_id for a in self.delistings]
@@ -31,6 +32,17 @@ class DelistingSchedule:
             raise ValueError("DELISTING_SCHEDULE_NOT_SORTED")
         if any(a.available_at > a.effective_at for a in self.delistings):
             raise ValueError("DELISTING_TERMS_NOT_AVAILABLE_AT_EFFECTIVE_TIME")
+        records = {a.action_id: a for a in self.delistings}
+        ids = [r.action_id for r in self.resolutions]
+        if len(ids) != len(set(ids)):
+            raise ValueError("DUPLICATE_DELISTING_RESOLUTION")
+        for resolution in self.resolutions:
+            event = records.get(resolution.action_id)
+            if event is None or event.instrument != resolution.instrument:
+                raise ValueError("DELISTING_RESOLUTION_ACTION_MISMATCH")
+            if (resolution.paid_at > event.effective_at or
+                resolution.available_at > event.effective_at):
+                raise ValueError("TERMINAL_SETTLEMENT_AFTER_LAST_BAR_REQUIRES_CASH_EVENT_REPLAY")
 
     def preflight(self, events: tuple[EventEnvelope[MarketPayload], ...]) -> None:
         for action in self.delistings:
@@ -63,18 +75,44 @@ def load_delistings(file: Path, expected_hash: str,
     if not raw or len(raw) > 4_000_000 or sha256(raw).hexdigest() != expected_hash:
         raise ValueError("DELISTING_FILE_HASH_MISMATCH")
     result: list[DelistingObserved] = []
+    resolutions: list[DelistingCashResolved] = []
     for line in raw.splitlines():
         if not line or len(line) > 100_000:
             raise ValueError("invalid delisting schedule line")
         row = json.loads(line)
-        required = {"kind", "action_id", "instrument_key", "effective_at", "available_at", "source"}
-        if not isinstance(row, dict) or set(row) != required or row["kind"] != "delisting":
+        if not isinstance(row, dict):
             raise ValueError("invalid delisting schedule schema")
         data = cast(dict[str, Any], row)
-        symbol = data["instrument_key"]
+        symbol = data.get("instrument_key")
+        if data.get("kind") not in {"delisting", "cash_resolution"}:
+            raise ValueError("invalid delisting schedule schema")
+        required_fields = ({"kind", "action_id", "instrument_key", "effective_at",
+                            "available_at", "source"} if data["kind"] == "delisting" else
+                           {"kind", "action_id", "instrument_key", "quantity", "net_cash",
+                            "paid_at", "available_at", "source", "evidence_sha256"})
+        if set(data) != required_fields:
+            raise ValueError("invalid delisting schedule schema")
         if not isinstance(symbol, str) or symbol not in instruments:
             raise ValueError("delisting instrument not present in historical dataset")
-        result.append(DelistingObserved(data["action_id"], instruments[symbol],
-                                        _utc(data["effective_at"]),
-                                        _utc(data["available_at"]), data["source"]))
-    return DelistingSchedule(tuple(result))
+        if data.get("kind") == "delisting":
+            required = {"kind", "action_id", "instrument_key", "effective_at",
+                        "available_at", "source"}
+            if set(data) != required:
+                raise ValueError("invalid delisting schedule schema")
+            result.append(DelistingObserved(data["action_id"], instruments[symbol],
+                                          _utc(data["effective_at"]),
+                                          _utc(data["available_at"]), data["source"]))
+        elif data.get("kind") == "cash_resolution":
+            required = {"kind", "action_id", "instrument_key", "quantity", "net_cash",
+                        "paid_at", "available_at", "source", "evidence_sha256"}
+            if set(data) != required or not isinstance(data["quantity"], str) or not isinstance(data["net_cash"], str):
+                raise ValueError("invalid terminal settlement schema")
+            from decimal import Decimal
+            resolutions.append(DelistingCashResolved(
+                data["action_id"], instruments[symbol], Decimal(data["quantity"]),
+                Decimal(data["net_cash"]), _utc(data["paid_at"]),
+                _utc(data["available_at"]), data["source"], data["evidence_sha256"],
+            ))
+        else:
+            raise ValueError("invalid delisting schedule schema")
+    return DelistingSchedule(tuple(result), tuple(resolutions))

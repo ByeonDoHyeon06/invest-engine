@@ -9,7 +9,8 @@ from enum import Enum
 
 from invest_engine.domain.errors import InvalidEvent
 from invest_engine.trading.actions import (
-    DelistingObserved, DividendEntitled, DividendPaymentConfirmed, DividendReceivable,
+    DelistingObserved, DelistingCashResolved, DelistingResolutionRecord,
+    DividendEntitled, DividendPaymentConfirmed, DividendReceivable,
     PositionAdjustment, SplitApplied, action_fingerprint,
 )
 from invest_engine.domain.primitives import InstrumentId, Money, utc_datetime
@@ -157,6 +158,7 @@ TradingPayload = (
     | OrderCanceled | OrderUnknown | OrderReconciled | FillRecorded
     | RiskObserved | AccountReconciliationReviewed | CashSettlementConfirmed
     | SplitApplied | DividendEntitled | DividendPaymentConfirmed | DelistingObserved
+    | DelistingCashResolved
 )
 
 
@@ -202,6 +204,7 @@ class TradingState:
     dividend_receivables: tuple[DividendReceivable, ...] = ()
     paid_dividend_ids: frozenset[str] = frozenset()
     delisted_instruments: frozenset[str] = frozenset()
+    delisting_resolutions: tuple[DelistingResolutionRecord, ...] = ()
 
     def account(self, currency: str) -> CashLedger:
         for balance in self.cash:
@@ -367,6 +370,39 @@ def _apply(
             ))
         return replace(state, delisted_instruments=(
             state.delisted_instruments | {payload.instrument.key}))
+    if isinstance(payload, DelistingCashResolved):
+        if payload.instrument.key not in state.delisted_instruments:
+            raise InvalidEvent("DELISTING_NOT_OBSERVED")
+        if payload.action_id not in state.applied_corporate_ids:
+            raise InvalidEvent("DELISTING_ID_NOT_REGISTERED")
+        if any(record.action_id == payload.action_id for record in state.delisting_resolutions):
+            raise InvalidEvent("DELISTING_SETTLEMENT_ALREADY_APPLIED")
+        held = state.position(payload.instrument)
+        if held is None or held.quantity <= 0 or held.quantity != payload.quantity:
+            raise InvalidEvent("DELISTING_SETTLEMENT_QUANTITY_MISMATCH")
+        if held.reserved_sell:
+            raise InvalidEvent("DELISTING_SETTLEMENT_RESERVED_SHARES")
+        if any(o.intent.instrument.key == payload.instrument.key and
+               o.status in (OrderStatus.RESERVED, OrderStatus.ACCEPTED,
+                            OrderStatus.PARTIALLY_FILLED, OrderStatus.CANCEL_PENDING,
+                            OrderStatus.UNKNOWN) for o in state.orders):
+            raise InvalidEvent("DELISTING_SETTLEMENT_OPEN_ORDERS")
+        money = config.cash_rules(payload.instrument.currency)
+        if money.settle(payload.net_cash) != payload.net_cash:
+            raise InvalidEvent("DELISTING_CASH_PRECISION_INVALID")
+        balance = state.account(payload.instrument.currency)
+        with localcontext() as ctx:
+            ctx.prec = 64
+            realized = payload.net_cash - held.quantity * held.average_cost
+        updated = _set_position(state, replace(held, quantity=Decimal(0),
+                                               average_cost=Decimal(0),
+                                               realized_pnl=held.realized_pnl + realized))
+        updated = _set_cash(updated, replace(balance, settled=balance.settled + payload.net_cash))
+        return replace(updated, delisting_resolutions=(*state.delisting_resolutions,
+            DelistingResolutionRecord(payload.action_id, payload.instrument.key,
+                                      payload.instrument.currency, payload.quantity,
+                                      payload.net_cash, realized, payload.evidence_sha256,
+                                      action_fingerprint(payload)),))
     if isinstance(payload, DividendPaymentConfirmed):
         dividend_due = next((d for d in state.dividend_receivables
                              if d.action_id == payload.action_id), None)
@@ -592,6 +628,11 @@ def reduce_trade_event(
             and (event.occurred_at < event.payload.effective_at
                  or event.occurred_at < event.payload.available_at)):
         raise InvalidEvent("corporate action not yet effective or available")
+    if isinstance(event.payload, DelistingCashResolved) and (
+        event.occurred_at < event.payload.paid_at or
+        event.occurred_at < event.payload.available_at
+    ):
+        raise InvalidEvent("DELISTING_CASH_NOT_YET_RECEIVED_OR_AVAILABLE")
     updated = _apply(state, event.payload, config, limits or RiskLimits())
     audit_trading_state(updated)
     # A single codec defines both the persisted wire event and state-chain hash.
@@ -686,6 +727,17 @@ def audit_trading_state(state: TradingState) -> None:
         shares_by_symbol[adjustment.instrument_key] = (
             shares_by_symbol.get(adjustment.instrument_key, Decimal(0))
             + adjustment.quantity_delta
+        )
+    resolution_ids = [r.action_id for r in state.delisting_resolutions]
+    if len(set(resolution_ids)) != len(resolution_ids):
+        raise InvalidEvent("duplicate terminal settlement records")
+    for resolution in state.delisting_resolutions:
+        if (resolution.action_id not in state.applied_corporate_ids or
+            resolution.instrument_key not in state.delisted_instruments or
+            resolution.net_cash < 0):
+            raise InvalidEvent("invalid terminal settlement record")
+        shares_by_symbol[resolution.instrument_key] = (
+            shares_by_symbol.get(resolution.instrument_key, Decimal(0)) - resolution.quantity
         )
     receivables = {r.action_id for r in state.dividend_receivables}
     if len(receivables) != len(state.dividend_receivables):
