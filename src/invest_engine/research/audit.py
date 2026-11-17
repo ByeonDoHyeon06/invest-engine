@@ -123,12 +123,12 @@ def verify_exported_artifacts(directory: Path) -> bool:
 
     manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8'))
     hashes = manifest.get('artifact_sha256')
-    if not isinstance(hashes, dict) or not hashes:
-        raise ValueError('manifest lacks E5.4 artifact integrity record')
+    expected_files = {'report.json', 'decisions.jsonl', 'fills.jsonl',
+                      'equity.jsonl', 'audit.json'}
+    if not isinstance(hashes, dict) or set(hashes) != expected_files:
+        raise ValueError('manifest lacks complete E5.4 artifact integrity record')
     for name, expected in hashes.items():
-        if (name not in {'report.json', 'decisions.jsonl', 'fills.jsonl',
-                         'equity.jsonl', 'audit.json'} or
-                not isinstance(expected, str) or len(expected) != 64):
+        if not isinstance(expected, str) or len(expected) != 64:
             raise ValueError('invalid artifact checksum entry')
         file = directory / name
         if not file.is_file() or file_sha256(file) != expected:
