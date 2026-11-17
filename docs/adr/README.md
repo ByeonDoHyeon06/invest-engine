@@ -29,3 +29,5 @@
 - [0015](0015-synthetic-corporate-action-ledger.md) — Accepted for synthetic/offline E5.7 research only: journaled issuer action/accounting and explicit CSV volume semantics; PIT action-aware backtest not yet authorized.
 
 - [0016](0016-session-open-split-replay.md) — Accepted (offline research only): as-of session-open split with E3/E4 inventory parity and feature invalidation. All other issuer actions blocked.
+
+- [0017](0017-dividend-research-replay.md) — Accepted offline research only: PIT entitlement/payment and net receivable; delisted holdings unsupported.

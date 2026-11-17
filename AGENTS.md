@@ -107,3 +107,8 @@
 - [PR #30](https://github.com/ByeonDoHyeon06/invest-engine/pull/30), [CI 44067166215](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44067166215). Strict SHA/PIT matched session-open RAW_UNADJUSTED share split only.
 - E3/E4 quantity and cost basis parity; invalidate E4 pre-split feature history; reject dividends, delistings, mergers, intraday actions and active protective-lot modeling.
 - docs/E5_SPLIT_REPLAY.md and ADR-0016 authoritative. Provider completeness / price convention remain caller-attested, not independently verified. E5 Issue #6 OPEN; LIVE not authorized.
+
+### E5.9 dividend replay boundary (2026-11-17)
+- [E5_DIVIDEND_REPLAY.md](docs/E5_DIVIDEND_REPLAY.md) / ADR-0017: PIT/SHA-gated ex-date entitlement at witnessed session-open; payment at a later witnessed bar.
+- Net unpaid dividend contributes to research equity but never E3 buying power. Raw unadjusted bars required; tax fraction synthetic.
+- PIT delisting/merger remains fail-closed without verified settlement proceeds. E5 Issue #6 OPEN, LIVE NOT AUTHORIZED.
