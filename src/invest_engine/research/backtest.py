@@ -37,6 +37,7 @@ from invest_engine.strategies.attribution import (
     record_simulated_fill, ticket_for_plan, rebase_virtual_for_split,
     resolve_virtual_delisting,
 )
+from invest_engine.strategies.baselines import BuyHoldBaseline
 from invest_engine.strategies.contracts import SignalDirection, Strategy
 from invest_engine.strategies.runtime import StrategyRunner
 from invest_engine.trading.ledger import TradingState
@@ -148,6 +149,9 @@ class HistoricalBacktest:
         # Buy-and-hold is not a rebalancing strategy. Once any BUY fills, keep
         # existing DAY-order lifecycle but suppress subsequent new LONG targets.
         self.first_entry_only = first_entry_only
+        if (any(isinstance(s, BuyHoldBaseline) and s.retry_each_session for s in strategies)
+                and not self.first_entry_only):
+            raise ValueError("RETRY_HOLD_REQUIRES_FIRST_ENTRY_ONLY")
         if type(session_flat) is not bool:
             raise ValueError("session_flat must be boolean")
         if session_flat and (evaluation_window is None or len(strategies) != 1
@@ -296,7 +300,8 @@ class HistoricalBacktest:
                 # Cancel standing DAY orders at its start by precommitted assumption;
                 # the journal records this simulated observation at the bar-end clock.
                 final_bar = self.session_flat and bar.end == session_check.end
-                closing_cutoff = self.session_flat and now >= session_check.end - bar.interval
+                closing_cutoff = (self.session_flat
+                                  and now >= session_check.end - (bar.end - bar.start))
                 if final_bar:
                     for order in tuple(trader.state.orders):
                         if (order.intent.instrument == event.instrument_id
@@ -595,9 +600,9 @@ class HistoricalBacktest:
               "adverse-gap assumptions; these are synthetic, not broker orders."
               if self.protection_policy.enabled else
               "Stop prices are risk plans; this fill model does not place stops."),
-             ("Final-bar-open liquidation is a standing calendar schedule with adverse price "
-              "and shared volume cap; incomplete liquidation invalidates the session-flat run."
-              if self.session_flat else "No mandatory session-flat liquidation assumption."),
+             *(("Final-bar-open liquidation is a standing calendar schedule with adverse price "
+                "and shared volume cap; incomplete liquidation invalidates the session-flat run.",)
+                if self.session_flat else ()),
              "Held delistings require declared, paid and witnessed terminal cash recovery "
              "at the last historical bar; delayed payment remains unsupported.",
              "Multi-currency equity is not aggregated without a proven FX series.",
