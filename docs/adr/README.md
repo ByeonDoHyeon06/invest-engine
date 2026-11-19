@@ -50,3 +50,5 @@
 - [0027](0027-temporal-walk-forward.md) — Proposed: deterministic temporal folds, label purge, embargo and logical final partition.
 
 - [0028](0028-fixed-rule-fold-replay.md) — Proposed: fixed-rule, preregistered E5 replay across strict temporal validation folds.
+
+- [0029](0029-causal-market-regimes.md) — Proposed: causal two-axis intraday regime annotations and fill attribution.
