@@ -188,6 +188,57 @@ class CandidateAssessment:
 
 
 @dataclass(frozen=True, slots=True)
+class StabilityPolicy:
+    """Predeclared descriptive checks; no probabilistic significance claim."""
+    min_time_blocks: int = 3
+    min_positive_block_fraction: Decimal = D("0.67")
+    min_worst_block_excess: Decimal = D("-0.01")
+    min_leave_one_out_excess: Decimal = D("0")
+
+    def __post_init__(self) -> None:
+        if (type(self.min_time_blocks) is not int or self.min_time_blocks < 2
+                or not 0 < _decimal(self.min_positive_block_fraction,
+                                    field="positive_fraction") <= 1
+                or _decimal(self.min_worst_block_excess, field="worst_excess") > 0
+                or _decimal(self.min_leave_one_out_excess, field="loo_excess") < 0):
+            raise ValueError("INVALID_STABILITY_POLICY")
+
+
+@dataclass(frozen=True, slots=True)
+class SearchReservation:
+    manifest_sha256: str
+    plan_sha256: str
+    planned_arms: int
+    stability: StabilityPolicy
+
+    def __post_init__(self) -> None:
+        if (not _hash(self.manifest_sha256) or not _hash(self.plan_sha256)
+                or type(self.planned_arms) is not int or not 1 <= self.planned_arms <= 4096):
+            raise ValueError("INVALID_SEARCH_RESERVATION")
+
+
+@dataclass(frozen=True, slots=True)
+class SearchArmOutcome:
+    window_id: str
+    candidate_id: str
+    cost: str
+    status: str
+    report_sha256: str | None = None
+    error_type: str | None = None
+
+    def __post_init__(self) -> None:
+        if (not self.window_id or not self.candidate_id or self.cost not in ("base", "stress")
+                or self.status not in ("RECORDED", "FAILED")
+                or (self.status == "RECORDED" and
+                    (self.report_sha256 is None or not _hash(self.report_sha256)
+                     or self.error_type is not None))
+                or (self.status == "FAILED" and
+                    (self.report_sha256 is not None or not self.error_type
+                     or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,127}", self.error_type)))):
+            raise ValueError("INVALID_SEARCH_ARM_OUTCOME")
+
+
+@dataclass(frozen=True, slots=True)
 class ResearchRegistry:
     """Append-only value snapshots; final test evaluated once per snapshot lineage."""
     plan: ResearchPlan
@@ -195,6 +246,44 @@ class ResearchRegistry:
     locked_candidate: str | None = None
     final_assessment: CandidateAssessment | None = None
     validation_locked: bool = False
+    search_reservation: SearchReservation | None = None
+    search_history: tuple[tuple[SearchArmOutcome, ...], ...] = ()
+
+    def reserve_search(self, reservation: SearchReservation) -> ResearchRegistry:
+        if self.validation_locked or self.final_assessment is not None:
+            raise ValueError("SEARCH_VALIDATION_ALREADY_LOCKED")
+        if self.search_reservation is not None:
+            if self.search_reservation == reservation:
+                return self
+            raise ValueError("SEARCH_RESERVATION_ALREADY_FIXED")
+        if self.evidence:
+            raise ValueError("SEARCH_RESERVATION_REQUIRES_UNSEEN_PLAN")
+        expected = sum(w.split == "validation" for w in self.plan.windows) * (
+            len(self.plan.candidates)+len(BASELINES)) * len(self.plan.costs)
+        if reservation.plan_sha256 != self.plan.digest or reservation.planned_arms != expected:
+            raise ValueError("SEARCH_RESERVATION_PLAN_MISMATCH")
+        return replace(self, search_reservation=reservation)
+
+    def record_search_outcomes(self, outcomes: tuple[SearchArmOutcome, ...]) -> ResearchRegistry:
+        reservation = self.search_reservation
+        if reservation is None or self.validation_locked:
+            raise ValueError("SEARCH_OUTCOMES_REQUIRE_OPEN_RESERVATION")
+        expected = {(w.window_id, c, cost) for w in self.plan.windows if w.split == "validation"
+                    for c in (*BASELINES, *(c.candidate_id for c in self.plan.candidates))
+                    for cost in self.plan.costs}
+        keys = {(a.window_id, a.candidate_id, a.cost) for a in outcomes}
+        if keys != expected or len(outcomes) != reservation.planned_arms:
+            raise ValueError("SEARCH_OUTCOME_MATRIX_MISMATCH")
+        evidence = {(a.window_id, a.candidate_id, a.cost): a for a in self.evidence}
+        for a in outcomes:
+            if a.status == "RECORDED":
+                arm = evidence.get((a.window_id, a.candidate_id, a.cost))
+                if arm is None or arm.report_sha256 != a.report_sha256:
+                    raise ValueError("SEARCH_OUTCOME_REPORT_MISMATCH")
+        canonical = tuple(sorted(outcomes, key=lambda a: (a.window_id, a.candidate_id, a.cost)))
+        if self.search_history and self.search_history[-1] == canonical:
+            return self
+        return replace(self, search_history=(*self.search_history, canonical))
 
     def record(self, arm: ArmEvidence) -> ResearchRegistry:
         windows = {w.window_id: w for w in self.plan.windows}
@@ -287,6 +376,13 @@ class ResearchRegistry:
         if any("MISSING_MATCHED_ARM" in a.reasons for a in assessments):
             raise ValueError("VALIDATION_MATRIX_INCOMPLETE")
         passed = [a for a in assessments if a.status == "RESEARCH_PASS"]
+        if self.search_reservation is not None:
+            if (not self.search_history
+                    or any(a.status != "RECORDED" for a in self.search_history[-1])):
+                raise ValueError("SEARCH_OUTCOME_MATRIX_INCOMPLETE")
+            from invest_engine.research.robustness import assess_stability
+            passed = [a for a in passed if assess_stability(
+                self, a.candidate_id, self.search_reservation.stability).status == "STABLE"]
         if not passed:
             return replace(self, validation_locked=True)
         def rank(a: CandidateAssessment) -> tuple[Decimal, str]:

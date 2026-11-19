@@ -56,3 +56,5 @@
 - [0030](0030-regime-exposure-cohorts.md) — Proposed: observed regime exposure denominators and quantity-cohort realized attribution.
 
 - [0031](0031-bounded-parameter-grid.md) — Proposed: budgeted deterministic rule grid and validation replay.
+
+- [0032](0032-search-lineage-stability.md) — Proposed: durable local search lineage, full outcomes and descriptive temporal-block stability.

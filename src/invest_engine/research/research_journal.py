@@ -18,6 +18,7 @@ from invest_engine.domain.events import EventEnvelope, MarketPayload
 from invest_engine.research.evaluation import EvaluationWindow
 from invest_engine.research.candidates import (
     ArmEvidence, Candidate, EvaluationPolicy, ResearchPlan, ResearchRegistry, ResearchWindow,
+    SearchArmOutcome, SearchReservation, StabilityPolicy,
 )
 from invest_engine.research.report import BacktestReport, canonical_json, sha256
 from invest_engine.research.report_evidence import ReportBinding, evidence_from_report
@@ -51,6 +52,11 @@ def _arm(raw: dict[str, Any]) -> ArmEvidence:
     }})
 
 
+def _overlap(a: ResearchWindow, b: ResearchWindow) -> bool:
+    return (a.data_sha256 == b.data_sha256 or
+            (a.instrument_key == b.instrument_key and a.start < b.end and b.start < a.end))
+
+
 def _apply(
     states: dict[str, ResearchRegistry], plan_id: str, kind: str, body: bytes,
 ) -> ResearchRegistry:
@@ -64,6 +70,9 @@ def _apply(
         for existing in states.values():
             for old in existing.plan.windows:
                 for new in plan.windows:
+                    if (existing.search_reservation is not None and old.split == "validation"
+                            and new.split == "validation" and _overlap(old, new)):
+                        raise ValueError("SEARCH_VALIDATION_ALREADY_RESERVED_OR_EXPOSED")
                     if old.split != "test" and new.split != "test":
                         continue
                     same_digest = old.data_sha256 == new.data_sha256
@@ -75,6 +84,29 @@ def _apply(
     if plan_id not in states:
         raise ValueError("UNREGISTERED_PLAN")
     state = states[plan_id]
+    if kind == "reserve-search":
+        p = raw["stability"]
+        policy = StabilityPolicy(p["min_time_blocks"], Decimal(p["min_positive_block_fraction"]),
+                                 Decimal(p["min_worst_block_excess"]),
+                                 Decimal(p["min_leave_one_out_excess"]))
+        reservation = SearchReservation(raw["manifest_sha256"], raw["plan_sha256"],
+                                        raw["planned_arms"], policy)
+        if canonical_json(reservation) != body:
+            raise ValueError("NONCANONICAL_SEARCH_RESERVATION")
+        if state.search_reservation is None:
+            for key, other in states.items():
+                if key == plan_id:
+                    continue
+                if any(_overlap(old, new)
+                       for old in other.plan.windows if old.split in ("train", "validation")
+                       for new in state.plan.windows if new.split == "validation"):
+                    raise ValueError("SEARCH_VALIDATION_ALREADY_RESERVED_OR_EXPOSED")
+        return state.reserve_search(reservation)
+    if kind == "search-outcomes":
+        outcomes = tuple(SearchArmOutcome(**a) for a in raw)
+        if canonical_json(outcomes) != body:
+            raise ValueError("NONCANONICAL_SEARCH_OUTCOMES")
+        return state.record_search_outcomes(outcomes)
     if kind == "record":
         arm = _arm(raw)
         if canonical_json(arm) != body:
@@ -192,6 +224,14 @@ class ResearchJournal:
 
     def register(self, plan: ResearchPlan) -> ResearchRegistry:
         return self._commit(plan.plan_id, "register", plan)
+
+    def reserve_search(self, plan_id: str, reservation: SearchReservation) -> ResearchRegistry:
+        return self._commit(plan_id, "reserve-search", reservation)
+
+    def record_search_outcomes(self, plan_id: str,
+                               outcomes: tuple[SearchArmOutcome, ...]) -> ResearchRegistry:
+        canonical = tuple(sorted(outcomes, key=lambda a: (a.window_id, a.candidate_id, a.cost)))
+        return self._commit(plan_id, "search-outcomes", canonical)
 
     def record(self, plan_id: str, arm: ArmEvidence) -> ResearchRegistry:
         return self._commit(plan_id, "record", arm)
