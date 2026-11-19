@@ -60,16 +60,18 @@ class StrategyRunner:
     def halt_reason(self) -> str | None:
         return self._halt_reason
 
-    def accept(self, event: EventEnvelope[MarketPayload]) -> StrategyOutcome:
+    def accept(self, event: EventEnvelope[MarketPayload], *,
+               evaluate: bool = True) -> StrategyOutcome:
         if self._halt_reason is not None:
             raise InvalidEvent("strategy runner halted: restore by replay from trusted journal")
         try:
-            return self._accept(event)
+            return self._accept(event, evaluate=evaluate)
         except Exception as exc:
             self._halt_reason = f"{type(exc).__name__}: {exc}"
             raise
 
-    def _accept(self, event: EventEnvelope[MarketPayload]) -> StrategyOutcome:
+    def _accept(self, event: EventEnvelope[MarketPayload], *,
+                evaluate: bool) -> StrategyOutcome:
         if event.ingest_ordinal != self._last_ordinal + 1:
             raise InvalidEvent("strategy stream must have contiguous ordinals")
         if event.event_id in self._seen_ids:
@@ -109,6 +111,9 @@ class StrategyRunner:
             self._bars.append(observation)
             if len(self._bars) > self.max_bars:
                 del self._bars[:len(self._bars)-self.max_bars]
+
+        if not evaluate:
+            return StrategyOutcome((), ("WARMUP_ONLY",))
 
         manifest = self.strategy.manifest
         if inst is None or inst.market not in manifest.markets:
