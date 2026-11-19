@@ -142,7 +142,7 @@ class ResearchJournal:
             raise ValueError("RESEARCH_HEAD_MISSING")
         states: dict[str, ResearchRegistry] = {}
         seq, previous = 0, ROOT
-        for head_seq, head_digest, n, plan_id, kind, body, link, digest in rows:
+        for _head_seq, _head_digest, n, plan_id, kind, body, link, digest in rows:
             if n is None:
                 continue
             if (n != seq+1 or previous != link or not isinstance(body, bytes)
