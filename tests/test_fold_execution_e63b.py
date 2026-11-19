@@ -109,6 +109,10 @@ def test_all_folds_required_and_no_substituted_costs():
             cases[0].stress_config, account_id="other")), cases[1]), rules, scenario)
     with pytest.raises(ValueError, match="PLAN_INELIGIBLE_OR_MODIFIED"):
         prepare_validation(replace(wf, timing_sha256="b"*64), timing, cases, rules, scenario)
+    bad = replace(cases[0], events=(replace(cases[0].events[0], ingest_ordinal=1),
+                                         *cases[0].events[1:]))
+    with pytest.raises(ValueError, match="LOCAL_CONTIGUOUS_ORDINALS"):
+        prepare_validation(wf, timing, (bad, cases[1]), rules, scenario)
 
 
 def test_purged_validation_sample_must_not_be_scored():
