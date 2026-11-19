@@ -62,7 +62,8 @@ def study():
     cases = tuple(FoldInput(
         fold.fold_id, INST.key, StaticSessionCalendar(sessions[d-20:d+2]),
         EvaluationWindow(sessions[d].start, sessions[d+1].end),
-        tuple(events[(d-20)*4:(d+2)*4]), cfg, replace(cfg, fee_rate=D("0.0025")))
+        tuple(replace(event, ingest_ordinal=i) for i, event in
+              enumerate(events[(d-20)*4:(d+2)*4])), cfg, replace(cfg, fee_rate=D("0.0025")))
         for fold, d in zip(wf.folds, (22, 24), strict=True))
     prepared = prepare_validation(wf, tuple(timing), cases, rules, scenario)
     train = ResearchWindow("initial", INST.key, "USD", "train", NOW, NOW+20*DAY,
