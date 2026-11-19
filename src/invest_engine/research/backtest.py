@@ -164,6 +164,29 @@ class HistoricalBacktest:
             raise ValueError("EVALUATION_WINDOW_REQUIRES_NO_ACTION_INTERVAL")
         self._used = False
 
+    def config_digest(self) -> str:
+        """Bind the initial configuration before a single-use replay starts."""
+        identity = (self.config, self.risk, self.fill_policy, self.protection_policy,
+                    self.allocation_policy, self.settings,
+                    # E4 ORB configuration differs from runtime snapshot; include both.
+                    self.fx_policy,
+                    self.fx_series.digest if self.fx_series is not None else None,
+                    self.split_schedule, self.dividend_schedule,
+                    tuple((s.manifest, getattr(s, "params", None), s.snapshot().hex())
+                          for s in self.strategies),
+                    # StaticSessionCalendar fully serializes; other calendars must pin a version.
+                    getattr(self.calendar, "sessions", None))
+        # Preserve historical E5.9 config hashes when the new extension is unused.
+        config_sha = sha256((*identity, self.delisting_schedule)
+                            if self.delisting_schedule.delistings else identity)
+        if self.evaluation_window is not None:
+            config_sha = sha256((config_sha, self.evaluation_window))
+        if self.first_entry_only:
+            config_sha = sha256((config_sha, "first-entry-only-v1"))
+        if self.session_flat:
+            config_sha = sha256((config_sha, "final-bar-open-liquidation-v1"))
+        return config_sha
+
     def run(self, events: tuple[EventEnvelope[MarketPayload], ...]) -> BacktestReport:
         if self._used:
             raise RuntimeError("backtest instance is single-use; construct fresh strategies")
@@ -204,25 +227,7 @@ class HistoricalBacktest:
             raise ValueError("SIMULTANEOUS_SPLIT_AND_DIVIDEND_UNSUPPORTED")
         # Input source/license and calendar are verified by the caller; no network calls.
         data_sha = sha256(tuple(canonical_bytes(e).hex() for e in events))
-        identity = (self.config, self.risk, self.fill_policy, self.protection_policy,
-                    self.allocation_policy, self.settings,
-                    # E4 ORB configuration differs from runtime snapshot; include both.
-                    self.fx_policy,
-                    self.fx_series.digest if self.fx_series is not None else None,
-                    self.split_schedule, self.dividend_schedule,
-                    tuple((s.manifest, getattr(s, "params", None), s.snapshot().hex())
-                          for s in self.strategies),
-                    # StaticSessionCalendar fully serializes; other calendars must pin a version.
-                    getattr(self.calendar, "sessions", None))
-        # Preserve historical E5.9 config hashes when the new extension is unused.
-        config_sha = sha256((*identity, self.delisting_schedule)
-                            if self.delisting_schedule.delistings else identity)
-        if self.evaluation_window is not None:
-            config_sha = sha256((config_sha, self.evaluation_window))
-        if self.first_entry_only:
-            config_sha = sha256((config_sha, "first-entry-only-v1"))
-        if self.session_flat:
-            config_sha = sha256((config_sha, "final-bar-open-liquidation-v1"))
+        config_sha = self.config_digest()
         observation = EventRuntime(RuntimeConfig(self.settings.run_version))
         runners = tuple(StrategyRunner(s, self.calendar, max_bars=self.settings.max_strategy_bars)
                         for s in self.strategies)

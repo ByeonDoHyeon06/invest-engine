@@ -48,3 +48,5 @@
 - [0026](0026-durable-research-journal.md) — Proposed: durable local experiment journal and provisional E5 report reconciliation.
 
 - [0027](0027-temporal-walk-forward.md) — Proposed: deterministic temporal folds, label purge, embargo and logical final partition.
+
+- [0028](0028-fixed-rule-fold-replay.md) — Proposed: fixed-rule, preregistered E5 replay across strict temporal validation folds.
