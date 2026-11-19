@@ -54,3 +54,5 @@
 - [0029](0029-causal-market-regimes.md) — Proposed: causal two-axis intraday regime annotations and fill attribution.
 
 - [0030](0030-regime-exposure-cohorts.md) — Proposed: observed regime exposure denominators and quantity-cohort realized attribution.
+
+- [0031](0031-bounded-parameter-grid.md) — Proposed: budgeted deterministic rule grid and validation replay.
