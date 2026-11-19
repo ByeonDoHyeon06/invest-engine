@@ -19,6 +19,8 @@ from invest_engine.research.evaluation import MINUTE, EvaluationWindow, validate
 from invest_engine.research.fills import BarFillPolicy
 from invest_engine.research.protection import ProtectionPolicy
 from invest_engine.research.report import sha256
+from invest_engine.research.regime import RegimePolicy
+from invest_engine.research.regime_study import RegimeStudy, attribute_regimes
 from invest_engine.research.report_evidence import ReportBinding, report_context_sha256
 from invest_engine.research.research_journal import ResearchJournal
 from invest_engine.research.walk_forward import SampleTiming, WalkForwardPlan, plan_walk_forward
@@ -123,7 +125,8 @@ def _engine(case: FoldInput, scenario: FoldScenario, rule: FixedRule | None,
 
 def prepare_validation(
     plan: WalkForwardPlan, timing: tuple[SampleTiming, ...], cases: tuple[FoldInput, ...],
-    rules: tuple[FixedRule, ...], scenario: FoldScenario,
+    rules: tuple[FixedRule, ...], scenario: FoldScenario, *,
+    regime_policy: RegimePolicy | None = None,
 ) -> tuple[PreparedFold, ...]:
     """Recompute fold membership, bind complete E5 configs before any replay."""
     if plan != plan_walk_forward(plan.spec, timing) or not plan.eligible:
@@ -177,6 +180,8 @@ def prepare_validation(
         scenario_identity = sha256(("e63b-fixed-rule-matrix-v1", plan.digest, fold,
                                     scenario, tuple(sorted(rules, key=lambda r: r.candidate_id)),
                                     configs))
+        if regime_policy is not None:
+            scenario_identity = sha256((scenario_identity, regime_policy.digest))
         context = report_context_sha256(case.calendar, case.window, scenario_identity)
         data = sha256(tuple(canonical_bytes(e).hex() for e in case.events))
         window = ResearchWindow(f"{case.fold_id}:{case.instrument_key}", case.instrument_key,
@@ -202,6 +207,7 @@ class FoldExecution:
     status: str
     report_sha256: str | None = None
     error_type: str | None = None
+    regime_study: RegimeStudy | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,7 +224,8 @@ class FoldStudyResult:
 def execute_validation(
     journal: ResearchJournal, research_plan_id: str, walk_forward: WalkForwardPlan,
     timing: tuple[SampleTiming, ...], cases: tuple[FoldInput, ...],
-    rules: tuple[FixedRule, ...], scenario: FoldScenario,
+    rules: tuple[FixedRule, ...], scenario: FoldScenario, *,
+    regime_policy: RegimePolicy | None = None,
 ) -> FoldStudyResult:
     """Run every registered developmental arm and persist provisional E5 evidence.
 
@@ -226,7 +233,8 @@ def execute_validation(
     No holdout events accepted. No strategy selection or journal lock performed.
     Per-arm failures are reported, never substituted with zero PnL.
     """
-    prepared = prepare_validation(walk_forward, timing, cases, rules, scenario)
+    prepared = prepare_validation(walk_forward, timing, cases, rules, scenario,
+                                  regime_policy=regime_policy)
     registry = journal.get(research_plan_id)
     plan: ResearchPlan = registry.plan
     if registry.validation_locked or registry.final_assessment is not None:
@@ -255,11 +263,13 @@ def execute_validation(
                 if engine.config_digest() != config_hash:
                     raise ValueError("FOLD_INITIAL_CONFIG_CHANGED")
                 report = engine.run(case.events)
+                regimes = (attribute_regimes(report, case.events, case.calendar, case.window, regime_policy)
+                           if regime_policy is not None else None)
                 binding = ReportBinding(plan.digest, p.window.window_id, candidate, cost, config_hash)
                 journal.record_report(plan.plan_id, binding, report, case.events, case.calendar,
                                       case.window, scenario_identity=p.scenario_identity)
                 results.append(FoldExecution(p.window.window_id, candidate, cost, "RECORDED",
-                                             sha256(report)))
+                                             sha256(report), regime_study=regimes))
             except (ValueError, RuntimeError, ArithmeticError) as exc:
                 results.append(FoldExecution(p.window.window_id, candidate, cost, "FAILED",
                                              error_type=type(exc).__name__))
