@@ -1,0 +1,36 @@
+name: E5.14b fee audit and E5.15a window extension
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/e513_market_study.py'
+      - 'src/invest_engine/research/us_fee_audit.py'
+      - '.github/workflows/e514b-study.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  minute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [TSLA, SPY, KO, TWTR]
+        month: [8, 9, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - run: python -u scripts/e513_market_study.py minute-e514b ${{ matrix.symbol }} ${{ matrix.month }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e514b-minute-${{ matrix.symbol }}-${{ matrix.month }}-summary
+          path: research-output/e514b-*
+          if-no-files-found: error
