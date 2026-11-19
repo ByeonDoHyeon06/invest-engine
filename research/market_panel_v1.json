@@ -1,0 +1,628 @@
+{
+  "schema": "market-panel-plan-v1",
+  "dataset_id": "krus-80-2021-2025-v1",
+  "registered_at": "2026-11-19",
+  "universe_basis": "retrospective fixed convenience cohort; not point-in-time membership or survivorship-bias-free; includes historical removals; never replace failed symbols",
+  "periods": {
+    "warmup": [
+      "2020-01-01",
+      "2020-12-31"
+    ],
+    "training": [
+      "2021-01-01",
+      "2023-12-31"
+    ],
+    "validation": [
+      "2024-01-01",
+      "2025-12-31"
+    ],
+    "reserved_test": [
+      "2026-01-01",
+      "2026-10-31"
+    ]
+  },
+  "reservation_note": "2026 reserved metadata only; neither access isolation nor unseen-history certification; earlier 2025 data examined",
+  "instruments": [
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "AAPL",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "ACN",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "ADBE",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "CRM",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "DELL",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "GOOG",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "INTU",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "LRCX",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "META",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "MSFT",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "NFLX",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "NVDA",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "RMD",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "SAP",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "TSLA",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "TSM",
+      "currency": "USD",
+      "public_probe": true
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "AMZN",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "JPM",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "BAC",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "WFC",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "GS",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "V",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "MA",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "XOM",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "CVX",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "COP",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "JNJ",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "PFE",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "UNH",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "MRK",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "WMT",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "COST",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "PG",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "KO",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "PEP",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "MCD",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "DIS",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "CAT",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "TWTR",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "US",
+      "board": "US_LISTED",
+      "symbol": "ATVI",
+      "currency": "USD",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "005930",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "000660",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "005380",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "000270",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "005490",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "035420",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "035720",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "051910",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "006400",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "068270",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "207940",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "105560",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "055550",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "086790",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "032830",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "000810",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "015760",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "017670",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "030200",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "034730",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "012330",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "010130",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "010950",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "096770",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "003550",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "028260",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "009150",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "011170",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "033780",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSPI",
+      "symbol": "004020",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "091990",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "247540",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "086520",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "263750",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "112040",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "095700",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "196170",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "145020",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "078340",
+      "currency": "KRW",
+      "public_probe": false
+    },
+    {
+      "market": "KR",
+      "board": "KOSDAQ",
+      "symbol": "041510",
+      "currency": "KRW",
+      "public_probe": false
+    }
+  ],
+  "historical_removals_or_identity_review": [
+    "US:TWTR",
+    "US:ATVI",
+    "KR:091990"
+  ],
+  "benchmark_metadata": {
+    "US": [
+      "SPY",
+      "QQQ"
+    ],
+    "KR": [
+      "KOSPI",
+      "KOSDAQ"
+    ],
+    "note": "not included in 80 equity cohort; separate source and calendar required"
+  },
+  "providers": {
+    "US": {
+      "primary": "Alpaca historical SIP raw",
+      "daily_and_minute": true,
+      "authorization": "user-owned authorized data key; no broker order access"
+    },
+    "KR": {
+      "primary": "KRX official daily trading data",
+      "daily": true,
+      "minute": false,
+      "authorization": "approved data API key; non-commercial permitted research only"
+    },
+    "public_probe": {
+      "source": "Pubmarks/datasets",
+      "commit": "e31dd3817bb2eccaa10d3b01c6f2efdbca5d3abf",
+      "scope": "16 US symbols, yearly files 2020–2025 only; adjustment/license/PIT unverified; aggregate audit only"
+    }
+  },
+  "certification": {
+    "source_rights_verified": false,
+    "corporate_actions_verified": false,
+    "point_in_time_verified": false,
+    "execution_verified": false,
+    "production_authorized": false
+  }
+}
