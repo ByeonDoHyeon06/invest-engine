@@ -138,11 +138,11 @@ def classify_regime(
         return unknown("MIXED_SOURCE_HISTORY", ids, digest)
     closes = []
     for event in ordered:
-        bar = event.payload
-        assert isinstance(bar, Bar)
-        if bar.volume <= 0:
+        observation = event.payload
+        assert isinstance(observation, Bar)
+        if observation.volume <= 0:
             return unknown("ZERO_VOLUME_OBSERVATION", ids, digest)
-        closes.append(bar.close)
+        closes.append(observation.close)
     with localcontext() as ctx:
         ctx.prec = 64
         moves = tuple(b-a for a, b in zip(closes, closes[1:], strict=False))
