@@ -128,8 +128,11 @@ def prepare_validation(
     plan: WalkForwardPlan, timing: tuple[SampleTiming, ...], cases: tuple[FoldInput, ...],
     rules: tuple[FixedRule, ...], scenario: FoldScenario, *,
     regime_policy: RegimePolicy | None = None, include_exposure: bool = False,
+    search_identity: str | None = None,
 ) -> tuple[PreparedFold, ...]:
     """Recompute fold membership, bind complete E5 configs before any replay."""
+    if search_identity is not None and not _hash(search_identity):
+        raise ValueError("INVALID_FOLD_SEARCH_IDENTITY")
     if type(include_exposure) is not bool or (include_exposure and (
             regime_policy is None or regime_policy.interval != MINUTE)):
         raise ValueError("FOLD_EXPOSURE_REQUIRES_MINUTE_REGIME_POLICY")
@@ -188,6 +191,8 @@ def prepare_validation(
             scenario_identity = sha256((scenario_identity, regime_policy.digest))
         if include_exposure:
             scenario_identity = sha256((scenario_identity, "regime-exposure-v1"))
+        if search_identity is not None:
+            scenario_identity = sha256((scenario_identity, "bounded-search-v1", search_identity))
         context = report_context_sha256(case.calendar, case.window, scenario_identity)
         data = sha256(tuple(canonical_bytes(e).hex() for e in case.events))
         window = ResearchWindow(f"{case.fold_id}:{case.instrument_key}", case.instrument_key,
@@ -233,6 +238,7 @@ def execute_validation(
     timing: tuple[SampleTiming, ...], cases: tuple[FoldInput, ...],
     rules: tuple[FixedRule, ...], scenario: FoldScenario, *,
     regime_policy: RegimePolicy | None = None, include_exposure: bool = False,
+    search_identity: str | None = None,
 ) -> FoldStudyResult:
     """Run every registered developmental arm and persist provisional E5 evidence.
 
@@ -241,7 +247,8 @@ def execute_validation(
     Per-arm failures are reported, never substituted with zero PnL.
     """
     prepared = prepare_validation(walk_forward, timing, cases, rules, scenario,
-                                  regime_policy=regime_policy, include_exposure=include_exposure)
+                                  regime_policy=regime_policy, include_exposure=include_exposure,
+                                  search_identity=search_identity)
     registry = journal.get(research_plan_id)
     plan: ResearchPlan = registry.plan
     if registry.validation_locked or registry.final_assessment is not None:
