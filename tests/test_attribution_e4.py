@@ -142,3 +142,38 @@ def test_full_synthetic_buy_sell_realized_pnl_matches_e3():
     audit_virtual_against_account(virtual, eng.state)
     assert sum((p.realized_pnl for p in virtual.positions), D(0)) == eng.state.position(INST).realized_pnl
     assert virtual.instrument_quantity(INST) == D("100")
+
+
+def test_positive_target_rebalance_sell_uses_existing_virtual_holdings():
+    cfg = TradingConfig("a", (MonetaryRules("KRW", D("1")),),
+                        ((INST.key, InstrumentRules(D("1"), D("1"))),))
+    eng = TradingRuntime(cfg, (Money(D("1000000"), "KRW"),))
+    first = StrategySignal("entry", "orb", "1", INST, SignalDirection.LONG,
+                           D("0.01"), NOW, NOW+timedelta(minutes=1), "entry-bar", D("95"))
+    plan = allocate_targets((first,), as_of=NOW).plans[0]
+    buy = propose_simulated_intents((plan,), state=eng.state, config=cfg,
+                                    marks=(MarketMark(INST, D("100"), NOW, "fixture"),),
+                                    as_of=NOW)[0]
+    assert eng.submit(buy).decision.decision.value == "APPROVED"
+    eng.accept_simulated(buy.intent_id, NOW+timedelta(seconds=1))
+    eng.fill_simulated(buy.intent_id, price=D("100"), quantity=buy.quantity,
+                       execution_id="rebalance-buy", at=NOW+timedelta(seconds=2))
+    virtual = record_simulated_fill(VirtualLedger(), ticket_for_plan(plan, buy), eng.state.fills[-1])
+    later = NOW+timedelta(seconds=3)
+    again = StrategySignal("rebalance", "orb", "1", INST, SignalDirection.LONG,
+                           D("0.01"), later, later+timedelta(minutes=1), "up-bar", D("190"))
+    target = allocate_targets((again,), as_of=later).plans[0]
+    sell = propose_simulated_intents((target,), state=eng.state, config=cfg,
+                                     marks=(MarketMark(INST, D("200"), later, "fixture"),),
+                                     as_of=later)[0]
+    assert sell.side is Side.SELL and target.target_fraction == D("0.01")
+    ticket = ticket_for_plan(target, sell)
+    assert not ticket.strategy_weights
+    assert eng.submit(sell).decision.decision.value == "APPROVED"
+    eng.accept_simulated(sell.intent_id, later+timedelta(seconds=1))
+    eng.fill_simulated(sell.intent_id, price=D("200"), quantity=sell.quantity,
+                       execution_id="rebalance-sell", at=later+timedelta(seconds=2))
+    virtual = record_simulated_fill(virtual, ticket, eng.state.fills[-1])
+    audit_virtual_against_account(virtual, eng.state)
+    assert virtual.instrument_quantity(INST) == buy.quantity-sell.quantity
+    assert virtual.position("orb", INST).realized_pnl == eng.state.position(INST).realized_pnl

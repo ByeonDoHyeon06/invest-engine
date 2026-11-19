@@ -60,8 +60,8 @@ def download(url, limit):
 
 
 def instrument(symbol):
-    venue = "XNAS" if symbol in DAILY_SYMBOLS else "XNYS"
-    asset = AssetClass.EQUITY
+    venue = "ARCX" if symbol == "SPY" else "XNAS" if symbol in DAILY_SYMBOLS else "XNYS"
+    asset = AssetClass.ETF if symbol == "SPY" else AssetClass.EQUITY
     return InstrumentId(Market.US, venue, symbol, symbol, "USD", asset)
 
 
@@ -242,7 +242,7 @@ def daily():
         except Exception as exc:
             errors.append({"symbol": symbol, "error": type(exc).__name__+":"+str(exc)[:160]})
     save("daily", rows, {"source": "https://github.com/Pubmarks/datasets",
-         "source_commit": DAILY_REF, "source_hashes": hashes, "errors": errors[:50],
+         "source_commit": DAILY_REF, "source_hashes": hashes, "errors": errors,
          "error_count": len(errors), "planned": 6*12*len(RULES)*len(COSTS),
          "limitations": "cold-start independent months; unverified adjustment basis, actions and vintage"})
 
