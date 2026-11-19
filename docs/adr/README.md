@@ -46,3 +46,5 @@
 - [0025](0025-offline-candidate-gates.md) — Accepted offline research foundation (#44 verified only).
 
 - [0026](0026-durable-research-journal.md) — Proposed: durable local experiment journal and provisional E5 report reconciliation.
+
+- [0027](0027-temporal-walk-forward.md) — Proposed: deterministic temporal folds, label purge, embargo and logical final partition.
