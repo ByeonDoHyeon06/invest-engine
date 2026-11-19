@@ -165,3 +165,25 @@ def test_cli_fixed_window_pins_coverage_and_uses_real_pipeline(tmp_path):
     assert manifest["evaluation_window"]["market_coverage"] == "SINGLE_VENUE"
     assert len(report.report.equity) == 3 and not report.report.fills
     assert run_experiment(path).manifest_sha256 == report.manifest_sha256
+
+
+def test_orb_uses_prior_twenty_sessions_and_only_fills_evaluation_bar():
+    from invest_engine.strategies.orb import ORBLongStrategy
+    from test_orb_e4 import make_feed
+
+    calendar, events = make_feed(INST)
+    # Existing ORB fixture supplies exactly seven observed minutes per day.
+    # Declare these deliberately shortened synthetic sessions explicitly.
+    sessions = tuple(replace(s, end=s.start + timedelta(minutes=7))
+                     for s in calendar.sessions)
+    last = events[-1]
+    events[-1] = replace(last, payload=replace(last.payload, volume=D("1000")))
+    calendar = StaticSessionCalendar(sessions)
+    window = EvaluationWindow(sessions[-1].start, sessions[-1].end)
+    report = runner(calendar, window, ORBLongStrategy()).run(tuple(events))
+    assert len(report.equity) == 7
+    assert all(not row.signal_ids and not row.intent_ids for row in report.decisions[:140])
+    assert report.decisions[-2].event_id == "20-5"
+    assert len(report.decisions[-2].signal_ids) == 1
+    assert not report.decisions[-2].fills
+    assert report.fills and all(f.market_event_id == "20-6" for f in report.fills)
