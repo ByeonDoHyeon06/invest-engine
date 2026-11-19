@@ -106,6 +106,10 @@ class ResearchPlan:
                    for s in ("train", "validation", "test")}
         if not all(buckets.values()):
             raise ValueError("RESEARCH_REQUIRES_ALL_SPLITS")
+        development_hashes = {w.data_sha256 for w in (*buckets["train"], *buckets["validation"])}
+        test_hashes = {w.data_sha256 for w in buckets["test"]}
+        if development_hashes & test_hashes:
+            raise ValueError("RESEARCH_HOLDOUT_DATASET_REUSED")
         for a, b in (("train", "validation"), ("validation", "test")):
             if (max(w.end for w in buckets[a]) + self.label_horizon + self.policy.embargo
                     > min(w.start for w in buckets[b])):
@@ -145,10 +149,12 @@ class ArmEvidence:
     complete: bool
     cost_verified: bool
     execution_validated: bool
+    report_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if (not all(_hash(x) for x in (self.data_sha256, self.context_sha256,
                                      self.run_sha256, self.candidate_config_sha256))
+                or (self.report_sha256 is not None and not _hash(self.report_sha256))
                 or not self.window_id or not self.candidate_id
                 or self.cost not in ("base", "stress")
                 or _decimal(self.opening_cash, field="opening_cash") <= 0

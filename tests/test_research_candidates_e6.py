@@ -12,14 +12,13 @@ from invest_engine.research.report import sha256
 
 NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
 DAY = timedelta(days=1)
-H = "a"*64
 CTX = "b"*64
 BASE = (("no-trade", "c"*64), ("buy-hold", "d"*64))
 
 
 def plan():
     windows = tuple(ResearchWindow(split, "US:XNAS:FIX", "USD", split,
-                    NOW + i*10*DAY, NOW + (i*10+5)*DAY, H, CTX)
+                    NOW + i*10*DAY, NOW + (i*10+5)*DAY, sha256(("fixture", split)), CTX)
                     for i, split in enumerate(("train", "validation", "test")))
     candidates = tuple(Candidate(c, "v1", "e"*40, sha256(c), NOW+5*DAY)
                        for c in ("alpha", "beta"))
@@ -31,7 +30,8 @@ def arm(p, split, name, cost, *, pnl=None, verified=True, entries=None, exits=No
     config = {**dict(p.baseline_config_sha256),
               **{c.candidate_id: c.config_sha256 for c in p.candidates}}[name]
     amount = {"no-trade": "0", "buy-hold": "2", "alpha": "9", "beta": "5"}[name]
-    return ArmEvidence(split, name, cost, H, CTX, sha256((split, name, cost)),
+    data_hash = next(w.data_sha256 for w in p.windows if w.window_id == split)
+    return ArmEvidence(split, name, cost, data_hash, CTX, sha256((split, name, cost)),
                        config, "USD", D("1000"), D(amount if pnl is None else pnl),
                        D("0") if name == "no-trade" else D("0.01"),
                        0 if name in ("no-trade", "buy-hold") else (2 if exits is None else exits),
@@ -53,6 +53,8 @@ def test_temporal_gap_and_training_cutoff_are_enforced():
         replace(p, windows=(p.windows[0], w, p.windows[2]))
     with pytest.raises(ValueError, match="TRAINING_USES_NONTRAIN"):
         replace(p, candidates=(replace(p.candidates[0], training_cutoff=NOW+11*DAY),))
+    with pytest.raises(ValueError, match="HOLDOUT_DATASET_REUSED"):
+        replace(p, windows=(*p.windows[:2], replace(p.windows[2], data_sha256=p.windows[0].data_sha256)))
     assert p.digest == plan().digest
     assert p.digest != replace(p, label_horizon=2*DAY).digest
 
