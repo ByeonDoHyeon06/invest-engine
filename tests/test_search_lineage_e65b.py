@@ -26,7 +26,8 @@ def multi_plan():
                                replace(p.windows[-1], start=NOW+25*DAY, end=NOW+30*DAY)))
 
 
-def reservation(p, policy=StabilityPolicy()):
+def reservation(p, policy=None):
+    policy = StabilityPolicy() if policy is None else policy
     n = sum(w.split == "validation" for w in p.windows)*(len(p.candidates)+2)*2
     return SearchReservation(sha256("manifest"), p.digest, n, policy)
 
