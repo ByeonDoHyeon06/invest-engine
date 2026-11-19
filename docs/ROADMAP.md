@@ -117,6 +117,10 @@
 
 ### E5 — Backtest Engine & Reporting
 
+**E5.12 IN REVIEW (2026-11-19):** Complete-session 1m preflight, isolated warmup and entry-hold baseline. Data must be declared raw share volume with SHA-pinned PIT evidence. Actual data acquisition, completeness, historical publication and cost validation remain OPEN. [Spec](E5_EVALUATION_WINDOW.md) / [ADR-0020](adr/0020-fixed-evaluation-window.md). Issue #6 OPEN; LIVE NOT AUTHORIZED.
+
+
+
 **E5.11 VERIFIED + MERGED (2026-11-19):** [PR #34](https://github.com/ByeonDoHyeon06/invest-engine/pull/34), [merge 7c2e733](https://github.com/ByeonDoHyeon06/invest-engine/commit/7c2e7336071eb37f3764d276048f5ca92b1c3d52), [PR CI 44489789537](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44489789537): Python 3.12/3.13 **291 passed each**, Ruff, mypy and basic secret guard passed. Evidence-declared terminal cash receipt for a held delisted position, bound to the exact issuer action ID and instrument; non-fill accounting, attribution and restart tests. No assumed recovery amount, no delayed settlement beyond terminal bar, no verified provider data. [Main CI](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44489896885). [Spec](E5_TERMINAL_SETTLEMENT.md) / [ADR-0019](adr/0019-terminal-delisting-cash-receipt.md). E5 Issue #6 OPEN; LIVE NOT AUTHORIZED.
 
 **Next E5.12 — real-data acceptance:** obtain licensed historical 1m raw OHLCV with actual share volume and market coverage identified (not tick count); include at least 20 completed warm-up sessions before a fixed one-month evaluation window. Validate session calendar, gaps, point-in-time availability, splits/dividends/delistings, provenance, and fee/slippage assumptions. Compare ORB against predeclared NoTrade and buy/hold baselines using the same risk/cost assumptions; report realized/unrealized PnL, drawdown, fills, coverage, reproducibility and cost sensitivity. If data cannot be verified, report a blocker, not a performance claim. No E6 promotion or Issue #6 closure on synthetic evidence alone.

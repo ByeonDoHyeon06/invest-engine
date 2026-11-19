@@ -32,3 +32,5 @@
 
 - [0017](0017-dividend-research-replay.md) — Accepted offline research only: PIT entitlement/payment and net receivable; delisted holdings unsupported.\n\n- [0018](0018-delisting-terminal-bar-research.md) — Accepted (offline research): PIT-pinned unheld terminal delisting; held shares/unsettled orders fail closed, no implied recovery.\n
 - [0019](0019-terminal-delisting-cash-receipt.md) — Accepted (offline research): witnessed net receipt for held delisting; later payments unsupported.
+
+- [0020](0020-fixed-evaluation-window.md) — Accepted (offline research): strict warm-up/evaluation session boundary; real data validation remains open.

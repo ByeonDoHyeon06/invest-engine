@@ -19,6 +19,7 @@ from invest_engine.data.calendar import SessionCalendar
 from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.events import Bar, EventEnvelope, MarketPayload
 from invest_engine.domain.primitives import Money
+from invest_engine.research.evaluation import EvaluationWindow, validate_window
 from invest_engine.research.fills import BarFillPolicy, eligible_fill
 from invest_engine.research.fx import FxReportingPolicy, FxSeries, base_drawdown
 from invest_engine.research.protection import (
@@ -108,6 +109,7 @@ class HistoricalBacktest:
         split_schedule: SplitSchedule | None = None,
         dividend_schedule: DividendSchedule | None = None,
         delisting_schedule: DelistingSchedule | None = None,
+        evaluation_window: EvaluationWindow | None = None,
     ) -> None:
         if not strategies or len({s.manifest.strategy_id for s in strategies}) != len(strategies):
             raise ValueError("at least one uniquely named strategy required")
@@ -136,6 +138,11 @@ class HistoricalBacktest:
                                    else DelistingSchedule())
         if self.split_schedule.splits and self.protection_policy.enabled:
             raise ValueError("PROTECTIVE_LOTS_NOT_SPLIT_ADJUSTED")
+        self.evaluation_window = evaluation_window
+        if evaluation_window is not None and (self.split_schedule.splits
+                or self.dividend_schedule.entitlements or self.dividend_schedule.payments
+                or self.delisting_schedule.delistings):
+            raise ValueError("EVALUATION_WINDOW_REQUIRES_NO_ACTION_INTERVAL")
         self._used = False
 
     def run(self, events: tuple[EventEnvelope[MarketPayload], ...]) -> BacktestReport:
@@ -144,6 +151,10 @@ class HistoricalBacktest:
         self._used = True
         if not events:
             raise ValueError("historical market events required")
+        coverage = (validate_window(events, self.calendar, self.evaluation_window)
+                    if self.evaluation_window is not None else None)
+        if coverage is not None and self.settings.max_strategy_bars < len(events):
+            raise ValueError("EVALUATION_HISTORY_CAPACITY_TOO_SMALL")
         self.split_schedule.preflight(events)
         self.dividend_schedule.preflight(events)
         self.delisting_schedule.preflight(events)
@@ -187,6 +198,8 @@ class HistoricalBacktest:
         # Preserve historical E5.9 config hashes when the new extension is unused.
         config_sha = sha256((*identity, self.delisting_schedule)
                             if self.delisting_schedule.delistings else identity)
+        if self.evaluation_window is not None:
+            config_sha = sha256((config_sha, self.evaluation_window))
         observation = EventRuntime(RuntimeConfig(self.settings.run_version))
         runners = tuple(StrategyRunner(s, self.calendar, max_bars=self.settings.max_strategy_bars)
                         for s in self.strategies)
@@ -202,9 +215,14 @@ class HistoricalBacktest:
         fill_trace: list[FillTrace] = []
         protection_lots: tuple[ProtectionLot, ...] = ()
         entries = exits = 0
-        for event in events:
+        for index, event in enumerate(events):
             # E2 strict ordering and quality gating precede every strategy or fill.
             observation.accept(event)
+            if coverage is not None and index < coverage.warmup_bars:
+                for runner in runners:
+                    runner.accept(event, evaluate=False)
+                decisions.append(DecisionRecord(event.event_id, reason_codes=("WARMUP_ONLY",)))
+                continue
             now = max(event.available_at, event.received_at)
             matched_fills: list[str] = []
             protective_intents: list[str] = []

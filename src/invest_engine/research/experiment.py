@@ -23,12 +23,13 @@ from invest_engine.research.audit import (
 from invest_engine.research.corporate_replay import SplitSchedule, load_splits
 from invest_engine.research.dividend_replay import DividendSchedule, load_dividends
 from invest_engine.research.delisting_replay import DelistingSchedule, load_delistings
+from invest_engine.research.evaluation import EvaluationWindow, validate_window
 from invest_engine.research.fills import BarFillPolicy
 from invest_engine.research.fx import FxObservation, FxReportingPolicy, FxSeries
 from invest_engine.research.protection import ProtectionPolicy
 from invest_engine.research.pit import load_pit_evidence, validate_pit_events
 from invest_engine.research.report import BacktestReport, canonical_json, sha256
-from invest_engine.strategies.baselines import NoTradeStrategy
+from invest_engine.strategies.baselines import BuyHoldBaseline, NoTradeStrategy
 from invest_engine.strategies.contracts import DataRequirement, Strategy
 from invest_engine.strategies.orb import ORBLongStrategy, ORBParameters
 from invest_engine.trading.models import TradingConfig
@@ -82,7 +83,7 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                 "account", "risk", "fill_model", "code_sha", "output_dir"}
     if (not isinstance(raw_input, dict) or not required <= set(raw_input)
         or not set(raw_input) <= required | {"fx_reporting", "pit_evidence", "split_replay",
-                                                "dividend_replay", "delisting_replay"}):
+                                                "dividend_replay", "delisting_replay", "evaluation_window"}):
         raise ValueError("unexpected or missing config fields")
     raw = cast(dict[str, Any], raw_input)
     if raw["schema_version"] != "e5-research-v1" or raw["mode"] != "BACKTEST":
@@ -121,6 +122,23 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         sessions.append(TradingSession(Market(s["market"]), s["venue"],
                                        _utc(s["start"]), _utc(s["end"])))
     calendar = StaticSessionCalendar(tuple(sessions))
+    evaluation_window: EvaluationWindow | None = None
+    coverage = None
+    if "evaluation_window" in raw:
+        window = _object(raw["evaluation_window"], {
+            "start", "end", "warmup_sessions", "price_basis", "market_coverage",
+        })
+        if declared != "SHARES" or window["price_basis"] != "RAW_UNADJUSTED":
+            raise ValueError("EVALUATION_REQUIRES_RAW_SHARE_VOLUME")
+        if "pit_evidence" not in raw:
+            raise ValueError("EVALUATION_REQUIRES_PIT_EVIDENCE")
+        if any(key in raw for key in ("split_replay", "dividend_replay", "delisting_replay")):
+            raise ValueError("EVALUATION_WINDOW_REQUIRES_NO_ACTION_INTERVAL")
+        evaluation_window = EvaluationWindow(
+            _utc(window["start"]), _utc(window["end"]), window["warmup_sessions"],
+            window["market_coverage"],
+        )
+        coverage = validate_window(events, calendar, evaluation_window)
     schedule = SplitSchedule()
     split_file_hash: str | None = None
     if "split_replay" in raw:
@@ -203,6 +221,10 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
     if st["id"] == "no-trade" and st["version"] == "1.0.0":
         assert params is not None
         strategy = NoTradeStrategy(DataRequirement("market.bar", _interval(params["interval"])))
+    elif st["id"] == "buy-hold-baseline" and st["version"] == "1.0.0":
+        buy = _object(st["parameters"], {"interval", "target_fraction", "stop_fraction"})
+        strategy = BuyHoldBaseline(_interval(buy["interval"]),
+                                   _decimal(buy["target_fraction"]), _decimal(buy["stop_fraction"]))
     elif st["id"] == "orb-long" and st["version"] == "1.0.0":
         p = _object(st["parameters"], {"interval", "opening_kr", "opening_us", "prior_sessions",
                                         "volume_multiplier", "target_fraction", "atr_period"})
@@ -214,6 +236,12 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
         ))
     else:
         raise ValueError("strategy is not an approved, versioned research plugin")
+    if evaluation_window is not None:
+        if any(r.interval != timedelta(minutes=1) for r in strategy.manifest.requirements):
+            raise ValueError("EVALUATION_STRATEGY_MUST_USE_ONE_MINUTE_BARS")
+        if isinstance(strategy, ORBLongStrategy) and not (
+                20 <= strategy.params.prior_sessions <= evaluation_window.warmup_sessions):
+            raise ValueError("EVALUATION_ORB_WARMUP_MISMATCH")
     account = _object(raw["account"], {"account_id", "cash", "cash_rules", "instruments", "fee_rate", "sell_tax_rate"})
     cash = tuple(Money(_decimal(x["amount"]), x["currency"]) for x in account["cash"])
     cash_rules = tuple(MonetaryRules(x["currency"], _decimal(x["cash_step"]))
@@ -257,6 +285,8 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
             adverse_bps=_decimal(protection_raw["adverse_bps"]),
             version=protection_raw["version"],
         )
+    if isinstance(strategy, BuyHoldBaseline) and protection.enabled:
+        raise ValueError("BUY_HOLD_BASELINE_REQUIRES_PROTECTION_DISABLED")
     fx_series: FxSeries | None = None
     fx_policy: FxReportingPolicy | None = None
     fx_file_hash: str | None = None
@@ -308,7 +338,8 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                                 protection_policy=protection, settings=settings,
                                 fx_series=fx_series, fx_policy=fx_policy,
                                 split_schedule=schedule, dividend_schedule=dividend_schedule,
-                                delisting_schedule=delisting_schedule)
+                                delisting_schedule=delisting_schedule,
+                                evaluation_window=evaluation_window)
     report = runner.run(events)
     output_dir = (root / raw["output_dir"]).resolve()
     if output_dir in (root, source_file):
@@ -362,6 +393,11 @@ def run_experiment(config_file: Path | str) -> ExperimentResult:
                      + (["VOLUME_IS_TICK_COUNT_NOT_TRADED_SHARES"] if declared == "TICK_COUNT" else [])
                      + (["VOLUME_UNIT_NOT_DECLARED"] if declared is None else [])),
     }
+    if coverage is not None and evaluation_window is not None:
+        manifest["evaluation_window"] = evaluation_window
+        manifest["evaluation_coverage"] = coverage
+        manifest["evaluation_price_basis"] = "RAW_UNADJUSTED"
+        manifest["evaluation_provider_verified"] = False
     if delisting_schedule.resolutions:
         manifest["terminal_settlement_count"] = len(delisting_schedule.resolutions)
         manifest["terminal_settlement_data_verified"] = False
