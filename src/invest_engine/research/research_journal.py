@@ -13,10 +13,14 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from invest_engine.data.calendar import StaticSessionCalendar
+from invest_engine.domain.events import EventEnvelope, MarketPayload
+from invest_engine.research.evaluation import EvaluationWindow
 from invest_engine.research.candidates import (
     ArmEvidence, Candidate, EvaluationPolicy, ResearchPlan, ResearchRegistry, ResearchWindow,
 )
-from invest_engine.research.report import canonical_json, sha256
+from invest_engine.research.report import BacktestReport, canonical_json, sha256
+from invest_engine.research.report_evidence import ReportBinding, evidence_from_report
 
 ROOT = "0" * 64
 
@@ -191,6 +195,21 @@ class ResearchJournal:
 
     def record(self, plan_id: str, arm: ArmEvidence) -> ResearchRegistry:
         return self._commit(plan_id, "record", arm)
+
+    def record_report(
+        self, plan_id: str, binding: ReportBinding, report: BacktestReport,
+        events: tuple[EventEnvelope[MarketPayload], ...], calendar: StaticSessionCalendar,
+        window: EvaluationWindow, *, scenario_identity: str,
+    ) -> ResearchRegistry:
+        """Persist a reconciled E5 report as provisional evidence.
+
+        Recheck the immutable plan and eligibility in the write transaction.
+        The report and source events themselves remain in caller-private storage.
+        """
+        plan = self.get(plan_id).plan
+        arm = evidence_from_report(plan, binding, report, events, calendar, window,
+                                   scenario_identity=scenario_identity)
+        return self.record(plan_id, arm)
 
     def lock_validation(self, plan_id: str) -> ResearchRegistry:
         return self._commit(plan_id, "lock", None)
