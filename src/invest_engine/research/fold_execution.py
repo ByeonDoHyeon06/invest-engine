@@ -141,6 +141,8 @@ def prepare_validation(
     prepared: list[PreparedFold] = []
     for case in sorted(cases, key=lambda c: (c.fold_id, c.instrument_key)):
         fold = fold_by_id[case.fold_id]
+        if any(e.ingest_ordinal != i for i, e in enumerate(case.events)):
+            raise ValueError("FOLD_TAPE_REQUIRES_LOCAL_CONTIGUOUS_ORDINALS")
         coverage = validate_window(case.events, case.calendar, case.window)
         inst = case.events[0].instrument_id
         if (inst is None or inst.key != case.instrument_key
