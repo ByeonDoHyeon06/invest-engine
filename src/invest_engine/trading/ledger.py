@@ -205,6 +205,7 @@ class TradingState:
     paid_dividend_ids: frozenset[str] = frozenset()
     delisted_instruments: frozenset[str] = frozenset()
     delisting_resolutions: tuple[DelistingResolutionRecord, ...] = ()
+    delisting_actions: tuple[DelistingObserved, ...] = ()
 
     def account(self, currency: str) -> CashLedger:
         for balance in self.cash:
@@ -369,12 +370,14 @@ def _apply(
                                    gross, withheld, net, payload.effective_at),
             ))
         return replace(state, delisted_instruments=(
-            state.delisted_instruments | {payload.instrument.key}))
+            state.delisted_instruments | {payload.instrument.key}),
+            delisting_actions=(*state.delisting_actions, payload))
     if isinstance(payload, DelistingCashResolved):
         if payload.instrument.key not in state.delisted_instruments:
             raise InvalidEvent("DELISTING_NOT_OBSERVED")
-        if payload.action_id not in state.applied_corporate_ids:
-            raise InvalidEvent("DELISTING_ID_NOT_REGISTERED")
+        if not any(a.action_id == payload.action_id and a.instrument == payload.instrument
+                   for a in state.delisting_actions):
+            raise InvalidEvent("DELISTING_ID_NOT_REGISTERED_FOR_INSTRUMENT")
         if any(record.action_id == payload.action_id for record in state.delisting_resolutions):
             raise InvalidEvent("DELISTING_SETTLEMENT_ALREADY_APPLIED")
         held = state.position(payload.instrument)
@@ -394,11 +397,11 @@ def _apply(
         with localcontext() as ctx:
             ctx.prec = 64
             realized = payload.net_cash - held.quantity * held.average_cost
-        updated = _set_position(state, replace(held, quantity=Decimal(0),
+        resolved_state = _set_position(state, replace(held, quantity=Decimal(0),
                                                average_cost=Decimal(0),
                                                realized_pnl=held.realized_pnl + realized))
-        updated = _set_cash(updated, replace(balance, settled=balance.settled + payload.net_cash))
-        return replace(updated, delisting_resolutions=(*state.delisting_resolutions,
+        resolved_state = _set_cash(resolved_state, replace(balance, settled=balance.settled + payload.net_cash))
+        return replace(resolved_state, delisting_resolutions=(*state.delisting_resolutions,
             DelistingResolutionRecord(payload.action_id, payload.instrument.key,
                                       payload.instrument.currency, payload.quantity,
                                       payload.net_cash, realized, payload.evidence_sha256,
@@ -728,12 +731,17 @@ def audit_trading_state(state: TradingState) -> None:
             shares_by_symbol.get(adjustment.instrument_key, Decimal(0))
             + adjustment.quantity_delta
         )
+    delist_ids = {a.action_id: a.instrument.key for a in state.delisting_actions}
+    if (len(delist_ids) != len(state.delisting_actions)
+            or set(delist_ids.values()) != state.delisted_instruments
+            or any(dict(state.corporate_fingerprints).get(a.action_id) != action_fingerprint(a)
+                   for a in state.delisting_actions)):
+        raise InvalidEvent("delisting identity audit mismatch")
     resolution_ids = [r.action_id for r in state.delisting_resolutions]
     if len(set(resolution_ids)) != len(resolution_ids):
         raise InvalidEvent("duplicate terminal settlement records")
     for resolution in state.delisting_resolutions:
-        if (resolution.action_id not in state.applied_corporate_ids or
-            resolution.instrument_key not in state.delisted_instruments or
+        if (delist_ids.get(resolution.action_id) != resolution.instrument_key or
             resolution.net_cash < 0):
             raise InvalidEvent("invalid terminal settlement record")
         shares_by_symbol[resolution.instrument_key] = (

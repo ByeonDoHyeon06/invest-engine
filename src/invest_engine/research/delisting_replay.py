@@ -1,8 +1,8 @@
 """Conservative, source-pinned delisting boundary for offline research.
 
 A delisted security with outstanding shares needs a real terminal settlement,
-which OHLCV bars cannot provide. Only zero-position/zero-order delistings may
-pass this contract; no mark, liquidation or write-off is fabricated.
+which OHLCV bars cannot provide. Held positions require a separately declared
+terminal receipt; no mark, liquidation or write-off is fabricated.
 """
 from __future__ import annotations
 

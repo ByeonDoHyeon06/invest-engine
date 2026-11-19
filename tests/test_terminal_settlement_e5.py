@@ -189,3 +189,21 @@ def test_virtual_multiple_strategies_cash_recovery_is_conserved():
     assert [p.realized_pnl for p in transformed.positions] == [D("-1600"), D("-2700")]
     with pytest.raises(ValueError, match="virtual attribution"):
         resolve_virtual_delisting(ledger, resolution(qty="99"))
+
+
+def test_resolution_cannot_reuse_unrelated_dividend_action_id():
+    from test_actions_e5 import dividend
+
+    eng = engine()
+    bought(eng)
+    at = BASE + timedelta(seconds=3)
+    other = dividend(at)
+    eng.record_dividend(other, at)
+    at += timedelta(seconds=1)
+    eng.flag_delisting(DelistingObserved("delist-k", KR, at, at, "fixture"), at)
+    cash_before = eng.state.account("KRW").settled
+    with pytest.raises(InvalidEvent, match="DELISTING_ID_NOT_REGISTERED_FOR_INSTRUMENT"):
+        eng.resolve_delisted_cash(DelistingCashResolved(
+            other.action_id, KR, D("10"), D("42000"), at, at, "fixture", "f"*64), at)
+    assert eng.state.account("KRW").settled == cash_before
+    assert eng.state.position(KR).quantity == D("10")

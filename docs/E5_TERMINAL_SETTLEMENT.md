@@ -27,3 +27,5 @@
 ## Validation
 
 `tests/test_terminal_settlement_e5.py` covers held and unheld paths, quantity and currency mismatch, cash conservation, no fictitious SELL fill, cash receipt time, duplicate/changed receipt, two-strategy virtual attribution, PIT schedule loader hash, canonical E3 codec, and SQLite restart recovery. Existing E5 synthetic and historical daily regressions must remain green.
+
+The reducer binds every receipt to the exact prior `DelistingObserved` action ID and instrument, including after restart; an unrelated dividend/split action ID cannot authorize a cash recovery. `realized_exit_pnl`, profit factor and exit expectancy are explicitly **fill-only** metrics; terminal receipt PnL is reported separately in `terminal_settlements` and is included in total equity/net PnL.
