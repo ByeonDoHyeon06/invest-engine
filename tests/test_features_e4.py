@@ -77,3 +77,50 @@ def test_unfinalized_bar_never_appears_in_feature_store():
     obs = BarObservation(invalid.event_id, INST, invalid.payload, invalid.available_at, SESS)
     with pytest.raises(ValueError, match="unfinalized"):
         reg.compute(INST, invalid.available_at, (obs,))
+
+
+def test_recursive_cache_matches_reference_on_prefixes_revisions_and_trim():
+    from decimal import ROUND_DOWN, localcontext
+    from invest_engine.features.technical import atr, ema
+
+    observations = []
+    for i in range(80):
+        start = T + STEP*i
+        price = D("90") + D(i % 11) / D("7")
+        bar = Bar(start, start+STEP, price, price+D("0.43"), price-D("0.19"),
+                  price, D(i+5), interval=STEP)
+        observations.append(BarObservation(str(i), INST, bar, bar.end, SESS))
+    reg = FeatureRegistry((
+        FeatureDefinition("ema7", FeatureKind.EMA, STEP, 7),
+        FeatureDefinition("atr7", FeatureKind.ATR, STEP, 7),
+    ))
+
+    def check(history, now):
+        expected = {"ema7": ema([b.bar for b in history], 7),
+                    "atr7": atr([b.bar for b in history], 7)}
+        actual = reg.compute(INST, now, tuple(history))
+        assert {v.name: v.value for v in actual} == expected
+        assert all(v.source_event_ids == tuple(b.event_id for b in history) for v in actual)
+
+    for end in range(8, 81):
+        check(observations[:end], observations[end-1].known_at)
+    check(observations, observations[-1].known_at)
+    check(observations[5:], observations[-1].known_at)
+    check(observations[:20], observations[19].known_at)
+    corrected = list(observations)
+    corrected[5] = replace(corrected[5], bar=replace(corrected[5].bar, volume=D("999")))
+    check(corrected, corrected[-1].known_at)
+    with localcontext() as ctx:
+        ctx.rounding = ROUND_DOWN
+        check(corrected, corrected[-1].known_at)
+    check(corrected, corrected[-1].known_at)
+
+
+def test_recursive_cache_does_not_accept_overlapping_suffix():
+    reg = FeatureRegistry((FeatureDefinition("atr2", FeatureKind.ATR, STEP, 2),))
+    es = [event(i) for i in range(3)]
+    bars = tuple(BarObservation(e.event_id, INST, e.payload, e.received_at, SESS) for e in es)
+    reg.compute(INST, bars[-1].known_at, bars)
+    duplicate = replace(bars[-1], event_id="duplicate")
+    with pytest.raises(ValueError, match="overlaps"):
+        reg.compute(INST, bars[-1].known_at, (*bars, duplicate))

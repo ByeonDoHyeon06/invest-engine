@@ -35,6 +35,7 @@ class StrategyRunner:
         self.calendar = calendar
         self.max_bars = max_bars
         self._bars: list[BarObservation] = []
+        self._bar_keys: set[tuple[str, timedelta | None, datetime]] = set()
         self._seen_ids: set[str] = set()
         self._last_ordinal = -1
         self._last_known: datetime | None = None
@@ -51,6 +52,7 @@ class StrategyRunner:
         Only use at a validated session-open corporate action boundary.
         """
         self._bars = [b for b in self._bars if b.instrument.key != instrument.key]
+        self._bar_keys = {k for k in self._bar_keys if k[0] != instrument.key}
         self._counts = {k: v for k, v in self._counts.items()
                         if k[0] != instrument.key}
         self._last_observed = {k: v for k, v in self._last_observed.items()
@@ -105,12 +107,16 @@ class StrategyRunner:
                 observation = BarObservation(event.event_id, inst, event.payload, now, session)
             except ValueError as exc:
                 raise InvalidEvent("bar violates session boundaries") from exc
-            if any(b.instrument.key == inst.key and b.bar.interval == event.payload.interval
-                   and b.bar.start == event.payload.start for b in self._bars):
+            bar_key = (inst.key, event.payload.interval, event.payload.start)
+            if bar_key in self._bar_keys:
                 raise InvalidEvent("duplicate bar interval for instrument")
             self._bars.append(observation)
+            self._bar_keys.add(bar_key)
             if len(self._bars) > self.max_bars:
-                del self._bars[:len(self._bars)-self.max_bars]
+                count = len(self._bars)-self.max_bars
+                for b in self._bars[:count]:
+                    self._bar_keys.remove((b.instrument.key, b.bar.interval, b.bar.start))
+                del self._bars[:count]
 
         if not evaluate:
             return StrategyOutcome((), ("WARMUP_ONLY",))

@@ -46,8 +46,10 @@ class AttributionTicket:
 def ticket_for_plan(plan: AllocationPlan, intent: OrderIntent) -> AttributionTicket:
     if (plan.instrument != intent.instrument or plan.as_of != intent.submitted_at
         or (intent.side is Side.BUY and plan.target_fraction <= 0)
-        or (intent.side is Side.SELL and plan.target_fraction != 0)):
+        or not (0 <= plan.target_fraction <= 1)):
         raise ValueError("intent and allocation plan mismatch")
+    # A positive LONG target can require trimming an overweight holding.
+    # SELL fills always reduce existing virtual shares, irrespective of target.
     weights = plan.strategy_targets if intent.side is Side.BUY else ()
     return AttributionTicket(intent.intent_id, intent.instrument, intent.side,
                              intent.quantity, weights)
