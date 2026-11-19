@@ -4,7 +4,7 @@ from __future__ import annotations
 from contextlib import suppress
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
-from decimal import Decimal, localcontext
+from decimal import Decimal
 
 from invest_engine.domain.errors import InvalidEvent
 from invest_engine.trading.actions import (
@@ -361,10 +361,13 @@ class TradingRuntime:
         order = self.state.order(intent_id)
         if order is None:
             raise InvalidEvent("unknown intent")
-        with localcontext() as ctx:
-            ctx.prec = 64
-            money = self.config.cash_rules(order.intent.instrument.currency)
-            fee = money.settle(price*quantity*self.config.fee_rate)
+        prior = (tuple(f for f in self.state.fills if f.intent_id == intent_id)
+                 if self.config.requires_order_fill_history else ())
+        try:
+            fee, _ = self.config.fill_cost(order.intent, price, quantity, at, prior)
+        except ValueError as exc:
+            self._force_halt(str(exc))
+            raise InvalidEvent("cannot price simulated execution") from exc
         fill = SimulatedFill(execution_id, intent_id, quantity, price, fee, at)
         self._emit(FillRecorded(fill), at, "fill:"+execution_id)
 

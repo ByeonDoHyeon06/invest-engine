@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from enum import Enum
 
 from invest_engine.domain.primitives import InstrumentId, _decimal, utc_datetime
-from invest_engine.trading.money import InstrumentRules, MonetaryRules
+from invest_engine.trading.money import InstrumentRules, MonetaryRules, multiply_cash
 
 
 class Side(str, Enum):
@@ -150,3 +150,36 @@ class TradingConfig:
             if key == instrument.key:
                 return value
         raise ValueError(f"unsupported instrument: {instrument.key}")
+
+    @property
+    def requires_order_fill_history(self) -> bool:
+        return False
+
+    def validate_cost_order(self, intent: OrderIntent) -> None:
+        """Optional cost policy guard. Legacy percentage policy is unrestricted."""
+
+    def buy_reservation(self, intent: OrderIntent, remaining: Decimal,
+                        prior_fills: tuple[SimulatedFill, ...] = ()) -> Decimal:
+        if remaining == 0:
+            return Decimal(0)
+        with localcontext() as ctx:
+            ctx.prec = 64
+            gross = multiply_cash(intent.limit_price, remaining)
+            return self.cash_rules(intent.instrument.currency).settle(
+                gross + gross * self.fee_rate)
+
+    def fill_cost(self, intent: OrderIntent, price: Decimal, quantity: Decimal,
+                  at: datetime, prior_fills: tuple[SimulatedFill, ...] = (),
+                  ) -> tuple[Decimal, Decimal]:
+        """Commission and sale levy in settlement currency."""
+        with localcontext() as ctx:
+            ctx.prec = 64
+            gross = multiply_cash(price, quantity)
+            money = self.cash_rules(intent.instrument.currency)
+            return (money.settle(gross * self.fee_rate),
+                    money.settle(gross * self.sell_tax_rate)
+                    if intent.side is Side.SELL else Decimal(0))
+
+    def planned_fee_loss(self, intent: OrderIntent) -> Decimal:
+        """Legacy planned loss is price-only; opt-in policies may extend it."""
+        return Decimal(0)

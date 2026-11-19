@@ -15,6 +15,7 @@ from invest_engine.research.report import FillTrace
 from invest_engine.research.us_fee_audit import FeeAssumption, US_2022, audit_us_fixed_fills
 from invest_engine.strategies.baselines import BuyHoldBaseline, NoTradeStrategy
 from invest_engine.strategies.contracts import DataRequirement
+from invest_engine.trading.dated_fees import USDatedFeeConfig
 from invest_engine.trading.models import TradingConfig
 from invest_engine.trading.money import InstrumentRules, MonetaryRules
 from invest_engine.trading.policy import RiskLimits
@@ -23,7 +24,7 @@ INST = InstrumentId(Market.US, "XNAS", "fixture", "FIX", "USD")
 MINUTE = timedelta(minutes=1)
 
 
-def fixture(*, start=datetime(2022, 9, 1, 14, 30, tzinfo=timezone.utc), no_trade=False):
+def fixture(*, start=datetime(2022, 9, 1, 14, 30, tzinfo=timezone.utc), no_trade=False, dated=False):
     sessions = tuple(TradingSession(Market.US, "XNAS", start+timedelta(days=i),
                                     start+timedelta(days=i, minutes=4))
                      for i in range(21))
@@ -39,7 +40,8 @@ def fixture(*, start=datetime(2022, 9, 1, 14, 30, tzinfo=timezone.utc), no_trade
                                         end, end, end, i, bar))
     strategy = (NoTradeStrategy(DataRequirement("market.bar", MINUTE)) if no_trade else
                 BuyHoldBaseline(MINUTE, D("0.05"), D("0.1")))
-    config = TradingConfig("sim", (MonetaryRules("USD", D("0.01")),),
+    config_cls = USDatedFeeConfig if dated else TradingConfig
+    config = config_cls("sim", (MonetaryRules("USD", D("0.01")),),
                            ((INST.key, InstrumentRules(D("0.01"), D("1"))),))
     report = HistoricalBacktest(
         calendar=StaticSessionCalendar(sessions), strategies=(strategy,), config=config,
@@ -125,3 +127,16 @@ def test_reject_mismatched_dataset_and_duplicate_execution():
 def test_reject_invalid_fee_assumptions(rate, minimum):
     with pytest.raises(ValueError, match="INVALID_FEE_ASSUMPTION"):
         FeeAssumption(rate, minimum)
+
+
+def test_dated_policy_replay_costs_flow_into_equity_and_attribution():
+    old, _ = fixture()
+    report, events = fixture(dated=True)
+    assert report.config_sha256 != old.config_sha256
+    assert report.run_sha256 != old.run_sha256
+    assert report.fills[1].tax == D("0.13")
+    assert dict(report.total_taxes)["USD"] == D("0.13")
+    assert dict(report.net_pnl)["USD"] == dict(old.net_pnl)["USD"] - D("0.13")
+    assert report.run_sha256 == fixture(dated=True)[0].run_sha256
+    checked = audit_us_fixed_fills(report, events, FeeAssumption(D("0.001")))
+    assert checked.original_total == checked.repriced_total

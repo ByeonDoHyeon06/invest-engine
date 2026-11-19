@@ -480,13 +480,11 @@ def _apply(
             return _set_order(state, OrderRecord(intent, OrderStatus.REJECTED, reason_codes=payload.reason_codes))
         config.rules_for(intent.instrument).validate_price(intent.limit_price)
         config.rules_for(intent.instrument).validate_quantity(intent.quantity)
-        cash_rules = config.cash_rules(intent.instrument.currency)
+        config.cash_rules(intent.instrument.currency)
+        config.validate_cost_order(intent)
         balance = state.account(intent.instrument.currency)
         if intent.side is Side.BUY:
-            with localcontext() as ctx:
-                ctx.prec = 64
-                notional = multiply_cash(intent.limit_price, intent.quantity)
-                expected = cash_rules.settle(notional + notional * config.fee_rate)
+            expected = config.buy_reservation(intent, intent.quantity)
             if payload.reserved_cash != expected or balance.available < expected:
                 raise InvalidEvent("invalid cash reservation")
             state = _set_cash(state, replace(balance, reserved=balance.reserved + expected))
@@ -547,22 +545,24 @@ def _apply(
         with localcontext() as ctx:
             ctx.prec = 64
             gross = multiply_cash(fill.price, fill.quantity)
-            fee = money.settle(gross * config.fee_rate)
+            prior = (tuple(f for f in state.fills if f.intent_id == order.intent.intent_id)
+                     if config.requires_order_fill_history else ())
+            fee, tax = config.fill_cost(order.intent, fill.price, fill.quantity,
+                                        fill.occurred_at, prior)
             if fee != fill.fee:
                 raise InvalidEvent("fee does not match simulated policy")
-            tax = (
-                money.settle(gross * config.sell_tax_rate)
-                if order.intent.side is Side.SELL else Decimal(0)
-            )
             old = state.position(order.intent.instrument)
             if order.intent.side is Side.BUY:
                 balance = state.account(money.currency)
                 remaining_qty = order.remaining-fill.quantity
-                outstanding_gross = (
-                    multiply_cash(order.intent.limit_price, remaining_qty)
-                    if remaining_qty > 0 else Decimal(0)
-                )
-                next_reserved = money.settle(outstanding_gross * (1 + config.fee_rate)) if remaining_qty > 0 else Decimal(0)
+                if config.requires_order_fill_history:
+                    next_reserved = config.buy_reservation(order.intent, remaining_qty,
+                                                           (*prior, fill))
+                else:
+                    outstanding_gross = (multiply_cash(order.intent.limit_price, remaining_qty)
+                                         if remaining_qty > 0 else Decimal(0))
+                    next_reserved = (money.settle(outstanding_gross * (1 + config.fee_rate))
+                                     if remaining_qty > 0 else Decimal(0))
                 paid = gross + fee
                 if balance.reserved < order.reserved_cash or balance.settled - paid < next_reserved + (balance.reserved - order.reserved_cash):
                     raise InvalidEvent("cash would overdraw after fill")

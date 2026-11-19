@@ -38,3 +38,5 @@
 - [0021](0021-session-flat-research.md) — Accepted (offline research; PR #40 verified): opt-in first-fill comparator and schedule-bound session-flat protection.
 
 - [0022](0022-fixed-fill-dated-fees.md) — Proposed: dated regulatory fixed-fill sensitivity; full ledger cost policy pending.
+
+- [0023](0023-dated-fee-replay.md) — Proposed: versioned fee-aware reserve and cumulative order charges (offline).
