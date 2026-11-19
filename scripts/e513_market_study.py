@@ -7,6 +7,7 @@ import io
 import json
 import os
 import sys
+from time import perf_counter
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal as D
@@ -143,6 +144,7 @@ def run(inst, events, calendar, strategy, cost, source, window=None):
     settings = BacktestSettings(code_sha=os.environ.get("GITHUB_SHA", "local"),
                 dataset_source=source, data_license="evaluation only; rights not independently certified",
                 max_mark_age=timedelta(days=7) if window is None else timedelta(minutes=5))
+    started = perf_counter()
     report = HistoricalBacktest(calendar=calendar, strategies=(strategy,), config=config,
         opening_cash=(Money(CAPITAL, "USD"),), risk=risk,
         fill_policy=BarFillPolicy(D("0.05"), D(spread), D(impact)),
@@ -153,7 +155,8 @@ def run(inst, events, calendar, strategy, cost, source, window=None):
     eq = dict(report.by_currency_end)["USD"]
     pnl = eq-CAPITAL
     real = dict(report.realized_exit_pnl).get("USD", D(0))
-    return {"return_pct": float(pnl/CAPITAL*100), "pnl": str(pnl),
+    return {"elapsed_seconds": round(perf_counter()-started, 3),
+            "return_pct": float(pnl/CAPITAL*100), "pnl": str(pnl),
             "mdd_pct": float(dict(report.max_drawdown)["USD"]*100),
             "fills": len(report.fills), "buys": sum(f.side == "BUY" for f in report.fills),
             "sells": sum(f.side == "SELL" for f in report.fills),
