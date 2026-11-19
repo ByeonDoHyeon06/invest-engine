@@ -38,7 +38,7 @@ def _plan(raw: dict[str, Any]) -> ResearchPlan:
     return ResearchPlan(raw["plan_id"], datetime.fromisoformat(raw["registered_at"]),
                         windows, candidates, tuple(raw["costs"]), policy,
                         _duration(raw["label_horizon"]),
-                        tuple(tuple(pair) for pair in raw["baseline_config_sha256"]))
+                        tuple((pair[0], pair[1]) for pair in raw["baseline_config_sha256"]))
 
 
 def _arm(raw: dict[str, Any]) -> ArmEvidence:
