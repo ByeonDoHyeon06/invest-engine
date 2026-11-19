@@ -37,7 +37,7 @@ from invest_engine.strategies.attribution import (
     record_simulated_fill, ticket_for_plan, rebase_virtual_for_split,
     resolve_virtual_delisting,
 )
-from invest_engine.strategies.contracts import Strategy
+from invest_engine.strategies.contracts import SignalDirection, Strategy
 from invest_engine.strategies.runtime import StrategyRunner
 from invest_engine.trading.ledger import TradingState
 from invest_engine.trading.models import (
@@ -110,6 +110,7 @@ class HistoricalBacktest:
         dividend_schedule: DividendSchedule | None = None,
         delisting_schedule: DelistingSchedule | None = None,
         evaluation_window: EvaluationWindow | None = None,
+        first_entry_only: bool = False,
     ) -> None:
         if not strategies or len({s.manifest.strategy_id for s in strategies}) != len(strategies):
             raise ValueError("at least one uniquely named strategy required")
@@ -139,6 +140,13 @@ class HistoricalBacktest:
         if self.split_schedule.splits and self.protection_policy.enabled:
             raise ValueError("PROTECTIVE_LOTS_NOT_SPLIT_ADJUSTED")
         self.evaluation_window = evaluation_window
+        if type(first_entry_only) is not bool:
+            raise ValueError("first_entry_only must be boolean")
+        if first_entry_only and (evaluation_window is None or len(strategies) != 1):
+            raise ValueError("FIRST_ENTRY_ONLY_REQUIRES_SINGLE_STRATEGY_FIXED_WINDOW")
+        # Buy-and-hold is not a rebalancing strategy. Once any BUY fills, keep
+        # existing DAY-order lifecycle but suppress subsequent new LONG targets.
+        self.first_entry_only = first_entry_only
         if evaluation_window is not None and (self.split_schedule.splits
                 or self.dividend_schedule.entitlements or self.dividend_schedule.payments
                 or self.delisting_schedule.delistings):
@@ -200,6 +208,8 @@ class HistoricalBacktest:
                             if self.delisting_schedule.delistings else identity)
         if self.evaluation_window is not None:
             config_sha = sha256((config_sha, self.evaluation_window))
+        if self.first_entry_only:
+            config_sha = sha256((config_sha, "first-entry-only-v1"))
         observation = EventRuntime(RuntimeConfig(self.settings.run_version))
         runners = tuple(StrategyRunner(s, self.calendar, max_bars=self.settings.max_strategy_bars)
                         for s in self.strategies)
@@ -433,7 +443,12 @@ class HistoricalBacktest:
             outcomes = tuple(runner.accept(event) for runner in runners)
             signals = tuple(signal for outcome in outcomes for signal in outcome.signals
                             if signal.instrument.key not in trader.state.delisted_instruments)
-            allocated = allocate_targets(signals, as_of=now, policy=self.allocation_policy)
+            allocation_signals = signals
+            if self.first_entry_only and entries:
+                allocation_signals = tuple(s for s in signals if s.direction is not SignalDirection.LONG)
+                if len(allocation_signals) != len(signals):
+                    protective_reasons.add("FIRST_ENTRY_ALREADY_FILLED")
+            allocated = allocate_targets(allocation_signals, as_of=now, policy=self.allocation_policy)
             proposed = propose_simulated_intents(
                 allocated.plans, state=trader.state, config=self.config,
                 marks=tuple(marks.values()), as_of=now,
