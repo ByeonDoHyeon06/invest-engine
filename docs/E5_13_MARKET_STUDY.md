@@ -12,3 +12,21 @@
 ## First-run finding and correction
 
 The first diagnostic completed 1,445/1,512 daily trials; 67 failed with `intent and allocation plan mismatch`. Root cause: a positive long target may generate a SELL trim after price appreciation, but the attribution ticket previously allowed SELL only for a zero target. E5.13 accepts the valid reduction and attributes it to existing virtual holdings; tests cover account/virtual parity. The same fixed study is rerun without tuning strategy parameters. Correct SPY venue/class metadata (NYSE Arca ETF). The first-run partial strategy rankings are not used as final evidence.
+
+## Completed provisional results (2026-11-19)
+
+[Study workflow 44494674899](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44494674899); [core CI 44494674900](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44494674900): 301 passed per Python version. PR #38 merged at `d2550bb98e7a197975da5799a0044dca35404878`.
+
+Daily: 1,512/1,512 cases completed after the attribution correction; 3,732 simulated fills, no exceptions. The 21 strategy/cost aggregate summaries and all source hashes match the corrected pre-performance-change study. All daily active rules had negative mean monthly net returns in the base scenario; initial-entry hold +0.068620%, no-trade 0%. Independent monthly accounts, not an annual compound return.
+
+| Window | Evaluation minutes | Hold return % (fills) | ORB base % (fills) | ORB stress % (fills) | Base MDD % |
+|---|---:|---:|---:|---:|---:|
+| TSLA Oct 2022 | 8190 | 0 (0) | +0.25317 (5) | +0.24376 (4) | 0.682875 |
+| TSLA Nov 2022 | 8010 | 0 (0) | -0.48903 (4) | -0.49765 (4) | 1.362690 |
+| SPY Nov 2022 | 8010 | +0.20544 (1) | +0.28974 (2) | +0.27706 (2) | 0.230939 |
+
+NoTrade flat in all three windows; all four arms in each eligible window completed. Nine windows blocked: six action intervals, two missing-session windows after TWTR ceased trading, and two missing bars in one TWTR September window. The three windows include 47,610 window-bars (24,210 evaluation) with overlap; 190,440 visits across 12 arms. Base ORB 11 simulated fills, only two sells across these arms; no standing protection enabled, no daily liquidation. The TSLA entry-hold comparator did not fill in either window: do not interpret zero as buy-and-hold market return. Aggregate net PnL includes unrealized marks.
+
+Performance: exact equality of all 16 common non-hash result fields for all eight matched SPY/TSLA November arms vs study 44493413536. Full run hashes include code revision and thus differ. Base ORB observed old inter-log durations 247.254/219.803 s vs new measured 67.901/63.298 s; stress 265.153/223.262 s vs 67.885/62.929 s. Approximate 3.5–3.9x, not controlled hardware profiling. Previous TSLA October job canceled; no comparable timing. Prefix reuse preserves reference EMA/ATR formulas and retained-bar index semantics with fallback for revised/truncated inputs; exact reference tests pass.
+
+**Gate remains OPEN:** supplier rights, market coverage, actual historical receipt/vintage, ticks and transaction-cost schedule not independently certified. No fabricated bars, no performance recommendation, no live orders. Next E5.14: baseline execution coverage and explicit exit/protection policy, external provenance and expanded fixed studies.
