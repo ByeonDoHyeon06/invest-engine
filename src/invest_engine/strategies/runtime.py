@@ -35,7 +35,7 @@ class StrategyRunner:
         self.calendar = calendar
         self.max_bars = max_bars
         self._bars: list[BarObservation] = []
-        self._bar_keys: set[tuple[str, timedelta, datetime]] = set()
+        self._bar_keys: set[tuple[str, timedelta | None, datetime]] = set()
         self._seen_ids: set[str] = set()
         self._last_ordinal = -1
         self._last_known: datetime | None = None
