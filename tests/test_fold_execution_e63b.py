@@ -16,6 +16,7 @@ from invest_engine.research.fold_execution import (
     FixedRule, FoldInput, FoldScenario, execute_validation, fixed_candidates, prepare_validation,
 )
 from invest_engine.research.report import sha256
+from invest_engine.research.regime import RegimePolicy
 from invest_engine.research.research_journal import ResearchJournal
 from invest_engine.research.walk_forward import SampleTiming, WalkForwardSpec, plan_walk_forward
 from invest_engine.strategies.orb import ORBParameters
@@ -134,3 +135,22 @@ def test_research_plan_pins_rule_and_scenario_before_execution(tmp_path):
             execute_validation(journal, p.plan_id, wf, timing, cases, rules,
                                replace(scenario, cash=D("200000")))
         assert journal.get(p.plan_id).evidence == ()
+
+
+def test_regime_policy_preregistered_and_all_arms_attributed(tmp_path):
+    wf, timing, cases, rules, scenario, p = study()
+    policy = RegimePolicy(lookback_returns=2)
+    prepared = prepare_validation(wf, timing, cases, rules, scenario, regime_policy=policy)
+    p = replace(p, windows=(p.windows[0], *(a.window for a in prepared), p.windows[-1]))
+    with ResearchJournal(tmp_path / "regime.sqlite") as journal:
+        journal.register(p)
+        with pytest.raises(ValueError, match="PLAN_BINDING_MISMATCH"):
+            execute_validation(journal, p.plan_id, wf, timing, cases, rules, scenario)
+        result = execute_validation(journal, p.plan_id, wf, timing, cases, rules, scenario,
+                                    regime_policy=policy)
+        assert result.complete, result.runs
+        assert len(result.runs) == 12
+        assert all(a.regime_study is not None
+                   and a.regime_study.report_sha256 == a.report_sha256 for a in result.runs)
+        assert all(not a.regime_study.groups for a in result.runs if a.candidate_id == "no-trade")
+        assert len(journal.get(p.plan_id).evidence) == 12
