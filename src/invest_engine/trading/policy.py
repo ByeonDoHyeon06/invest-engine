@@ -81,9 +81,14 @@ def evaluate_order(
         rules = config.rules_for(intent.instrument)
         rules.validate_price(intent.limit_price)
         rules.validate_quantity(intent.quantity)
-        cash_rules = config.cash_rules(intent.instrument.currency)
+        config.cash_rules(intent.instrument.currency)
     except ValueError:
         return RiskDecision(intent.intent_id, DecisionStatus.REJECTED, reason_codes=("INVALID_INSTRUMENT_RULES",))
+    try:
+        config.validate_cost_order(intent)
+    except ValueError:
+        return RiskDecision(intent.intent_id, DecisionStatus.REJECTED,
+                            reason_codes=("UNSUPPORTED_COST_POLICY_ORDER",))
     if intent.side is Side.SELL:
         if intent.quantity > exposure.held_qty - exposure.reserved_sell_qty:
             return RiskDecision(intent.intent_id, DecisionStatus.REJECTED, reason_codes=("INSUFFICIENT_POSITION",))
@@ -93,7 +98,7 @@ def evaluate_order(
     with localcontext() as ctx:
         ctx.prec = 64
         notional = multiply_cash(intent.limit_price, intent.quantity)
-        reserve = cash_rules.settle(notional + notional * config.fee_rate)
+        reserve = config.buy_reservation(intent, intent.quantity)
         # E3 does not synthesize foreign exchange or cross-currency equity.
         starting_equity_at_cost = exposure.equity_at_cost
         if reserve > exposure.cash - exposure.reserved_cash:
@@ -107,7 +112,9 @@ def evaluate_order(
         if intent.stop_price is not None:
             if intent.stop_price >= intent.limit_price:
                 return RiskDecision(intent.intent_id, DecisionStatus.REJECTED, reason_codes=("INVALID_STOP_PLAN",))
-            if (intent.limit_price - intent.stop_price) * intent.quantity > starting_equity_at_cost * limits.per_trade_planned_loss:
+            planned_loss = ((intent.limit_price - intent.stop_price) * intent.quantity
+                            + config.planned_fee_loss(intent))
+            if planned_loss > starting_equity_at_cost * limits.per_trade_planned_loss:
                 return RiskDecision(intent.intent_id, DecisionStatus.REJECTED, reason_codes=("PLANNED_LOSS_LIMIT",))
         return RiskDecision(
             intent.intent_id,
