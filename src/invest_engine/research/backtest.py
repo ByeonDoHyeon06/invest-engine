@@ -24,7 +24,7 @@ from invest_engine.research.fills import BarFillPolicy, eligible_fill
 from invest_engine.research.fx import FxReportingPolicy, FxSeries, base_drawdown
 from invest_engine.research.protection import (
     ProtectionLot, ProtectionPolicy, consume_oldest, consume_protection,
-    new_protected_lot, protective_exit,
+    new_protected_lot, protective_exit, session_close_exit,
 )
 from invest_engine.research.report import (
     BacktestReport, DecisionRecord, EquityPoint, FillTrace, drawdown, sha256,
@@ -111,6 +111,7 @@ class HistoricalBacktest:
         delisting_schedule: DelistingSchedule | None = None,
         evaluation_window: EvaluationWindow | None = None,
         first_entry_only: bool = False,
+        session_flat: bool = False,
     ) -> None:
         if not strategies or len({s.manifest.strategy_id for s in strategies}) != len(strategies):
             raise ValueError("at least one uniquely named strategy required")
@@ -147,6 +148,12 @@ class HistoricalBacktest:
         # Buy-and-hold is not a rebalancing strategy. Once any BUY fills, keep
         # existing DAY-order lifecycle but suppress subsequent new LONG targets.
         self.first_entry_only = first_entry_only
+        if type(session_flat) is not bool:
+            raise ValueError("session_flat must be boolean")
+        if session_flat and (evaluation_window is None or len(strategies) != 1
+                             or not self.protection_policy.enabled or first_entry_only):
+            raise ValueError("SESSION_FLAT_REQUIRES_PROTECTED_SINGLE_STRATEGY_FIXED_WINDOW")
+        self.session_flat = session_flat
         if evaluation_window is not None and (self.split_schedule.splits
                 or self.dividend_schedule.entitlements or self.dividend_schedule.payments
                 or self.delisting_schedule.delistings):
@@ -210,6 +217,8 @@ class HistoricalBacktest:
             config_sha = sha256((config_sha, self.evaluation_window))
         if self.first_entry_only:
             config_sha = sha256((config_sha, "first-entry-only-v1"))
+        if self.session_flat:
+            config_sha = sha256((config_sha, "final-bar-open-liquidation-v1"))
         observation = EventRuntime(RuntimeConfig(self.settings.run_version))
         runners = tuple(StrategyRunner(s, self.calendar, max_bars=self.settings.max_strategy_bars)
                         for s in self.strategies)
@@ -239,6 +248,7 @@ class HistoricalBacktest:
             protective_decisions: list[tuple[str, str, tuple[str, ...]]] = []
             protective_reasons: set[str] = set()
             bar = event.payload if isinstance(event.payload, Bar) else None
+            closing_cutoff = False
             split_reason: tuple[str, ...] = ()
             dividend_reason: tuple[str, ...] = ()
             delisting_reason: tuple[str, ...] = ()
@@ -282,6 +292,23 @@ class HistoricalBacktest:
                 session_check = self.calendar.session_for(event.instrument_id, bar.start)
                 if session_check is None or bar.end > session_check.end:
                     raise InvalidEvent("bar outside authoritative historical session")
+                # The calendar fixes the liquidation minute before any prices are known.
+                # Cancel standing DAY orders at its start by precommitted assumption;
+                # the journal records this simulated observation at the bar-end clock.
+                final_bar = self.session_flat and bar.end == session_check.end
+                closing_cutoff = self.session_flat and now >= session_check.end - bar.interval
+                if final_bar:
+                    for order in tuple(trader.state.orders):
+                        if (order.intent.instrument == event.instrument_id
+                            and order.status in (OrderStatus.ACCEPTED,
+                                                 OrderStatus.PARTIALLY_FILLED)):
+                            if order.intent.submitted_at > bar.start:
+                                raise InvalidEvent("SESSION_CLOSE_LATE_ORDER")
+                            trader.request_cancel(order.intent.intent_id, now)
+                            trader.confirm_cancel(order.intent.intent_id, now)
+                            protective_reasons.add("SESSION_CLOSE_CANCEL_PENDING")
+                    if any(lot.armed_at > bar.start for lot in protection_lots):
+                        raise InvalidEvent("SESSION_CLOSE_LATE_ENTRY_OBSERVATION")
                 # Existing orders are handled BEFORE any strategy sees this bar.
                 volume_used = Decimal(0)
                 # A position's standing synthetic protection was armed only
@@ -291,10 +318,17 @@ class HistoricalBacktest:
                     for lot in tuple(protection_lots):
                         rule = self.config.rules_for(lot.instrument)
                         available = bar.volume * self.fill_policy.participation - volume_used
-                        candidate_exit = protective_exit(
-                            lot, event, rule, self.protection_policy,
-                            remaining_volume=max(available, Decimal(0)),
-                        )
+                        if final_bar:
+                            candidate_exit = session_close_exit(
+                                lot, event, rule, self.protection_policy,
+                                session_end=session_check.end,
+                                remaining_volume=max(available, Decimal(0)),
+                            )
+                        else:
+                            candidate_exit = protective_exit(
+                                lot, event, rule, self.protection_policy,
+                                remaining_volume=max(available, Decimal(0)),
+                            )
                         if candidate_exit is None:
                             continue
                         # An existing SELL reservation could already have
@@ -312,6 +346,22 @@ class HistoricalBacktest:
                             raise InvalidEvent(
                                 "unresolvable protective exit vs existing SELL order"
                             )
+                        if self.session_flat and not final_bar:
+                            # A partially filled entry can leave a live BUY remainder.
+                            # If it could fill in this same bar as a stop, the path is
+                            # unknowable. Reject rather than choose optimistic ordering.
+                            for pending in tuple(trader.state.orders):
+                                if (pending.intent.instrument != lot.instrument
+                                    or pending.intent.side is not Side.BUY
+                                    or pending.status not in (OrderStatus.ACCEPTED,
+                                                              OrderStatus.PARTIALLY_FILLED)):
+                                    continue
+                                if eligible_fill(pending, event, rule, self.fill_policy,
+                                                 used_volume=Decimal(0)) is not None:
+                                    raise InvalidEvent("SESSION_FLAT_PROTECTION_BUY_CONFLICT")
+                                trader.request_cancel(pending.intent.intent_id, now)
+                                trader.confirm_cancel(pending.intent.intent_id, now)
+                                protective_reasons.add("PROTECTION_CANCEL_PENDING_BUY")
                         exit_id = f"e5:protect:{event.event_id}:{lot.source_execution_id}"
                         protective_intent = OrderIntent(
                             exit_id, self.config.account_id, "e5:standing-protection",
@@ -357,6 +407,10 @@ class HistoricalBacktest:
                             realized_delta, candidate_exit.reason_code,
                         ))
                         matched_fills.append(exit_id)
+                if final_bar:
+                    position = trader.state.position(event.instrument_id)
+                    if protection_lots or (position is not None and position.quantity > 0):
+                        raise InvalidEvent("SESSION_FLAT_INSUFFICIENT_LIQUIDITY")
                 for order in tuple(trader.state.orders):
                     rule = self.config.rules_for(order.intent.instrument)
                     candidate = eligible_fill(order, event, rule, self.fill_policy,
@@ -444,8 +498,13 @@ class HistoricalBacktest:
             signals = tuple(signal for outcome in outcomes for signal in outcome.signals
                             if signal.instrument.key not in trader.state.delisted_instruments)
             allocation_signals = signals
+            if closing_cutoff and allocation_signals:
+                allocation_signals = ()
+                protective_reasons.add("SESSION_CLOSE_NO_NEW_ORDERS")
             if self.first_entry_only and entries:
-                allocation_signals = tuple(s for s in signals if s.direction is not SignalDirection.LONG)
+                allocation_signals = tuple(
+                    s for s in allocation_signals if s.direction is not SignalDirection.LONG
+                )
                 if len(allocation_signals) != len(signals):
                     protective_reasons.add("FIRST_ENTRY_ALREADY_FILLED")
             allocated = allocate_targets(allocation_signals, as_of=now, policy=self.allocation_policy)
@@ -536,6 +595,9 @@ class HistoricalBacktest:
               "adverse-gap assumptions; these are synthetic, not broker orders."
               if self.protection_policy.enabled else
               "Stop prices are risk plans; this fill model does not place stops."),
+             ("Final-bar-open liquidation is a standing calendar schedule with adverse price "
+              "and shared volume cap; incomplete liquidation invalidates the session-flat run."
+              if self.session_flat else "No mandatory session-flat liquidation assumption."),
              "Held delistings require declared, paid and witnessed terminal cash recovery "
              "at the last historical bar; delayed payment remains unsupported.",
              "Multi-currency equity is not aggregated without a proven FX series.",
