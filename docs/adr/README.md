@@ -34,3 +34,5 @@
 - [0019](0019-terminal-delisting-cash-receipt.md) — Accepted (offline research): witnessed net receipt for held delisting; later payments unsupported.
 
 - [0020](0020-fixed-evaluation-window.md) — Accepted (offline research): strict warm-up/evaluation session boundary; real data validation remains open.
+
+- [0021](0021-session-flat-research.md) — Proposed (offline research): opt-in first-fill comparator and schedule-bound session-flat protection, CI pending.

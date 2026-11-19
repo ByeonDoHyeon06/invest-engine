@@ -137,6 +137,42 @@ def protective_exit(
                           max(event.available_at, event.received_at, bar.end), reason)
 
 
+def session_close_exit(
+    lot: ProtectionLot, event: EventEnvelope[MarketPayload],
+    rules: InstrumentRules, policy: ProtectionPolicy, *,
+    session_end: datetime, remaining_volume: Decimal,
+) -> ProtectiveExit | None:
+    """Standing liquidation at the final bar's open, observed after its end.
+
+    This is a precommitted research assumption, not an actual opening print
+    fill or market-on-close order. Minute volume only bounds modeled size.
+    """
+    bar = event.payload
+    if (not policy.enabled or not isinstance(bar, Bar) or not bar.finalized
+        or bar.kind is not BarKind.TIME or event.instrument_id != lot.instrument
+        or bar.end != utc_datetime(session_end) or lot.armed_at > bar.start
+        or event.available_at < bar.end or event.received_at < bar.end):
+        return None
+    _decimal(remaining_volume, field="remaining volume")
+    if remaining_volume < 0:
+        raise ValueError("remaining volume cannot be negative")
+    if bar.volume <= 0 or remaining_volume == 0:
+        return None
+    with localcontext() as ctx:
+        ctx.prec = 64
+        modeled = bar.open * (Decimal(1) - policy.adverse_bps / Decimal(10000))
+        price = (modeled / rules.tick_size).to_integral_value(rounding=ROUND_FLOOR) * rules.tick_size
+        if price <= 0:
+            raise ValueError("adverse close liquidation produces a nonpositive tick price")
+        quantity = min(lot.quantity, remaining_volume)
+        quantity = (quantity / rules.lot_size).to_integral_value(rounding=ROUND_FLOOR) * rules.lot_size
+        if quantity <= 0:
+            return None
+    return ProtectiveExit(lot.source_execution_id, quantity, price,
+                          max(event.available_at, event.received_at, bar.end),
+                          "SESSION_CLOSE_LIQUIDATION")
+
+
 def consume_protection(lots: tuple[ProtectionLot, ...], execution_id: str,
                        quantity: Decimal) -> tuple[ProtectionLot, ...]:
     """Debits a *specific* entry lot when its protective sell fills."""
