@@ -86,6 +86,7 @@ class ResearchPlan:
     costs: tuple[str, ...]
     policy: EvaluationPolicy
     label_horizon: timedelta
+    baseline_config_sha256: tuple[tuple[str, str], ...]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "registered_at", utc_datetime(self.registered_at))
@@ -94,6 +95,10 @@ class ResearchPlan:
                            (self.windows, self.candidates, self.costs))
                 or self.label_horizon <= timedelta(0)
                 or set(self.costs) != {"base", "stress"} or len(self.costs) != 2
+                or not isinstance(self.baseline_config_sha256, tuple)
+                or len(self.baseline_config_sha256) != 2
+                or set(dict(self.baseline_config_sha256)) != set(BASELINES)
+                or not all(_hash(h) for _, h in self.baseline_config_sha256)
                 or len({w.window_id for w in self.windows}) != len(self.windows)
                 or len({c.candidate_id for c in self.candidates}) != len(self.candidates)):
             raise ValueError("INVALID_RESEARCH_PLAN")
@@ -129,6 +134,7 @@ class ArmEvidence:
     data_sha256: str
     context_sha256: str
     run_sha256: str
+    candidate_config_sha256: str
     currency: str
     opening_cash: Decimal
     net_pnl: Decimal
@@ -142,7 +148,7 @@ class ArmEvidence:
 
     def __post_init__(self) -> None:
         if (not all(_hash(x) for x in (self.data_sha256, self.context_sha256,
-                                     self.run_sha256))
+                                     self.run_sha256, self.candidate_config_sha256))
                 or not self.window_id or not self.candidate_id
                 or self.cost not in ("base", "stress")
                 or _decimal(self.opening_cash, field="opening_cash") <= 0
@@ -195,6 +201,10 @@ class ResearchRegistry:
         candidates = {c.candidate_id for c in self.plan.candidates}
         if arm.candidate_id not in candidates | set(BASELINES):
             raise ValueError("UNREGISTERED_CANDIDATE")
+        hashes = {**dict(self.plan.baseline_config_sha256),
+                  **{c.candidate_id: c.config_sha256 for c in self.plan.candidates}}
+        if arm.candidate_config_sha256 != hashes[arm.candidate_id]:
+            raise ValueError("ARM_CANDIDATE_CONFIG_MISMATCH")
         if self.final_assessment is not None:
             raise ValueError("HOLDOUT_ALREADY_FINALIZED")
         if w.split == "test":
@@ -241,7 +251,7 @@ class ResearchRegistry:
                     reasons.add("UNVERIFIED_EVIDENCE")
                 if hold.entry_fills == 0:
                     reasons.add("HOLD_BASELINE_NO_ENTRY")
-                if candidate.exit_fills < self.plan.policy.min_exit_fills:
+                if candidate.entry_fills == 0 or candidate.exit_fills < self.plan.policy.min_exit_fills:
                     reasons.add("INSUFFICIENT_EXIT_FILLS")
                 if candidate.max_drawdown > self.plan.policy.max_drawdown:
                     reasons.add("DRAWDOWN_LIMIT")
