@@ -14,7 +14,7 @@ import json
 import os
 import sys
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -226,6 +226,107 @@ def collect_us(plan, base, key, secret):
     return result
 
 
+def collect_us_minute(plan, base, key, secret):
+    """Requested monthly SIP minute partitions, regular-session bars only.
+
+    Missing regular minutes remain unknown (including potential no-trade
+    intervals). Extended hours are not used to fill the grid. No synthetic bar.
+    """
+    import exchange_calendars as xcals
+
+    utc = ZoneInfo("UTC")
+    headers = {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret}
+    results = []
+    for instrument in plan["instruments"]:
+        if instrument["market"] != "US":
+            continue
+        symbol = instrument["symbol"]
+        for year in YEARS:
+            cal = xcals.get_calendar("XNYS", start=f"{year}-01-01", end=f"{year}-12-31")
+            for month in range(1, 13):
+                sessions = [x for x in cal.sessions if x.month == month]
+                expected = set()
+                for session in sessions:
+                    start = cal.session_open(session).to_pydatetime().astimezone(utc)
+                    end = cal.session_close(session).to_pydatetime().astimezone(utc)
+                    while start < end:
+                        expected.add(start.isoformat())
+                        start += timedelta(minutes=1)
+                first = date(year, month, 1)
+                last = date(year+1, 1, 1) if month == 12 else date(year, month+1, 1)
+                params = {"symbols": symbol, "timeframe": "1Min",
+                          "start": datetime.combine(first, datetime.min.time(), US_TZ).isoformat(),
+                          "end": datetime.combine(last, datetime.min.time(), US_TZ).isoformat(),
+                          "adjustment": "raw", "feed": "sip", "asof": "-", "limit": 10000, "sort": "asc"}
+                rows, hashes, seen_tokens = [], [], set()
+                invalid = 0
+                report = {"symbol": symbol, "market": "US", "year": year, "month": month,
+                          "provider": "alpaca-sip-raw-minute", "expected_minutes": len(expected),
+                          "execution_eligible": False}
+                try:
+                    while True:
+                        raw = request("https://data.alpaca.markets/v2/stocks/bars?"+urlencode(params), headers)
+                        hashes.append(digest(raw))
+                        data = json.loads(raw, parse_float=D)
+                        bars = data["bars"]
+                        if not isinstance(bars, dict) or set(bars)-{symbol}:
+                            raise ValueError("ALPACA_SCHEMA_MISMATCH")
+                        for bar in bars.get(symbol, []):
+                            try:
+                                stamp = datetime.fromisoformat(bar["t"])
+                                if stamp.tzinfo is None or stamp.second or stamp.microsecond:
+                                    raise ValueError("INVALID_BAR_TIME")
+                                stamp = stamp.astimezone(utc)
+                                at = stamp.isoformat()
+                                if at not in expected:
+                                    continue  # outside preregistered regular session grid
+                                row = normalize(stamp.astimezone(US_TZ).date().isoformat(),
+                                                *(bar[k] for k in ("o","h","l","c","v")))
+                                rows.append((at, *row[1:]))
+                            except (ValueError, InvalidOperation, KeyError, TypeError):
+                                invalid += 1
+                        token = data.get("next_page_token")
+                        if not token:
+                            break
+                        if token in seen_tokens or len(seen_tokens) >= 100:
+                            raise ValueError("PAGINATION_LOOP_OR_LIMIT")
+                        seen_tokens.add(token)
+                        params["page_token"] = token
+                        time.sleep(.35)
+                    seen = {x[0] for x in rows}
+                    missing = expected-seen
+                    duplicates = len(rows)-len(seen)
+                    zero = sum(D(x[-1]) == 0 for x in rows)
+                    report.update({"observed_rows": len(rows), "missing_minutes": len(missing),
+                                   "duplicates": duplicates, "invalid_rows": invalid,
+                                   "zero_volume_rows": zero, "source_sha256": hashes,
+                                   "status": "STRUCTURAL_COMPLETE" if not (
+                                       missing or duplicates or invalid or zero) else "BLOCKED_COVERAGE"})
+                    path = base / "minute" / "US" / symbol / f"{year}-{month:02d}.csv"
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    content = io.StringIO()
+                    writer = csv.writer(content)
+                    writer.writerow(("start_utc", *FIELDS[1:]))
+                    writer.writerows(sorted(rows))
+                    normalized = content.getvalue().encode("utf-8")
+                    if path.exists() and path.read_bytes() != normalized:
+                        raise ValueError("PRIVATE_DATASET_CHANGED_USE_NEW_VERSION")
+                    if not path.exists():
+                        temp = path.with_suffix(".csv.tmp")
+                        temp.write_bytes(normalized)
+                        temp.replace(path)
+                    report["normalized_sha256"] = digest(normalized)
+                except (ValueError, RuntimeError, KeyError, TypeError, InvalidOperation) as exc:
+                    report.update({"status": "SOURCE_ERROR", "error_type": type(exc).__name__})
+                results.append(report)
+                # Log only counts; never market observations or credentials.
+                print("MINUTE_PARTITION "+json.dumps({k: report.get(k) for k in (
+                    "symbol","year","month","status","expected_minutes","observed_rows",
+                    "missing_minutes","duplicates","invalid_rows")}), flush=True)
+                time.sleep(.35)
+    return results
+
+
 def krx_day(board, day, key):
     endpoint = {"KOSPI": "stk_bydd_trd", "KOSDAQ": "ksq_bydd_trd"}[board]
     raw = request("https://data-dbg.krx.co.kr/svc/apis/sto/"+endpoint+"?"+
@@ -279,7 +380,7 @@ def collect_kr(plan, base, key):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("public-probe", "alpaca-daily", "krx-daily"))
+    parser.add_argument("mode", choices=("public-probe", "alpaca-daily", "alpaca-minute", "krx-daily"))
     parser.add_argument("--acknowledge-data-rights", action="store_true")
     parser.add_argument("--version", default="v1")
     args = parser.parse_args()
@@ -293,11 +394,12 @@ def main():
         if not args.acknowledge_data_rights:
             parser.error("authorized data access and permitted research use required")
         base = ROOT / "datasets" / (plan["dataset_id"]+"-"+args.version)
-        if args.mode == "alpaca-daily":
+        if args.mode in ("alpaca-daily", "alpaca-minute"):
             key, secret = os.environ.get("ALPACA_DATA_KEY"), os.environ.get("ALPACA_DATA_SECRET")
             if not key or not secret:
                 parser.error("local market-data credentials required")
-            rows = collect_us(plan, base, key, secret)
+            rows = (collect_us(plan, base, key, secret) if args.mode == "alpaca-daily"
+                    else collect_us_minute(plan, base, key, secret))
         else:
             key = os.environ.get("KRX_DATA_KEY")
             if not key:
