@@ -117,7 +117,9 @@
 
 ### E5 — Backtest Engine & Reporting
 
-**E5.12 IN REVIEW (2026-11-19):** Complete-session 1m preflight, isolated warmup and entry-hold baseline. Data must be declared raw share volume with SHA-pinned PIT evidence. Actual data acquisition, completeness, historical publication and cost validation remain OPEN. [Spec](E5_EVALUATION_WINDOW.md) / [ADR-0020](adr/0020-fixed-evaluation-window.md). Issue #6 OPEN; LIVE NOT AUTHORIZED.
+**E5.12 infrastructure VERIFIED + MERGED (2026-11-19):** [PR #36](https://github.com/ByeonDoHyeon06/invest-engine/pull/36), [merge 3146b96](https://github.com/ByeonDoHyeon06/invest-engine/commit/3146b96b4276644f60bd2235f967feb458b466b8), [PR CI 44492013440](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44492013440): Python 3.12/3.13 **298 passed each**, Ruff/mypy/secrets green. Fixed complete-session evaluation with >=20 prior sessions, no warm-up orders/strategy callbacks/equity, declared raw share volume and PIT evidence, NoTrade/initial-entry-hold/ORB synthetic next-bar integration tests. [Spec](E5_EVALUATION_WINDOW.md) / [ADR-0020](adr/0020-fixed-evaluation-window.md). **Actual 1m provider data NOT acquired or validated; no new real market ORB results.** Issue #6 OPEN, LIVE NOT AUTHORIZED.
+
+**Next E5.13 — practical study acquisition and acceptance:** Source a permitted consolidated or explicitly single-venue raw share-volume 1m series covering a predeclared evaluation month plus 20 prior sessions. Separate provisional historical study from real-provider acceptance: preserve unverified flags when only retrospective bars are available, never synthesize actual release timestamps/vintages or missing minutes. Independently verify source license, calendar, issuer actions, actual cost rules, and compare fixed-window ORB with predeclared baselines. No E6 promotion on synthetic evidence alone.
 
 
 
