@@ -1,0 +1,35 @@
+name: E5.15b independent Kibot sample diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/e515b_kibot_study.py'
+      - 'src/invest_engine/research/kibot_sample.py'
+      - '.github/workflows/e515b-kibot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [IBM, OIH]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - run: python -u scripts/e515b_kibot_study.py ${{ matrix.symbol }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e515b-kibot-${{ matrix.symbol }}-aggregate
+          path: research-output/e515b-kibot-*
+          if-no-files-found: error
