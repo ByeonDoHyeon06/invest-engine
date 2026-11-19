@@ -23,6 +23,7 @@ from invest_engine.domain.primitives import AssetClass, InstrumentId, Market, Mo
 from invest_engine.research.backtest import BacktestSettings, HistoricalBacktest
 from invest_engine.research.evaluation import EvaluationWindow, validate_window
 from invest_engine.research.fills import BarFillPolicy
+from invest_engine.research.protection import ProtectionPolicy
 from invest_engine.strategies.allocation import AllocationPolicy
 from invest_engine.strategies.baselines import BuyHoldBaseline, NoTradeStrategy
 from invest_engine.strategies.contracts import (
@@ -134,14 +135,16 @@ class DailyRule:
                 stop_price=closes[-1]*D("0.985") if direction is long else None),)
 
 
-def run(inst, events, calendar, strategy, cost, source, window=None):
+def run(inst, events, calendar, strategy, cost, source, window=None, *,
+        first_entry_only=False, session_flat=False, e514=False):
     fee, spread, impact = COSTS[cost]
-    config = TradingConfig("e513-study", (MonetaryRules("USD", D("0.01")),),
+    config = TradingConfig("e514-study" if e514 else "e513-study", (MonetaryRules("USD", D("0.01")),),
                  ((inst.key, InstrumentRules(D("0.01"), D(1))),),
                  fee_rate=D(fee), sell_tax_rate=D(0))
     risk = RiskLimits(per_trade_planned_loss=D("0.005"), max_symbol_cost_fraction=D("0.12"),
                       max_total_cost_fraction=D("0.20"), max_open_positions=1)
     settings = BacktestSettings(code_sha=os.environ.get("GITHUB_SHA", "local"),
+                run_version="e514-provisional-v1" if e514 else "e5-research-v1",
                 dataset_source=source, data_license="evaluation only; rights not independently certified",
                 max_mark_age=timedelta(days=7) if window is None else timedelta(minutes=5))
     started = perf_counter()
@@ -149,13 +152,17 @@ def run(inst, events, calendar, strategy, cost, source, window=None):
         opening_cash=(Money(CAPITAL, "USD"),), risk=risk,
         fill_policy=BarFillPolicy(D("0.05"), D(spread), D(impact)),
         allocation_policy=AllocationPolicy(TARGET, TARGET),
-        settings=settings, evaluation_window=window).run(events)
+        protection_policy=ProtectionPolicy(enabled=True, adverse_bps=D(spread)+D(impact))
+            if session_flat else None,
+        settings=settings, evaluation_window=window, first_entry_only=first_entry_only,
+        session_flat=session_flat).run(events)
     by_id = {i: d.event_id for d in report.decisions for i in d.intent_ids}
-    assert all(by_id.get(f.intent_id) != f.market_event_id for f in report.fills)
+    assert all(by_id.get(f.intent_id) != f.market_event_id for f in report.fills
+               if f.reason_code == "LIMIT_FILLED")
     eq = dict(report.by_currency_end)["USD"]
     pnl = eq-CAPITAL
     real = dict(report.realized_exit_pnl).get("USD", D(0))
-    return {"elapsed_seconds": round(perf_counter()-started, 3),
+    result = {"elapsed_seconds": round(perf_counter()-started, 3),
             "return_pct": float(pnl/CAPITAL*100), "pnl": str(pnl),
             "mdd_pct": float(dict(report.max_drawdown)["USD"]*100),
             "fills": len(report.fills), "buys": sum(f.side == "BUY" for f in report.fills),
@@ -165,6 +172,30 @@ def run(inst, events, calendar, strategy, cost, source, window=None):
             "signals": sum(bool(d.signal_ids) for d in report.decisions),
             "equity_points": len(report.equity), "events": report.event_count,
             "sha256": report.run_sha256}
+    if e514:
+        buys = [f for f in report.fills if f.side == "BUY"]
+        sells = [f for f in report.fills if f.side == "SELL"]
+        held = sum((f.quantity for f in buys), D(0)) - sum((f.quantity for f in sells), D(0))
+        if session_flat and held != 0:
+            raise RuntimeError("session-flat report has residual inventory")
+        # Account cash performance can be zero without entry. The comparable
+        # buy-and-hold return is undefined in that case, not an outperformable zero.
+        status = ("NO_ENTRY_FILL" if not buys else "ENTRY_FILLED") if first_entry_only else "NOT_HOLD"
+        result.update({
+            "entry_coverage": status,
+            "comparison_return_pct": None if status == "NO_ENTRY_FILL" else result["return_pct"],
+            "filled_buy_orders": len({f.intent_id for f in buys}),
+            "entry_intents": sum(len(d.intent_ids) for d in report.decisions)
+                if first_entry_only else None,
+            "buy_quantity": str(sum((f.quantity for f in buys), D(0))),
+            "sell_quantity": str(sum((f.quantity for f in sells), D(0))),
+            "held_quantity_end": str(held),
+            "stop_exits": sum(f.reason_code in ("STOP_TRIGGERED", "GAP_BELOW_STOP",
+                                              "STOP_FIRST_COLLISION") for f in sells),
+            "session_close_exits": sum(f.reason_code == "SESSION_CLOSE_LIQUIDATION" for f in sells),
+            "config_sha256": report.config_sha256,
+        })
+    return result
 
 
 def summarize(rows):
@@ -174,7 +205,12 @@ def summarize(rows):
             group = [r for r in rows if r["cost"] == cost and r["strategy"] == kind]
             if not group:
                 continue
-            vals = [r["return_pct"] for r in group]
+            vals = [r.get("comparison_return_pct", r["return_pct"]) for r in group]
+            vals = [v for v in vals if v is not None]
+            if not vals:
+                result[f"{cost}:{kind}"] = {"n": len(group), "comparable_n": 0,
+                                             "mean_pct": None, "reason": "NO_ENTRY_FILL"}
+                continue
             result[f"{cost}:{kind}"] = {"n": len(group), "mean_pct": round(sum(vals)/len(vals), 6),
               "median_pct": round(median(vals), 6), "positive": sum(v > 0 for v in vals),
               "negative": sum(v < 0 for v in vals), "zero": sum(v == 0 for v in vals),
@@ -187,7 +223,8 @@ def summarize(rows):
 
 def save(name, rows, extra):
     OUT.mkdir(exist_ok=True)
-    result = {"schema": "e5.13-provisional-study-v1", "provider_verified": False,
+    result = {"schema": extra.get("study_schema", "e5.13-provisional-study-v1"),
+              "provider_verified": False,
               "point_in_time_verified": False, "execution_cost_verified": False,
               "source_data_redistributed": False, "capital_usd": str(CAPITAL),
               "target_fraction": str(TARGET), "rows": rows, "summary": summarize(rows), **extra}
@@ -250,11 +287,15 @@ def daily():
          "limitations": "cold-start independent months; unverified adjustment basis, actions and vintage"})
 
 
-def minute(symbol, month):
+def minute(symbol, month, *, e514=False):
     inst = instrument(symbol)
     rows = []
     extra = {"symbol": symbol, "month": month, "source": "https://historicaldata.net/stocks.html",
              "status": "BLOCKED", "time_assumption": "bar-end receipt, no historical publication evidence"}
+    if e514:
+        extra["study_schema"] = "e5.14-provisional-study-v1"
+        extra["planned_arms"] = 7
+        extra["liquidation_assumption"] = "precommitted final-bar open, adverse price and minute volume cap"
     try:
         raw = download(SOURCE, 30_000_000)
         extra["archive_sha256"] = hashlib.sha256(raw).hexdigest()
@@ -319,26 +360,39 @@ def minute(symbol, month):
                 raise ValueError("strict complete-minute preflight: "+str(exc)) from exc
             extra["status"] = "PREFLIGHT_PASS"
             print("MINUTE_PREFLIGHT "+json.dumps(extra), flush=True)
-            for kind, cost in (("no-trade", "base"), ("hold", "base"), ("orb", "base"), ("orb", "stress")):
+            arms = (("no-trade", "base"), ("hold-retry", "base"), ("hold-retry", "stress"),
+                    ("orb-entry", "base"), ("orb-entry", "stress"),
+                    ("orb-session-flat", "base"), ("orb-session-flat", "stress")) if e514 else (
+                    ("no-trade", "base"), ("hold", "base"), ("orb", "base"), ("orb", "stress"))
+            for kind, cost in arms:
                 try:
                     strat = (NoTradeStrategy(DataRequirement("market.bar", MINUTE)) if kind == "no-trade"
-                             else BuyHoldBaseline(MINUTE, TARGET, D("0.015")) if kind == "hold"
-                             else ORBLongStrategy())
+                             else BuyHoldBaseline(MINUTE, TARGET, D("0.015"),
+                                                  retry_each_session=kind == "hold-retry")
+                             if kind in ("hold", "hold-retry") else ORBLongStrategy())
                     result = run(inst, tuple(events), cal, strat, cost,
-                                 "HistoricalData.net free 2022H2 sample", window)
+                                 "HistoricalData.net free 2022H2 sample", window,
+                                 first_entry_only=kind == "hold-retry",
+                                 session_flat=kind == "orb-session-flat", e514=e514)
                     rows.append({"symbol": symbol, "month": month, "strategy": kind, "cost": cost, **result})
                     print("MINUTE_RUN "+json.dumps(rows[-1]), flush=True)
                 except Exception as exc:
                     extra.setdefault("errors", []).append({"strategy": kind, "cost": cost,
                         "error": type(exc).__name__+":"+str(exc)[:160]})
-            extra["status"] = "PROVISIONAL_COMPLETE" if len(rows) == 4 else "PARTIAL"
+            extra["status"] = "PROVISIONAL_COMPLETE" if len(rows) == len(arms) else "PARTIAL"
+            if e514:
+                extra["hold_entry_coverage"] = {row["cost"]: row["entry_coverage"]
+                                                for row in rows if row["strategy"] == "hold-retry"}
+                extra["comparator_complete"] = (
+                    extra["hold_entry_coverage"] == {"base": "ENTRY_FILLED", "stress": "ENTRY_FILLED"})
     except Exception as exc:
         extra["error"] = type(exc).__name__+":"+str(exc)[:240]
-    save(f"minute-{symbol}-{month}", rows, extra)
+    prefix = "e514-minute" if e514 else "minute"
+    save(f"{prefix}-{symbol}-{month}", rows, extra)
 
 
 if __name__ == "__main__":
     if sys.argv[1] == "daily":
         daily()
     else:
-        minute(sys.argv[2], int(sys.argv[3]))
+        minute(sys.argv[2], int(sys.argv[3]), e514=sys.argv[1] == "minute-e514")
