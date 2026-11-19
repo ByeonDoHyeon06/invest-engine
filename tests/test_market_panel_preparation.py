@@ -7,7 +7,7 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from prepare_market_panel import coverage, load_plan, normalize, parse_public, write_private
+from prepare_market_panel import coverage, load_plan, normalize, parse_public, write_private  # noqa: E402
 
 
 def test_frozen_universe_and_reserved_test():
