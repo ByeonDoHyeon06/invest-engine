@@ -35,4 +35,6 @@
 
 - [0020](0020-fixed-evaluation-window.md) — Accepted (offline research): strict warm-up/evaluation session boundary; real data validation remains open.
 
-- [0021](0021-session-flat-research.md) — Proposed (offline research): opt-in first-fill comparator and schedule-bound session-flat protection, CI pending.
+- [0021](0021-session-flat-research.md) — Accepted (offline research; PR #40 verified): opt-in first-fill comparator and schedule-bound session-flat protection.
+
+- [0022](0022-fixed-fill-dated-fees.md) — Proposed: dated regulatory fixed-fill sensitivity; full ledger cost policy pending.
