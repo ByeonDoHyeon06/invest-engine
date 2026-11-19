@@ -1,6 +1,6 @@
 # ADR-0021 — Explicit retry and session-flat execution hypotheses
 
-**Status:** Proposed (offline-only, pending tests/review), 2026-11-19. Extends ADR-0010/0011/0020 without changing legacy defaults.
+**Status:** Accepted (offline-only, CI verified in PR #40), 2026-11-19. Extends ADR-0010/0011/0020 without changing legacy defaults.
 
 ## Context
 E5.13 entry-only ORB retained positions overnight; the one-shot hold comparator sometimes never entered. Cash-only return did not measure buy-and-hold, and overnight inventory made intraday interpretation misleading.
