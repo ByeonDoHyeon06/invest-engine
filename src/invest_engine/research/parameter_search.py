@@ -12,7 +12,10 @@ from itertools import product
 from math import prod
 
 from invest_engine.domain.primitives import _decimal
-from invest_engine.research.candidates import BASELINES, CandidateAssessment
+from invest_engine.research.candidates import (
+    BASELINES, CandidateAssessment, SearchArmOutcome, SearchReservation, StabilityPolicy,
+)
+from invest_engine.research.robustness import StabilityAssessment, assess_stability
 from invest_engine.research.fold_execution import (
     FixedRule, FoldInput, FoldScenario, FoldStudyResult, PreparedFold,
     execute_validation, prepare_validation,
@@ -148,6 +151,7 @@ class CandidateSearchResult:
     planned_arms: int
     study: FoldStudyResult
     assessments: tuple[CandidateAssessment, ...]
+    stability: tuple[StabilityAssessment, ...]
     # The research registry, not this function, may later lock a verified candidate.
     selection_performed: bool = False
 
@@ -156,7 +160,7 @@ def execute_search(
     journal: ResearchJournal, research_plan_id: str, prepared: PreparedSearch,
     walk_forward: WalkForwardPlan, timing: tuple[SampleTiming, ...], cases: tuple[FoldInput, ...],
     scenario: FoldScenario, *, regime_policy: RegimePolicy | None = None,
-    include_exposure: bool = False,
+    include_exposure: bool = False, stability_policy: StabilityPolicy = StabilityPolicy(),
 ) -> CandidateSearchResult:
     """Run the entire frozen validation grid; retain failures and all assessments.
 
@@ -168,12 +172,20 @@ def execute_search(
                              regime_policy=regime_policy, include_exposure=include_exposure)
     if current != prepared:
         raise ValueError("SEARCH_PREREGISTRATION_MISMATCH")
+    plan = journal.get(research_plan_id).plan
+    reservation = SearchReservation(current.manifest.digest, plan.digest,
+                                    current.manifest.planned_arms, stability_policy)
     study = execute_validation(journal, research_plan_id, walk_forward, timing, cases,
                                current.manifest.rules, scenario, regime_policy=regime_policy,
-                               include_exposure=include_exposure, search_identity=current.manifest.digest)
+                               include_exposure=include_exposure, search_identity=current.manifest.digest,
+                               search_reservation=reservation)
     if len(study.runs) != current.manifest.planned_arms:
         raise ValueError("SEARCH_ARM_COUNT_MISMATCH")
-    registry = journal.get(research_plan_id)
+    outcomes = tuple(SearchArmOutcome(a.window_id, a.candidate_id, a.cost, a.status,
+                                      a.report_sha256, a.error_type) for a in study.runs)
+    registry = journal.record_search_outcomes(research_plan_id, outcomes)
     assessments = tuple(registry.assess(rule.candidate_id) for rule in current.manifest.rules)
+    stability = tuple(assess_stability(registry, rule.candidate_id, stability_policy)
+                      for rule in current.manifest.rules)
     return CandidateSearchResult(current.manifest.digest, current.manifest.planned_arms,
-                                 study, assessments)
+                                 study, assessments, stability)
