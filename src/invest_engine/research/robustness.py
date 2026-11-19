@@ -97,12 +97,16 @@ def assess_stability(registry: ResearchRegistry, candidate_id: str,
                 reasons.add("LEAVE_ONE_OUT_EXCESS_TOO_LOW")
         else:
             reasons.add("INCOMPLETE_PAIRED_BLOCKS")
+    if registry.search_history and any(
+            a.status == "FAILED" and a.candidate_id in (candidate_id, *BASELINES)
+            for a in registry.search_history[-1]):
+        reasons.add("LATEST_SEARCH_OUTCOME_FAILED")
     if len(blocks) < policy.min_time_blocks:
         reasons.add("INSUFFICIENT_TIME_BLOCKS")
     if base.status != "RESEARCH_PASS":
         reasons.add("BASE_ASSESSMENT_"+base.status)
     inconclusive = {"INCOMPLETE_PAIRED_BLOCKS", "INSUFFICIENT_TIME_BLOCKS",
-                    "BASE_ASSESSMENT_INCONCLUSIVE"}
+                    "BASE_ASSESSMENT_INCONCLUSIVE", "LATEST_SEARCH_OUTCOME_FAILED"}
     status = ("INCONCLUSIVE" if reasons & inconclusive else
               "UNSTABLE" if reasons else "STABLE")
     return StabilityAssessment(candidate_id, status, tuple(sorted(reasons)), tuple(blocks),
