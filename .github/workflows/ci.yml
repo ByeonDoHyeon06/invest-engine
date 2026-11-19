@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, feat/e514b-dated-cost-audit, feat/e515b-independent-provider, feat/e62-durable-research-registry, feat/e63-walk-forward, feat/e63b-fold-execution]
+    branches: [main, feat/e514b-dated-cost-audit, feat/e515b-independent-provider, feat/e62-durable-research-registry, feat/e63-walk-forward, feat/e63b-fold-execution, feat/e64-market-regime]
 
 permissions:
   contents: read

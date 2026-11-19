@@ -52,3 +52,5 @@
 - [0028](0028-fixed-rule-fold-replay.md) — Proposed: fixed-rule, preregistered E5 replay across strict temporal validation folds.
 
 - [0029](0029-causal-market-regimes.md) — Proposed: causal two-axis intraday regime annotations and fill attribution.
+
+- [0030](0030-regime-exposure-cohorts.md) — Proposed: observed regime exposure denominators and quantity-cohort realized attribution.

@@ -1,0 +1,17 @@
+# E6.4b — Observed-market regime exposures and entry cohort diagnostics
+
+**Status:** implementation candidate; CI pending. Parent #48 corrected head a3bf5b5 completed Core CI 374 tests per Python 3.12/3.13, type/style checks passed. #47 merged 9d9ee94 after 32 successful historical regression jobs and 63 matched eligible E5 rows. No E6 release or LIVE authority.
+
+## Method
+
+`study_regime_exposure` runs on the same strict, single-instrument, minute-bar E5 evaluation tape and report as the existing exit-regime analysis. It uses every evaluated minute (including no fills and uncertain regimes) and excludes all warmup and overnight minutes. At each bar start it uses the same causal E6.4a classifier and the reconstructed position quantity immediately before this bar's fills. Reports observed minutes, exposed opening minutes, share-minutes and the exposed/observed ratio by trend/volatility. It does not infer exact intrabar holding time. Overnight or closed market exposure is not measured. Exposure ratios are per candidate/run, not causal return estimates.
+
+Track FIFO entry **quantity** cohorts, labelled by the regime at the entry bar start. On exit, allocate the E5 average-cost realized exit PnL across consumed cohort quantities, using the original fill Decimal exponent, ROUND_DOWN (towards zero) for non-final allocations and the exact residual for the last cohort. This conserves the ledger's realized net PnL, but is NOT FIFO cost-basis/tax-lot profit, exact per-entry price PnL, or entry regime causal alpha. Keep unclosed quantities, no fabricated closing trades. Expose quantity-based allocation separately from the E6.4a exit-regime view. Do not subtract fees a second time from net realized PnL.
+
+Require E5 exact tape hash/total reconciliation, matching decision order and execution IDs, no warmup fills, no negative position, one currency, no FX/terminal settlement and minute policy. Reconcile all observed minutes, entry/exited/remaining quantities and realized PnL. No mutation of ledger or strategy decisions. Preflight failures are explicit. Input report integrity remains structural, not signed/independently reproduced; E5 evaluation prohibits corporate actions. The bounded causal lookback on an exact ordered tape avoids scanning all previous dates for every market minute.
+
+Optional `include_exposure=True` with a minute `regime_policy` in fold prepare/execution binds the diagnostic version into the registered scenario context. All matched candidate/benchmark cost arms return detailed exposure output with original report digest and policy digest. No-trade arms correctly record observed minutes, zero exposed minutes and zero inventory. Failed analyses do not create fake results. The existing journal records report evidence and context; detailed exposure study is returned to caller, not independently persisted. No profitability or deployment assertions.
+
+## Verification
+
+Four new fixture tests: real synthetic E5 report including no trade; intentionally fabricated partial FIFO-quantity fill arithmetic and order mismatch; invalid interval; all 12 synthetic fold arms with exposure opt-in and preregistration. CI pending. Real data may not represent actual receipt times or complete market coverage. Actual E5 independent source eligibility remains blocked. Next E6.5 constrained candidate/parameter enumeration and evaluation on fixed development folds with explicit trial budgets and no holdout feedback.

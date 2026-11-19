@@ -154,3 +154,27 @@ def test_regime_policy_preregistered_and_all_arms_attributed(tmp_path):
                    and a.regime_study.report_sha256 == a.report_sha256 for a in result.runs)
         assert all(not a.regime_study.groups for a in result.runs if a.candidate_id == "no-trade")
         assert len(journal.get(p.plan_id).evidence) == 12
+
+
+def test_exposure_opt_in_matrix_bound_and_no_trade_denominator(tmp_path):
+    wf, timing, cases, rules, scenario, p = study()
+    policy = RegimePolicy(lookback_returns=2)
+    prepared = prepare_validation(wf, timing, cases, rules, scenario,
+                                  regime_policy=policy, include_exposure=True)
+    p = replace(p, windows=(p.windows[0], *(a.window for a in prepared), p.windows[-1]))
+    with ResearchJournal(tmp_path / "exposure.sqlite") as journal:
+        journal.register(p)
+        with pytest.raises(ValueError, match="PLAN_BINDING_MISMATCH"):
+            execute_validation(journal, p.plan_id, wf, timing, cases, rules, scenario,
+                               regime_policy=policy)
+        result = execute_validation(journal, p.plan_id, wf, timing, cases, rules, scenario,
+                                    regime_policy=policy, include_exposure=True)
+        assert result.complete, result.runs
+        assert len(result.runs) == 12
+        for arm in result.runs:
+            exposure = arm.exposure_study
+            assert exposure is not None and exposure.report_sha256 == arm.report_sha256
+            assert sum(row.observed_minutes for row in exposure.rows) == 8
+            if arm.candidate_id == "no-trade":
+                assert all(row.exposed_open_minutes == 0 for row in exposure.rows)
+        assert len(journal.get(p.plan_id).evidence) == 12
