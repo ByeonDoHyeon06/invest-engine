@@ -14,7 +14,6 @@ from invest_engine.trading.actions import DelistingCashResolved, DelistingObserv
 from invest_engine.trading.codec import decode_trade_event, encode_trade_event
 from invest_engine.trading.journal import SQLiteTradingJournal
 from invest_engine.trading.ledger import audit_trading_state
-from invest_engine.trading.runtime import TradingRuntime
 from test_actions_e5 import KR, T as BASE, bought, engine
 from test_backtest_e5 import INST, STEP, T, feed
 from test_delisting_replay_e5 import delist, runner
