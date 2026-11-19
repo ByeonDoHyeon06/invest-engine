@@ -124,3 +124,9 @@
 - Terminal receipt is synthetic research only: exact delisting ID + instrument binding and explicit witnessed cash; no fabricated recovery, no late payment model.
 - NEXT E5.12: licensed actual-share-volume 1m history with 20 warm-up sessions + one fixed evaluation month; verify source, market coverage, calendar, issuer actions, costs and compare ORB vs predeclared baselines. E5 remains OPEN if evidence is missing.
 - Account authority boundary: the existing E3 ledger is authoritative only for simulated BACKTEST/PAPER accounts; a future live account uses verified read-only broker snapshots as the asset source of truth, not an engine-owned parallel asset ledger. Stale/inconsistent data and unknown orders block new exposure; durable order/audit records serve reconciliation, not replacement of broker balances. No live authorization.
+
+
+## E5.12 verified and next data gate (2026-11-19)
+- PR #36 merged 3146b96; PR CI 44492013440 Python 3.12/3.13 each 298 passed; lint/type/secrets passed.
+- Strict fixed-window experiment is single-instrument, one-minute, declared RAW_UNADJUSTED/SHARES/PIT, no issuer actions; history-only warmup does not invoke strategies or generate orders or equity. All external verification flags remain false.
+- E5.13: obtain actual permitted bars and run a predeclared one-month study plus 20 prior sessions; independently verify data and cost provenance. Report provisional studies as such; never fabricate PIT timestamps/evidence. E5 Issue #6 stays OPEN, E6 promotion blocked, no LIVE.
