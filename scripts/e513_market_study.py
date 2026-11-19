@@ -24,6 +24,7 @@ from invest_engine.research.backtest import BacktestSettings, HistoricalBacktest
 from invest_engine.research.evaluation import EvaluationWindow, validate_window
 from invest_engine.research.fills import BarFillPolicy
 from invest_engine.research.protection import ProtectionPolicy
+from invest_engine.research.us_fee_audit import FeeAssumption, audit_us_fixed_fills
 from invest_engine.strategies.allocation import AllocationPolicy
 from invest_engine.strategies.baselines import BuyHoldBaseline, NoTradeStrategy
 from invest_engine.strategies.contracts import (
@@ -46,7 +47,8 @@ DAILY_SYMBOLS = ("AAPL", "MSFT", "NVDA", "TSLA", "GOOG", "META")
 RULES = ("no-trade", "hold", "momentum2", "sma3_7", "breakout3", "meanrev5", "trend5")
 COSTS = {"low": ("0.0005", "2", "3"), "base": ("0.001", "5", "5"),
          "stress": ("0.0025", "20", "20")}
-HOLIDAYS_2022 = {date(2022, 7, 4), date(2022, 9, 5), date(2022, 11, 24)}
+HOLIDAYS_2022 = {date(2022, 7, 4), date(2022, 9, 5), date(2022, 11, 24),
+                 date(2022, 12, 26)}
 HALF_2022 = {date(2022, 11, 25)}
 HALF_2025 = {date(2025, 7, 3), date(2025, 11, 28), date(2025, 12, 24)}
 OUT = Path("research-output")
@@ -136,7 +138,7 @@ class DailyRule:
 
 
 def run(inst, events, calendar, strategy, cost, source, window=None, *,
-        first_entry_only=False, session_flat=False, e514=False):
+        first_entry_only=False, session_flat=False, e514=False, fee_audit=False):
     fee, spread, impact = COSTS[cost]
     config = TradingConfig("e514-study" if e514 else "e513-study", (MonetaryRules("USD", D("0.01")),),
                  ((inst.key, InstrumentRules(D("0.01"), D(1))),),
@@ -194,6 +196,24 @@ def run(inst, events, calendar, strategy, cost, source, window=None, *,
                                               "STOP_FIRST_COLLISION") for f in sells),
             "session_close_exits": sum(f.reason_code == "SESSION_CLOSE_LIQUIDATION" for f in sells),
             "config_sha256": report.config_sha256,
+        })
+    if fee_audit:
+        audit = audit_us_fixed_fills(report, events, FeeAssumption(D(fee)))
+        result.update({
+            "fixed_fill_original_cost_usd": str(audit.original_total),
+            "fixed_fill_repriced_cost_usd": str(audit.repriced_total),
+            "fixed_fill_commission_usd": str(sum((o.commission for o in audit.orders), D(0))),
+            "fixed_fill_sec_usd": str(sum((o.sec_fee for o in audit.orders), D(0))),
+            "fixed_fill_taf_usd": str(sum((o.taf for o in audit.orders), D(0))),
+            "fixed_fill_net_pnl_usd": str(audit.fixed_fill_net_pnl),
+            "fixed_fill_return_pct": float(audit.fixed_fill_net_pnl/CAPITAL*100),
+            "fixed_fill_comparison_pct": None if result.get("entry_coverage") == "NO_ENTRY_FILL"
+                                         else float(audit.fixed_fill_net_pnl/CAPITAL*100),
+            "fee_policy_sha256": audit.policy_sha256,
+            "fee_audit_sha256": audit.audit_sha256,
+            "fee_broker_verified": audit.broker_verified,
+            "fee_charge_date_verified": audit.charge_date_verified,
+            "fee_replayed_with_cost_policy": audit.replayed_with_cost_policy,
         })
     return result
 
@@ -287,15 +307,21 @@ def daily():
          "limitations": "cold-start independent months; unverified adjustment basis, actions and vintage"})
 
 
-def minute(symbol, month, *, e514=False):
+def minute(symbol, month, *, e514=False, fee_audit=False):
+    if fee_audit and not e514:
+        raise ValueError("fee audit requires E5.14 experiment arms")
     inst = instrument(symbol)
     rows = []
     extra = {"symbol": symbol, "month": month, "source": "https://historicaldata.net/stocks.html",
              "status": "BLOCKED", "time_assumption": "bar-end receipt, no historical publication evidence"}
     if e514:
-        extra["study_schema"] = "e5.14-provisional-study-v1"
+        extra["study_schema"] = ("e5.14b-fixed-fill-cost-v1" if fee_audit
+                                 else "e5.14-provisional-study-v1")
         extra["planned_arms"] = 7
         extra["liquidation_assumption"] = "precommitted final-bar open, adverse price and minute volume cap"
+    if fee_audit:
+        extra["fee_scope"] = "fixed fill repricing; not broker-certified or re-simulated"
+        extra["panel"] = "extension" if month in (8, 12) else "matched-control"
     try:
         raw = download(SOURCE, 30_000_000)
         extra["archive_sha256"] = hashlib.sha256(raw).hexdigest()
@@ -319,7 +345,7 @@ def minute(symbol, month, *, e514=False):
             daily_rows = list(csv.DictReader(io.StringIO(d[1].decode("utf-8-sig"))))
             all_days = []
             day = date(2022, 7, 1)
-            until = date(2022, month+1, 1)
+            until = date(2023, 1, 1) if month == 12 else date(2022, month+1, 1)
             while day < until:
                 if day.weekday() < 5 and day not in HOLIDAYS_2022:
                     all_days.append(day)
@@ -373,7 +399,8 @@ def minute(symbol, month, *, e514=False):
                     result = run(inst, tuple(events), cal, strat, cost,
                                  "HistoricalData.net free 2022H2 sample", window,
                                  first_entry_only=kind == "hold-retry",
-                                 session_flat=kind == "orb-session-flat", e514=e514)
+                                 session_flat=kind == "orb-session-flat", e514=e514,
+                                 fee_audit=fee_audit)
                     rows.append({"symbol": symbol, "month": month, "strategy": kind, "cost": cost, **result})
                     print("MINUTE_RUN "+json.dumps(rows[-1]), flush=True)
                 except Exception as exc:
@@ -387,7 +414,7 @@ def minute(symbol, month, *, e514=False):
                     extra["hold_entry_coverage"] == {"base": "ENTRY_FILLED", "stress": "ENTRY_FILLED"})
     except Exception as exc:
         extra["error"] = type(exc).__name__+":"+str(exc)[:240]
-    prefix = "e514-minute" if e514 else "minute"
+    prefix = "e514b-minute" if fee_audit else "e514-minute" if e514 else "minute"
     save(f"{prefix}-{symbol}-{month}", rows, extra)
 
 
@@ -395,4 +422,8 @@ if __name__ == "__main__":
     if sys.argv[1] == "daily":
         daily()
     else:
-        minute(sys.argv[2], int(sys.argv[3]), e514=sys.argv[1] == "minute-e514")
+        mode = sys.argv[1]
+        if mode not in ("minute", "minute-e514", "minute-e514b"):
+            raise ValueError("unknown study mode")
+        minute(sys.argv[2], int(sys.argv[3]), e514=mode != "minute",
+               fee_audit=mode == "minute-e514b")
