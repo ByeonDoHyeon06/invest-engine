@@ -1,6 +1,6 @@
 # ADR-0022 — Fixed-fill dated fee sensitivity
 
-Status: Proposed (offline research, tests pending).
+Status: Accepted for offline research (PR #41 verified)
 
 Context: E5.14a demonstrated technical session liquidation and unchanged legacy controls, but the base/stress fee rate is synthetic and does not separate SEC/TAF.
 
