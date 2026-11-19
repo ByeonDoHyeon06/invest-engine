@@ -208,16 +208,16 @@ def alpaca_daily(symbol, year, key, secret):
             raise ValueError("PAGINATION_LOOP_OR_LIMIT")
         tokens.add(token)
         params["page_token"] = token
-        time.sleep(.35)
+        time.sleep(.65)
 
 
-def collect_us(plan, base, key, secret):
+def collect_us(plan, base, key, secret, years=YEARS):
     result = []
     for inst in plan["instruments"]:
         if inst["market"] != "US":
             continue
         symbol = inst["symbol"]
-        for year in YEARS:
+        for year in years:
             try:
                 rows, hashes, invalid = alpaca_daily(symbol, year, key, secret)
                 report = audit_row(symbol, "US", year, rows, hashes, invalid, "alpaca-sip-raw")
@@ -227,11 +227,11 @@ def collect_us(plan, base, key, secret):
                 result.append({"symbol": symbol, "market": "US", "year": year,
                                "status": "SOURCE_ERROR", "error_type": type(exc).__name__,
                                "execution_eligible": False})
-            time.sleep(.35)
+            time.sleep(.65)
     return result
 
 
-def collect_us_minute(plan, base, key, secret):
+def collect_us_minute(plan, base, key, secret, years=YEARS):
     """Requested monthly SIP minute partitions, regular-session bars only.
 
     Missing regular minutes remain unknown (including potential no-trade
@@ -246,7 +246,7 @@ def collect_us_minute(plan, base, key, secret):
         if instrument["market"] != "US":
             continue
         symbol = instrument["symbol"]
-        for year in YEARS:
+        for year in years:
             cal = xcals.get_calendar("XNYS", start=f"{year}-01-01", end=f"{year}-12-31")
             for month in range(1, 13):
                 sessions = [x for x in cal.sessions if x.month == month]
@@ -297,7 +297,7 @@ def collect_us_minute(plan, base, key, secret):
                             raise ValueError("PAGINATION_LOOP_OR_LIMIT")
                         seen_tokens.add(token)
                         params["page_token"] = token
-                        time.sleep(.35)
+                        time.sleep(.65)
                     seen = {x[0] for x in rows}
                     missing = expected-seen
                     duplicates = len(rows)-len(seen)
@@ -328,7 +328,7 @@ def collect_us_minute(plan, base, key, secret):
                 print("MINUTE_PARTITION "+json.dumps({k: report.get(k) for k in (
                     "symbol","year","month","status","expected_minutes","observed_rows",
                     "missing_minutes","duplicates","invalid_rows")}), flush=True)
-                time.sleep(.35)
+                time.sleep(.65)
     return results
 
 
@@ -371,7 +371,7 @@ def collect_kr(plan, base, key):
                             invalid[symbol] += 1
                 except (ValueError, RuntimeError, KeyError, TypeError):
                     failed_days.append(day)
-                time.sleep(.35)
+                time.sleep(.65)
             for symbol in sorted(symbols):
                 report = audit_row(symbol, "KR", year, by_symbol[symbol], hashes,
                                    invalid[symbol], "krx-raw-daily")
@@ -388,9 +388,13 @@ def main():
     parser.add_argument("mode", choices=("public-probe", "alpaca-daily", "alpaca-minute", "krx-daily"))
     parser.add_argument("--acknowledge-data-rights", action="store_true")
     parser.add_argument("--version", default="v1")
+    parser.add_argument("--year", type=int, choices=YEARS, help="authorized US acquisition shard")
     args = parser.parse_args()
     if not args.version.isascii() or not args.version.isalnum() or len(args.version) > 32:
         parser.error("--version must be alphanumeric")
+    if args.year is not None and args.mode not in ("alpaca-daily", "alpaca-minute"):
+        parser.error("--year only applies to US acquisition")
+    years = YEARS if args.year is None else (args.year,)
     plan, plan_hash = load_plan()
     if args.mode == "public-probe":
         rows = public_probe(plan)
@@ -403,8 +407,8 @@ def main():
             key, secret = os.environ.get("ALPACA_DATA_KEY"), os.environ.get("ALPACA_DATA_SECRET")
             if not key or not secret:
                 parser.error("local market-data credentials required")
-            rows = (collect_us(plan, base, key, secret) if args.mode == "alpaca-daily"
-                    else collect_us_minute(plan, base, key, secret))
+            rows = (collect_us(plan, base, key, secret, years) if args.mode == "alpaca-daily"
+                    else collect_us_minute(plan, base, key, secret, years))
         else:
             key = os.environ.get("KRX_DATA_KEY")
             if not key:
@@ -413,8 +417,10 @@ def main():
     base.mkdir(parents=True, exist_ok=True)
     result = {"plan_sha256": plan_hash, "mode": args.mode,
               "retrieved_at": datetime.now(ZoneInfo("UTC")).isoformat(),
+              "requested_years": years,
               "data_rights_verified": False, "production_authorized": False, "rows": rows}
-    path = base / f"{args.mode}-audit.json"
+    suffix = "" if args.year is None else f"-{args.year}"
+    path = base / f"{args.mode}{suffix}-audit.json"
     path.write_text(json.dumps(result, indent=2, ensure_ascii=False)+"\n", encoding="utf-8")
     for row in rows:
         print("PANEL_AUDIT "+json.dumps({k: row.get(k) for k in (
