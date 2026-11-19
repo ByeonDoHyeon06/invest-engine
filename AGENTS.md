@@ -130,3 +130,6 @@
 - PR #36 merged 3146b96; PR CI 44492013440 Python 3.12/3.13 each 298 passed; lint/type/secrets passed.
 - Strict fixed-window experiment is single-instrument, one-minute, declared RAW_UNADJUSTED/SHARES/PIT, no issuer actions; history-only warmup does not invoke strategies or generate orders or equity. All external verification flags remain false.
 - E5.13: obtain actual permitted bars and run a predeclared one-month study plus 20 prior sessions; independently verify data and cost provenance. Report provisional studies as such; never fabricate PIT timestamps/evidence. E5 Issue #6 stays OPEN, E6 promotion blocked, no LIVE.
+
+## E5.14a verified; E5.14b / E5.15a next (2026-11-19)
+- PR #40 merged 1d63a3c; Core CI 44497904693 311 tests per Python. Provisional results in docs/E5_14B_FEE_AUDIT.md. E5.14b.1 fixed-fill costs only, not cash/risk ledger; E5.15a fixed Aug/Dec expansion; complete fees and broader source evidence before E5 release. LIVE NOT AUTHORIZED.
