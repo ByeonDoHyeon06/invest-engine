@@ -1,0 +1,35 @@
+name: E6 real data profitability sensitivity
+
+on:
+  pull_request:
+    branches: [main, feat/e66a-integrated-research]
+    paths:
+      - scripts/e513_market_study.py
+      - .github/workflows/e66-profitability.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  minute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [TSLA, SPY, KO, TWTR]
+        month: [8, 9, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - run: python -u scripts/e513_market_study.py minute-profit-grid ${{ matrix.symbol }} ${{ matrix.month }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e66-profitability-${{ matrix.symbol }}-${{ matrix.month }}
+          path: research-output/e66-profitability-*
+          if-no-files-found: error
