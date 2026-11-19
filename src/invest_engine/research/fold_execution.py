@@ -14,7 +14,7 @@ from invest_engine.data.calendar import StaticSessionCalendar
 from invest_engine.domain.events import EventEnvelope, MarketPayload
 from invest_engine.domain.primitives import Money, _decimal
 from invest_engine.research.backtest import BacktestSettings, HistoricalBacktest
-from invest_engine.research.candidates import BASELINES, Candidate, ResearchPlan, ResearchWindow, _hash
+from invest_engine.research.candidates import BASELINES, Candidate, ResearchPlan, ResearchWindow, SearchReservation, _hash
 from invest_engine.research.evaluation import MINUTE, EvaluationWindow, validate_window
 from invest_engine.research.fills import BarFillPolicy
 from invest_engine.research.protection import ProtectionPolicy
@@ -238,7 +238,7 @@ def execute_validation(
     timing: tuple[SampleTiming, ...], cases: tuple[FoldInput, ...],
     rules: tuple[FixedRule, ...], scenario: FoldScenario, *,
     regime_policy: RegimePolicy | None = None, include_exposure: bool = False,
-    search_identity: str | None = None,
+    search_identity: str | None = None, search_reservation: SearchReservation | None = None,
 ) -> FoldStudyResult:
     """Run every registered developmental arm and persist provisional E5 evidence.
 
@@ -266,6 +266,13 @@ def execute_validation(
             or any(w.end > walk_forward.spec.development_end for w in plan.windows
                    if w.split != "test")):
         raise ValueError("FOLD_RESEARCH_PLAN_BINDING_MISMATCH")
+    if search_identity is not None:
+        if (search_reservation is None
+                or search_reservation.manifest_sha256 != search_identity):
+            raise ValueError("FOLD_SEARCH_REQUIRES_RESERVATION")
+        journal.reserve_search(plan.plan_id, search_reservation)
+    elif search_reservation is not None or registry.search_reservation is not None:
+        raise ValueError("FOLD_SEARCH_RESERVATION_MISMATCH")
     inputs = {(c.fold_id, c.instrument_key): c for c in cases}
     lookup = {r.candidate_id: r for r in rules}
     results: list[FoldExecution] = []
