@@ -97,6 +97,7 @@ class Fold:
 class WalkForwardPlan:
     spec: WalkForwardSpec
     timing_sha256: str
+    development_ids: tuple[str, ...]
     folds: tuple[Fold, ...]
 
     @property
@@ -179,7 +180,7 @@ def plan_walk_forward(spec: WalkForwardSpec, development: tuple[SampleTiming, ..
             embargo_ids, train_counts, val_counts, blockers,
         ))
         val_start += spec.step
-    return WalkForwardPlan(spec, sha256(ordered), tuple(folds))
+    return WalkForwardPlan(spec, sha256(ordered), _ids(ordered), tuple(folds))
 
 
 @dataclass(frozen=True, slots=True)
@@ -221,10 +222,7 @@ def prepare_holdout(plan: WalkForwardPlan, registry: ResearchRegistry,
     eligible = tuple(s for s in ordered if s.label_available_at <= spec.holdout_end
                      and s.label_end <= spec.holdout_end)
     accepted = set(_ids(eligible))
-    development_ids = {i for fold in plan.folds for ids in (
-        fold.train_ids, fold.validation_ids, fold.purged_train_ids,
-        fold.purged_validation_ids, fold.embargo_ids) for i in ids}
-    if development_ids & set(_ids(ordered)):
+    if set(plan.development_ids) & set(_ids(ordered)):
         raise ValueError("HOLDOUT_REUSES_DEVELOPMENT_SAMPLE_ID")
     counts = _counts(eligible, spec.instruments)
     blockers = tuple(f"INSUFFICIENT_HOLDOUT:{key}" for key, count in counts
