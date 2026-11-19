@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+from collections import Counter
 import hashlib
 import io
 import json
@@ -140,7 +141,7 @@ class DailyRule:
 
 def run(inst, events, calendar, strategy, cost, source, window=None, *,
         first_entry_only=False, session_flat=False, e514=False, fee_audit=False,
-        fee_replay=False):
+        fee_replay=False, independent_diagnostics=False):
     fee, spread, impact = COSTS[cost]
     config_cls = USDatedFeeConfig if fee_replay else TradingConfig
     config = config_cls("e514b-replay" if fee_replay else "e514-study" if e514 else "e513-study", (MonetaryRules("USD", D("0.01")),),
@@ -200,6 +201,18 @@ def run(inst, events, calendar, strategy, cost, source, window=None, *,
                                               "STOP_FIRST_COLLISION") for f in sells),
             "session_close_exits": sum(f.reason_code == "SESSION_CLOSE_LIQUIDATION" for f in sells),
             "config_sha256": report.config_sha256,
+        })
+    if independent_diagnostics:
+        result.update({
+            "signal_records": len([d for d in report.decisions if d.signal_ids]),
+            "intent_count": sum(len(d.intent_ids) for d in report.decisions),
+            "signal_records_without_intent": sum(bool(d.signal_ids) and not d.intent_ids
+                                                 for d in report.decisions),
+            "decision_reasons": dict(sorted(Counter(
+                reason for d in report.decisions for reason in d.reason_codes).items())),
+            "subcent_close_observations": sum(
+                isinstance(e.payload, Bar) and e.payload.close % D("0.01") != 0
+                for e in events),
         })
     if fee_replay:
         audit = audit_us_fixed_fills(report, events, FeeAssumption(D(fee)))
