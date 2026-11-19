@@ -133,6 +133,9 @@ def test_recorded_and_failed_outcomes_preserved_no_fabricated_report(tmp_path):
                           report_sha256=None), *rows[1:])
         first = j.record_search_outcomes(p.plan_id, failed)
         assert len(first.search_history) == 1
+        assert assess_stability(first, "alpha", StabilityPolicy()).status == "INCONCLUSIVE"
+        assert "LATEST_SEARCH_OUTCOME_FAILED" in assess_stability(
+            first, "alpha", StabilityPolicy()).reasons
         with pytest.raises(ValueError, match="SEARCH_OUTCOME_MATRIX_INCOMPLETE"):
             j.lock_validation(p.plan_id)
         with pytest.raises(ValueError, match="SEARCH_OUTCOME_REPORT_MISMATCH"):
