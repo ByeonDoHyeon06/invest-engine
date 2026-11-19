@@ -53,7 +53,9 @@ def test_actual_report_reconciles_and_persists_as_unverified(tmp_path):
     path = tmp_path / "evidence.db"
     with ResearchJournal(path) as journal:
         journal.register(p)
-        state = journal.record(p.plan_id, a)
+        state = journal.record_report(p.plan_id, bind, report, events, calendar, window,
+                                      scenario_identity=scenario)
+        assert state.evidence == (a,)
     with ResearchJournal(path) as journal:
         assert journal.get(p.plan_id) == state
 
