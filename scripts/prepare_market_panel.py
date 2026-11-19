@@ -14,7 +14,7 @@ import json
 import os
 import sys
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -26,8 +26,6 @@ ROOT = Path(__file__).resolve().parents[1]
 PLAN_FILE = ROOT / "research/market_panel_v1.json"
 D = Decimal
 US_TZ = ZoneInfo("America/New_York")
-FIRST = date(2020, 1, 1)
-LAST = date(2025, 12, 31)
 YEARS = tuple(range(2020, 2026))
 FIELDS = ("date", "open", "high", "low", "close", "volume")
 
@@ -285,7 +283,7 @@ def main():
     parser.add_argument("--acknowledge-data-rights", action="store_true")
     parser.add_argument("--version", default="v1")
     args = parser.parse_args()
-    if not args.version.isascii() or not args.version.isalnum():
+    if not args.version.isascii() or not args.version.isalnum() or len(args.version) > 32:
         parser.error("--version must be alphanumeric")
     plan, plan_hash = load_plan()
     if args.mode == "public-probe":
