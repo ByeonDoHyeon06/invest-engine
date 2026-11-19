@@ -1,0 +1,33 @@
+name: KRUS-80 public data coverage audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/prepare_market_panel.py
+      - research/market_panel_v1.json
+      - tests/test_market_panel_preparation.py
+      - .github/workflows/market-panel-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install exchange-calendars==4.13.1 pytest
+      - run: python -m pytest -q tests/test_market_panel_preparation.py
+      - run: python -u scripts/prepare_market_panel.py public-probe
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-data-aggregate-coverage-only
+          path: research-output/public-probe-audit.json
+          if-no-files-found: warn
