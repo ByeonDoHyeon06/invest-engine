@@ -1,0 +1,92 @@
+name: Authorized Alpaca US market-data audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/alpaca-authorized-audit.yml'
+      - 'scripts/alpaca_data_preflight.py'
+      - 'scripts/prepare_market_panel.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: authorized-alpaca-market-data
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'research/alpaca-authorized-collection'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Read-only historical market-data access
+        env:
+          ALPACA_DATA_KEY: ${{ secrets.ALPACA_DATA_KEY }}
+          ALPACA_DATA_SECRET: ${{ secrets.ALPACA_DATA_SECRET }}
+        run: python -u scripts/alpaca_data_preflight.py
+
+  daily:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install exchange-calendars==4.13.1
+      - name: Collect US 40-symbol daily development panel
+        env:
+          ALPACA_DATA_KEY: ${{ secrets.ALPACA_DATA_KEY }}
+          ALPACA_DATA_SECRET: ${{ secrets.ALPACA_DATA_SECRET }}
+        run: python -u scripts/prepare_market_panel.py alpaca-daily --acknowledge-data-rights
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: alpaca-daily-coverage-only
+          path: datasets/*/alpaca-daily-audit.json
+          if-no-files-found: error
+          retention-days: 7
+
+  minute:
+    needs: [preflight, daily]
+    if: always() && needs.preflight.result == 'success' && (needs.daily.result == 'success' || needs.daily.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        year: [2020, 2021, 2022, 2023, 2024, 2025]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install exchange-calendars==4.13.1
+      - name: Collect regular-session raw SIP minute observations
+        env:
+          ALPACA_DATA_KEY: ${{ secrets.ALPACA_DATA_KEY }}
+          ALPACA_DATA_SECRET: ${{ secrets.ALPACA_DATA_SECRET }}
+          PANEL_YEAR: ${{ matrix.year }}
+        run: python -u scripts/prepare_market_panel.py alpaca-minute --acknowledge-data-rights --year "$PANEL_YEAR"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: alpaca-minute-${{ matrix.year }}-coverage-only
+          path: datasets/*/alpaca-minute-*-audit.json
+          if-no-files-found: error
+          retention-days: 7
