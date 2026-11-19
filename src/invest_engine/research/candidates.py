@@ -106,6 +106,10 @@ class ResearchPlan:
                    for s in ("train", "validation", "test")}
         if not all(buckets.values()):
             raise ValueError("RESEARCH_REQUIRES_ALL_SPLITS")
+        development_hashes = {w.data_sha256 for w in (*buckets["train"], *buckets["validation"])}
+        test_hashes = {w.data_sha256 for w in buckets["test"]}
+        if development_hashes & test_hashes:
+            raise ValueError("RESEARCH_HOLDOUT_DATASET_REUSED")
         for a, b in (("train", "validation"), ("validation", "test")):
             if (max(w.end for w in buckets[a]) + self.label_horizon + self.policy.embargo
                     > min(w.start for w in buckets[b])):
