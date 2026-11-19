@@ -19,7 +19,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,10 +34,15 @@ def digest(raw):
     return hashlib.sha256(raw).hexdigest()
 
 
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def request(url, headers=None, attempts=4, limit=30_000_000):
     for i in range(attempts):
         try:
-            with urlopen(Request(url, headers={"User-Agent": "invest-engine-research/1.0",
+            with build_opener(NoRedirect()).open(Request(url, headers={"User-Agent": "invest-engine-research/1.0",
                                                **(headers or {})}), timeout=60) as response:
                 raw = response.read(limit+1)
                 if len(raw) > limit:
@@ -413,11 +418,12 @@ def main():
     path.write_text(json.dumps(result, indent=2, ensure_ascii=False)+"\n", encoding="utf-8")
     for row in rows:
         print("PANEL_AUDIT "+json.dumps({k: row.get(k) for k in (
-            "symbol","market","year","status","expected_sessions","observed_rows","missing_sessions",
-            "extra_sessions","duplicates","invalid_rows","zero_volume_rows","error_type")}), flush=True)
+            "symbol","market","year","month","status","expected_sessions","observed_rows","missing_sessions",
+            "extra_sessions","expected_minutes","missing_minutes","duplicates","invalid_rows",
+            "zero_volume_rows","error_type")}), flush=True)
     counts = {status: sum(r["status"] == status for r in rows) for status in
               ("STRUCTURAL_COMPLETE", "BLOCKED_COVERAGE", "SOURCE_ERROR")}
-    print("PANEL_SUMMARY "+json.dumps({"mode": args.mode, "planned_symbol_years": len(rows),
+    print("PANEL_SUMMARY "+json.dumps({"mode": args.mode, "planned_partitions": len(rows),
                                       "counts": counts, "execution_eligible": 0}), flush=True)
     if counts["SOURCE_ERROR"]:
         sys.exit(2)
