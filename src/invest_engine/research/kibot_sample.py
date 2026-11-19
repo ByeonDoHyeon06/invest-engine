@@ -24,6 +24,15 @@ MINUTE = timedelta(minutes=1)
 
 
 @dataclass(frozen=True, slots=True)
+class MissingMinuteInterval:
+    """Scheduled minute observations absent from the source, not zero trades."""
+    session_day: str
+    start: datetime
+    end: datetime
+    minutes: int
+
+
+@dataclass(frozen=True, slots=True)
 class KibotCoverage:
     file_sha256: str
     expected_minutes: int
@@ -34,6 +43,7 @@ class KibotCoverage:
     complete_sessions: int
     expected_sessions: int
     events: tuple[EventEnvelope[MarketPayload], ...]
+    missing_intervals: tuple[MissingMinuteInterval, ...]
 
 
 def inspect_kibot_unadjusted(
@@ -102,6 +112,16 @@ def inspect_kibot_unadjusted(
     for at, day_key in expected.items():
         if at not in by_time:
             missing[day_key] = missing.get(day_key, 0) + 1
+    intervals: list[MissingMinuteInterval] = []
+    for at, day_key in expected.items():
+        if at in by_time:
+            continue
+        if intervals and intervals[-1].session_day == day_key and intervals[-1].end == at:
+            previous = intervals[-1]
+            intervals[-1] = MissingMinuteInterval(day_key, previous.start, at+MINUTE,
+                                                  previous.minutes+1)
+        else:
+            intervals.append(MissingMinuteInterval(day_key, at, at+MINUTE, 1))
     observed = tuple(at for at in expected if at in by_time)
     extra = len(set(by_time)-set(expected))
     events: tuple[EventEnvelope[MarketPayload], ...] = ()
@@ -116,4 +136,4 @@ def inspect_kibot_unadjusted(
         validate_window(events, calendar, window)
     return KibotCoverage(hashlib.sha256(raw).hexdigest(), len(expected), len(observed),
                          sum(missing.values()), extra, tuple(sorted(missing.items())),
-                         len(sessions)-len(missing), len(sessions), events)
+                         len(sessions)-len(missing), len(sessions), events, tuple(intervals))

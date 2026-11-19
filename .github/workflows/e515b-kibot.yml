@@ -2,7 +2,7 @@ name: E5.15b independent Kibot sample diagnostic
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/e515b-independent-provider]
     paths:
       - 'scripts/e515b_kibot_study.py'
       - 'src/invest_engine/research/kibot_sample.py'

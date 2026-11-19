@@ -1,3 +1,5 @@
+**E5.15c / E6 foundation candidate (2026-11-19):** [Gap evidence and offline candidate registry](E5_15C_E6_FOUNDATION.md), [ADR-0025](adr/0025-offline-candidate-gates.md). Parent #43 has 338 tests each and both Kibot sample jobs passed but all 4 fixed windows blocked: IBM Sep/Oct missing 5,082/16 and OIH Sep/Oct missing 7,255/3,194; 0 strategy arms. Remaining legacy regression jobs pending. Candidate introduces exact missing-interval evidence, immutable preregistration, horizon/embargo partition guard, matched cash/entered hold, multi-cost candidate assessment and validation-first selected holdout. This foundation is offline only, tests pending; durable registry, verified evidence, real data and E5 release remain outstanding. #6 OPEN; E6/G2 NOT ACCEPTED; LIVE NOT AUTHORIZED.
+
 # 실행 로드맵 — Engine-first
 
 **버전:** 0.1 · **작성:** 2026-11-15 · **상태:** Planned  

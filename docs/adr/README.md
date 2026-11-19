@@ -42,3 +42,5 @@
 - [0023](0023-dated-fee-replay.md) — Accepted for offline research (PR #42 verified): versioned fee-aware reserve and cumulative order charges.
 
 - [0024](0024-independent-provider-diagnostic.md) — Proposed: independent raw sample diagnostic, strict gaps and rights boundaries.
+
+- [0025](0025-offline-candidate-gates.md) — Proposed: unknown gaps, offline preregistered candidate evaluation, holdout discipline.

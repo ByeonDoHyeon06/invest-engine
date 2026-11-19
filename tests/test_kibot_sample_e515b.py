@@ -57,6 +57,9 @@ def test_missing_minute_and_missing_entire_session_are_explicit_not_filled():
     assert result.missing_minutes == 3 and result.observed_minutes == 39
     assert result.missing_by_session == (("2026-10-12", 2), ("2026-11-01", 1))
     assert result.complete_sessions == 19
+    assert [g.minutes for g in result.missing_intervals] == [2, 1]
+    assert result.missing_intervals[0].start == calendar.sessions[0].start
+    assert result.missing_intervals[0].end == calendar.sessions[0].end
     assert result.events == ()
 
 
