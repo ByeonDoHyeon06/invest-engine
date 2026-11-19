@@ -100,6 +100,13 @@ def study(symbol, month, raw):
         "expected_bars": audit.expected_minutes, "missing_bars": audit.missing_minutes,
         "extra_bars": audit.extra_minutes, "missing_by_session": audit.missing_by_session,
         "complete_sessions": audit.complete_sessions, "expected_sessions": audit.expected_sessions,
+        "missing_interval_count": len(audit.missing_intervals),
+        "isolated_missing_minutes": sum(g.minutes == 1 for g in audit.missing_intervals),
+        "longest_missing_interval_minutes": max((g.minutes for g in audit.missing_intervals), default=0),
+        "entire_missing_sessions": sum(
+            g.start == sess.start and g.end == sess.end
+            for g in audit.missing_intervals for sess in calendar.sessions),
+        "missing_observation_semantics": "UNKNOWN; no inference of zero trades or prices",
     })
     if actions or not audit.events:
         extra["blockers"] = (["KNOWN_ISSUER_ACTION"] if actions else []) + (
