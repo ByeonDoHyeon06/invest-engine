@@ -135,7 +135,9 @@ def study_regime_exposure(
                         raise ValueError("REGIME_EXPOSURE_SHORT_OR_MISSING_ENTRY")
                     remaining = fill.quantity
                     pnl_remaining = fill.realized_pnl
-                    quantum = D(1).scaleb(fill.realized_pnl.as_tuple().exponent)
+                    exponent = fill.realized_pnl.as_tuple().exponent
+                    assert isinstance(exponent, int)
+                    quantum = D(1).scaleb(exponent)
                     while remaining > 0:
                         if not cohorts:
                             raise ValueError("REGIME_EXPOSURE_COHORT_UNDERFLOW")
