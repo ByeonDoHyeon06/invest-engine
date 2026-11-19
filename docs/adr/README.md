@@ -37,6 +37,8 @@
 
 - [0021](0021-session-flat-research.md) — Accepted (offline research; PR #40 verified): opt-in first-fill comparator and schedule-bound session-flat protection.
 
-- [0022](0022-fixed-fill-dated-fees.md) — Proposed: dated regulatory fixed-fill sensitivity; full ledger cost policy pending.
+- [0022](0022-fixed-fill-dated-fees.md) — Accepted for offline research (PR #41 verified): dated regulatory fixed-fill sensitivity.
 
-- [0023](0023-dated-fee-replay.md) — Proposed: versioned fee-aware reserve and cumulative order charges (offline).
+- [0023](0023-dated-fee-replay.md) — Accepted for offline research (PR #42 verified): versioned fee-aware reserve and cumulative order charges.
+
+- [0024](0024-independent-provider-diagnostic.md) — Proposed: independent raw sample diagnostic, strict gaps and rights boundaries.
