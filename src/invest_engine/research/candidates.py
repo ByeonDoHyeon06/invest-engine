@@ -118,7 +118,7 @@ class ResearchPlan:
             groups.setdefault(w.instrument_key, []).append(w)
         for group in groups.values():
             ordered = sorted(group, key=lambda w: w.start)
-            if any(a.end > b.start for a, b in zip(ordered, ordered[1:])):
+            if any(a.end > b.start for a, b in zip(ordered, ordered[1:], strict=False)):
                 raise ValueError("RESEARCH_DUPLICATE_EXPOSURE_WINDOW")
 
     @property
