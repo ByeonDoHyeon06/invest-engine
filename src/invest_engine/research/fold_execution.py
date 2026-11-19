@@ -188,7 +188,7 @@ def fixed_candidates(rules: tuple[FixedRule, ...], scenario: FoldScenario,
                      plan: WalkForwardPlan) -> tuple[Candidate, ...]:
     # Rules are frozen before validation, no fitted parameters or training labels.
     return tuple(Candidate(r.candidate_id, "orb-long:1.0.0", scenario.settings.code_sha,
-                           r.config_sha256, plan.folds[0].train_end)
+                           r.config_sha256, plan.spec.development_start)
                  for r in sorted(rules, key=lambda r: r.candidate_id))
 
 
