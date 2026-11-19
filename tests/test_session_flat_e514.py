@@ -157,3 +157,29 @@ def test_partial_buy_and_stop_conflict_fails_closed():
     change_bar(events, 82, open=D("85"), low=D("80"), high=D("92"), close=D("90"))
     with pytest.raises(InvalidEvent, match="SESSION_FLAT_PROTECTION_BUY_CONFLICT"):
         protected(calendar, window).run(tuple(events))
+
+
+def test_orb_session_flat_end_to_end():
+    from invest_engine.strategies.orb import ORBLongStrategy
+
+    events, calendar, window = feed(evaluation_days=2, session_minutes=9)
+    # Breakouts on both evaluation days, with prior-session volume evidence.
+    # Raise volume at the current breakout minute only.
+    for day in (20, 21):
+        change_bar(events, day*9+5, high=D("108"), close=D("106"), volume=D("8000"))
+        change_bar(events, day*9+6, open=D("106"), high=D("108"), low=D("103"),
+                   close=D("106"))
+        change_bar(events, day*9+7, open=D("106"), high=D("108"), low=D("103"),
+                   close=D("106"))
+        change_bar(events, day*9+8, open=D("106"), high=D("108"), low=D("103"),
+                   close=D("106"))
+    # Second breakout has 19 normal previous session volumes and the first
+    # breakout, so the historical median remains 4000 shares.
+    report = engine(calendar, window, ORBLongStrategy(),
+                    protection_policy=ProtectionPolicy(enabled=True, adverse_bps=D("10")),
+                    session_flat=True).run(tuple(events))
+    assert report.entry_fill_count == 2 and report.exit_fill_count == 2
+    assert [f.reason_code for f in report.fills] == [
+        "LIMIT_FILLED", "SESSION_CLOSE_LIQUIDATION",
+        "LIMIT_FILLED", "SESSION_CLOSE_LIQUIDATION"]
+    assert [f.market_event_id for f in report.fills] == ["e186", "e188", "e195", "e197"]
