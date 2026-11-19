@@ -117,3 +117,10 @@
 - [PR #31](https://github.com/ByeonDoHyeon06/invest-engine/pull/31) main merged 963743d. main CI 44070594750: 3.12/3.13 275 passed each; lint/type/secrets passed.
 - Next E5.10: decide validated issuer-delisting cash resolution or preserve fail-closed; obtain licensed actual-share-volume 1m market data and independent corporate action and fee provenance before ORB conclusions.
 - E5 Issue #6 stays OPEN. E7 realtime forward paper and E8 live remain unimplemented/unauthorized.
+
+
+## E5.11 verified and next gate (2026-11-19)
+- PR #34 merged 7c2e733; PR CI 44489789537: Python 3.12/3.13 each 291 passed; Ruff/mypy/secrets passed.
+- Terminal receipt is synthetic research only: exact delisting ID + instrument binding and explicit witnessed cash; no fabricated recovery, no late payment model.
+- NEXT E5.12: licensed actual-share-volume 1m history with 20 warm-up sessions + one fixed evaluation month; verify source, market coverage, calendar, issuer actions, costs and compare ORB vs predeclared baselines. E5 remains OPEN if evidence is missing.
+- Account authority boundary: the existing E3 ledger is authoritative only for simulated BACKTEST/PAPER accounts; a future live account uses verified read-only broker snapshots as the asset source of truth, not an engine-owned parallel asset ledger. Stale/inconsistent data and unknown orders block new exposure; durable order/audit records serve reconciliation, not replacement of broker balances. No live authorization.
