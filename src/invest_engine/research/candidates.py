@@ -145,10 +145,12 @@ class ArmEvidence:
     complete: bool
     cost_verified: bool
     execution_validated: bool
+    report_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if (not all(_hash(x) for x in (self.data_sha256, self.context_sha256,
                                      self.run_sha256, self.candidate_config_sha256))
+                or (self.report_sha256 is not None and not _hash(self.report_sha256))
                 or not self.window_id or not self.candidate_id
                 or self.cost not in ("base", "stress")
                 or _decimal(self.opening_cash, field="opening_cash") <= 0
