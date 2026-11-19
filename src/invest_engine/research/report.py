@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from invest_engine.domain.primitives import InstrumentId
+from invest_engine.trading.actions import DelistingResolutionRecord
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -99,6 +100,7 @@ class BacktestReport:
     fx_equity: tuple[FxEquityPoint, ...] = ()
     fx_net_pnl: Decimal | None = None
     fx_max_drawdown: Decimal | None = None
+    terminal_settlements: tuple[DelistingResolutionRecord, ...] = ()
 
     def export(self, directory: str | Path) -> None:
         """Write reproducible artifacts for research; caller controls private storage."""

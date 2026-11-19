@@ -34,6 +34,7 @@ from invest_engine.strategies.allocation import (
 from invest_engine.strategies.attribution import (
     AttributionTicket, VirtualLedger, audit_virtual_against_account,
     record_simulated_fill, ticket_for_plan, rebase_virtual_for_split,
+    resolve_virtual_delisting,
 )
 from invest_engine.strategies.contracts import Strategy
 from invest_engine.strategies.runtime import StrategyRunner
@@ -160,6 +161,7 @@ class HistoricalBacktest:
         delist_by_time = {(d.instrument.key, d.effective_at): d
                           for d in self.delisting_schedule.delistings}
         used_delistings: set[str] = set()
+        payout_by_id = {r.action_id: r for r in self.delisting_schedule.resolutions}
         if len(entitlements_by_time) != len(self.dividend_schedule.entitlements):
             raise ValueError("duplicate dividend entitlement boundary")
         if len(payments_by_time) != len(self.dividend_schedule.payments):
@@ -392,16 +394,24 @@ class HistoricalBacktest:
                 delisting = delist_by_time.get((event.instrument_id.key, bar.end))
                 if delisting is not None:
                     position = trader.state.position(delisting.instrument)
-                    if position is not None and position.quantity > 0:
+                    payout = payout_by_id.get(delisting.action_id)
+                    if position is not None and position.quantity > 0 and payout is None:
                         raise InvalidEvent("DELISTED_HOLDINGS_REQUIRE_VERIFIED_TERMINAL_SETTLEMENT")
+                    if payout is not None and (position is None or position.quantity <= 0):
+                        raise InvalidEvent("TERMINAL_SETTLEMENT_REQUIRES_HELD_SHARES")
                     if any(o.intent.instrument.key == delisting.instrument.key
                            and o.status not in {OrderStatus.FILLED, OrderStatus.CANCELED,
                                                 OrderStatus.REJECTED}
                            for o in trader.state.orders):
                         raise InvalidEvent("DELISTING_WITH_UNRESOLVED_ORDERS")
                     trader.flag_delisting(delisting, now)
+                    if payout is not None:
+                        trader.resolve_delisted_cash(payout, now)
+                        virtual = resolve_virtual_delisting(virtual, payout)
+                        delisting_reason = ("DELISTING_PAID:" + delisting.action_id,)
+                    else:
+                        delisting_reason = ("DELISTING_BLOCKED:" + delisting.action_id,)
                     used_delistings.add(delisting.action_id)
-                    delisting_reason = ("DELISTING_BLOCKED:" + delisting.action_id,)
             outcomes = tuple(runner.accept(event) for runner in runners)
             signals = tuple(signal for outcome in outcomes for signal in outcome.signals
                             if signal.instrument.key not in trader.state.delisted_instruments)
@@ -493,7 +503,8 @@ class HistoricalBacktest:
               "adverse-gap assumptions; these are synthetic, not broker orders."
               if self.protection_policy.enabled else
               "Stop prices are risk plans; this fill model does not place stops."),
-             "Delisted shares cannot receive an invented terminal value; held delistings abort.",
+             "Held delistings require declared, paid and witnessed terminal cash recovery "
+             "at the last historical bar; delayed payment remains unsupported.",
              "Multi-currency equity is not aggregated without a proven FX series.",
              "Run code SHA, data provider/license identifiers must be independently verified.",
              "FX-adjusted reporting is research-only; no FX buying power/fees or broker conversions.",
@@ -506,4 +517,5 @@ class HistoricalBacktest:
             fx_base_currency=self.fx_policy.base_currency if self.fx_policy else None,
             fx_data_sha256=self.fx_series.digest if self.fx_series else None,
             fx_equity=fx_points, fx_net_pnl=fx_net, fx_max_drawdown=fx_dd,
+            terminal_settlements=trader.state.delisting_resolutions,
         )
