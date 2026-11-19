@@ -27,6 +27,7 @@ from invest_engine.research.walk_forward import SampleTiming, WalkForwardPlan
 from invest_engine.strategies.orb import ORBParameters
 
 D = Decimal
+DEFAULT_STABILITY = StabilityPolicy()
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,7 +161,7 @@ def execute_search(
     journal: ResearchJournal, research_plan_id: str, prepared: PreparedSearch,
     walk_forward: WalkForwardPlan, timing: tuple[SampleTiming, ...], cases: tuple[FoldInput, ...],
     scenario: FoldScenario, *, regime_policy: RegimePolicy | None = None,
-    include_exposure: bool = False, stability_policy: StabilityPolicy = StabilityPolicy(),
+    include_exposure: bool = False, stability_policy: StabilityPolicy = DEFAULT_STABILITY,
 ) -> CandidateSearchResult:
     """Run the entire frozen validation grid; retain failures and all assessments.
 
