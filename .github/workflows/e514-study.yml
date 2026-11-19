@@ -1,0 +1,38 @@
+name: E5.14 provisional session-flat study
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/e513_market_study.py'
+      - 'src/invest_engine/research/backtest.py'
+      - 'src/invest_engine/research/protection.py'
+      - 'src/invest_engine/strategies/baselines.py'
+      - '.github/workflows/e514-study.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  minute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [TSLA, SPY, KO, TWTR]
+        month: [9, 10, 11]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - run: python -u scripts/e513_market_study.py minute-e514 ${{ matrix.symbol }} ${{ matrix.month }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e514-minute-${{ matrix.symbol }}-${{ matrix.month }}-summary
+          path: research-output/e514-*
+          if-no-files-found: error
