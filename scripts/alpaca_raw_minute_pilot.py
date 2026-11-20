@@ -8,7 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal as D
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
@@ -30,24 +30,70 @@ MONTHS = (10, 11)
 COSTS = ("base", "stress")
 RULES = {"orb-default": (15, "1.5"), "orb-patient": (30, "1.5"),
          "orb-volume": (15, "2")}
-SOURCE = "Alpaca SIP raw 2022 retrospective minute pilot"
+SOURCE = "Alpaca SIP raw 2022 retrospective minute pilot v2"
 UTC = ZoneInfo("UTC")
 
 
+# These three ordinary events have documented ex/record/payment dates.
+# Every other action type remains fail-closed, including symbol changes.
+DATE_KINDS = frozenset(("cash_dividends", "forward_splits", "reverse_splits"))
+DATE_FIELDS = ("ex_date", "record_date", "payable_date")
+
+
+def classify_actions(grouped, symbol, first, last):
+    """Conservative classification of provider-returned actions only.
+
+    No declaration of complete PIT coverage. For supported events, allow
+    exclusion only if the *entire* entitlement/effective/payment interval
+    lies outside warmup plus evaluation. Unknown schema/identity blocks.
+    """
+    if not isinstance(grouped, dict) or first > last:
+        raise ValueError("UNVERIFIABLE_ACTION_RESPONSE")
+    results = []
+    for kind, records in sorted(grouped.items()):
+        if records is None:
+            continue
+        if not isinstance(records, list):
+            raise ValueError("UNVERIFIABLE_ACTION_RESPONSE")
+        for record in records:
+            detail = {"kind": kind, "classification": "UNRESOLVED", "dates": {}}
+            if kind not in DATE_KINDS or not isinstance(record, dict):
+                results.append(detail)
+                continue
+            if record.get("symbol") != symbol or record.get("currency") != "USD":
+                results.append(detail)
+                continue
+            try:
+                dates = {field: date.fromisoformat(record[field]) for field in DATE_FIELDS}
+                # A non-null optional effective date can only widen the bounds.
+                if record.get("effective_date") is not None:
+                    dates["effective_date"] = date.fromisoformat(record["effective_date"])
+            except (KeyError, TypeError, ValueError):
+                results.append(detail)
+                continue
+            detail["dates"] = {k: v.isoformat() for k, v in dates.items()}
+            # Do not assume the ex-date precedes payment: split conventions vary.
+            if max(dates.values()) < first or min(dates.values()) > last:
+                detail["classification"] = "OUTSIDE_WINDOW"
+            else:
+                detail["classification"] = "INTERSECTS_WINDOW"
+            results.append(detail)
+    return results
+
+
 def actions(symbol, first, last, headers):
-    # Provider filters on processing dates rather than effective dates.
-    # Include a 45-day buffer either side; reject any returned action
-    # conservatively, even if it may be irrelevant. No PIT certificate.
-    params = {"symbols": symbol, "start": str(first-timedelta(days=45)),
-              "end": str(last+timedelta(days=45)), "limit": 1000,
+    # Provider query bounds are processing dates, not economic event dates.
+    # Use a wider 90-day search margin to detect delayed processing; this
+    # remains bounded retrospective metadata rather than a PIT attestation.
+    params = {"symbols": symbol, "start": str(first-timedelta(days=90)),
+              "end": str(last+timedelta(days=90)), "limit": 1000,
               "data_quality": "all"}
     raw = request("https://data.alpaca.markets/v1/corporate-actions?"+urlencode(params), headers)
     data = json.loads(raw)
-    grouped = data["corporate_actions"]
-    if (not isinstance(grouped, dict) or any(not isinstance(v, list) for v in grouped.values())
-            or data.get("next_page_token")):
+    if data.get("next_page_token"):
         raise ValueError("UNVERIFIABLE_ACTION_RESPONSE")
-    return {k: len(v) for k, v in grouped.items() if v}, digest(raw)
+    details = classify_actions(data["corporate_actions"], symbol, first, last)
+    return details, digest(raw)
 
 
 def build_grid(symbol, month):
@@ -131,19 +177,23 @@ def main():
         raise SystemExit("MISSING_DATA_CREDENTIALS")
     headers = {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret}
     report = {"symbol": symbol, "month": month, "year": 2022, "planned_arms": 10,
-              "study_schema": "alpaca-sip-raw-pilot-v1", "status": "SOURCE_ERROR",
+              "study_schema": "alpaca-sip-raw-pilot-v2", "status": "SOURCE_ERROR",
               "holdout_accessed": False, "execution_certified": False}
     rows, errors = [], []
     try:
         inst, sessions, first, last = build_grid(symbol, month)
         ca, ca_hash = actions(symbol, first, last, headers)
+        action_counts = {kind: sum(x["kind"] == kind for x in ca) for kind in sorted({x["kind"] for x in ca})}
         report.update({"first_session": str(first), "last_session": str(last),
-                       "action_counts": ca, "action_sha256": ca_hash})
+                       "action_counts": action_counts, "action_classifications": ca,
+                       "action_sha256": ca_hash, "action_search_margin_days": 90})
         events, coverage = fetch_tape(inst, sessions, headers)
         report.update(coverage)
         blockers = []
-        if ca:
-            blockers.append("PROVIDER_CORPORATE_ACTION_IN_BUFFER")
+        if any(x["classification"] == "UNRESOLVED" for x in ca):
+            blockers.append("UNRESOLVED_PROVIDER_CORPORATE_ACTION")
+        if any(x["classification"] == "INTERSECTS_WINDOW" for x in ca):
+            blockers.append("PROVIDER_CORPORATE_ACTION_INTERSECTS_WINDOW")
         if not events:
             blockers.append("INCOMPLETE_MINUTE_TAPE")
         report["blockers"] = blockers
@@ -171,6 +221,7 @@ def main():
                         print("RAW_MINUTE_RUN "+json.dumps(row), flush=True)
                     except Exception as exc:
                         errors.append({"strategy": kind, "cost": cost, "error_type": type(exc).__name__})
+                        print("RAW_MINUTE_ARM_FAILED "+json.dumps(errors[-1]), flush=True)
             report["status"] = "PROVISIONAL_COMPLETE" if len(rows) == 10 else "PARTIAL"
     except Exception as exc:
         report["error_type"] = type(exc).__name__
