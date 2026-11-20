@@ -42,11 +42,11 @@ jobs:
           ALPACA_DATA_SECRET: ${{ secrets.ALPACA_DATA_SECRET }}
           PANEL_SYMBOL: ${{ matrix.symbol }}
           PANEL_MONTH: ${{ matrix.month }}
-        run: python -u scripts/alpaca_raw_minute_pilot.py "$PANEL_SYMBOL" "$PANEL_MONTH"
+        run: python -u scripts/alpaca_raw_minute_pilot.py "$PANEL_SYMBOL" "$PANEL_MONTH" --action-diagnostics-only
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: alpaca-raw-minute-${{ matrix.symbol }}-${{ matrix.month }}
-          path: research-output/alpaca-raw-minute-*
+          path: research-output/alpaca-action-schema-*
           if-no-files-found: error
           retention-days: 7
