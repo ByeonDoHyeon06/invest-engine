@@ -28,7 +28,7 @@ MONTHS = (10, 11)
 COSTS = ("base", "stress")
 RULES = {"orb-default": (15, "1.5"), "orb-patient": (30, "1.5"),
          "orb-volume": (15, "2")}
-SOURCE = "Alpaca SIP raw 2022 retrospective minute pilot v3"
+SOURCE = "Alpaca SIP raw 2022 retrospective minute pilot v4"
 UTC = ZoneInfo("UTC")
 
 
@@ -67,10 +67,17 @@ def classify_actions(grouped, symbol, first, last):
             detail["foreign_false"] = record.get("foreign") is False
             # Currency is optional in provider schema; this screen does not
             # credit cash or infer USD. Accept omission for date-only analysis
-            # on an explicitly domestic, identified security, never for accounting.
+            # on a symbol-matched record, never for accounting.
             currency = record.get("currency")
             cusip = record.get("cusip")
-            if (record.get("symbol") != symbol or record.get("foreign") is not False
+            # Split records omit the dividend-specific foreign field. Absence
+            # is not a domestic certification: only dates are screened, and
+            # a stated foreign or malformed value still fails closed.
+            split = kind in ("forward_splits", "reverse_splits")
+            foreign_ok = record.get("foreign") is False or (split and "foreign" not in record)
+            detail["foreign_basis"] = ("EXPLICIT_DOMESTIC" if record.get("foreign") is False
+                                       else "UNSPECIFIED_SPLIT_DATE_ONLY")
+            if (record.get("symbol") != symbol or not foreign_ok
                     or not isinstance(cusip, str) or not cusip.strip()
                     or currency not in (None, "", "USD")):
                 detail["reason"] = "IDENTITY_OR_CURRENCY_UNVERIFIED"
@@ -203,7 +210,7 @@ def main():
         raise SystemExit("MISSING_DATA_CREDENTIALS")
     headers = {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret}
     report = {"symbol": symbol, "month": month, "year": 2022, "planned_arms": 10,
-              "study_schema": "alpaca-sip-raw-pilot-v3", "status": "SOURCE_ERROR",
+              "study_schema": "alpaca-sip-raw-pilot-v4", "status": "SOURCE_ERROR",
               "holdout_accessed": False, "execution_certified": False}
     rows, errors = [], []
     try:
