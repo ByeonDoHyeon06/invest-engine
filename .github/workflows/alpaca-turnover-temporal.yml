@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: authorized-alpaca-market-data
+  group: authorized-alpaca-temporal-2023-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 35
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 3
       matrix:
         symbol: [AAPL, MSFT, NVDA, TSLA, AMZN, GOOG]
         month: [1, 4, 7, 10]
