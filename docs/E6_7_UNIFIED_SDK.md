@@ -1,27 +1,29 @@
 # E6.7 — Unified Engine SDK (proposed)
 
-Status: PLANNED, not implemented. Tracking: [#59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59). Design reviewed during #57 research; implementation follows existing validation work and must not imply E5/E6 acceptance.
+Status: PLANNED, not implemented; user-approved neutral constructor and DX direction (2026-11-20). Tracking: [#59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59). Design reviewed during #57 research; implementation follows existing validation work and must not imply E5/E6 acceptance.
 
 ## 1. Problem and goals
 
 The root `invest_engine` currently exports only version information; Strategy SDK, core runtime, E5 `HistoricalBacktest` and `run_experiment`, E6 `PipelineSpec` / prepare/run/review, dataset ingestion and CLI are separate entry points. The caller must manually compose internal dependencies, even for standard research. Keep deterministic core and safety rules; improve discoverability, setup, typed composition, configuration and evidence handling. Simple default usage must not reduce supported functionality.
 
-## 2. Public surface (illustrative, not executable yet)
+## 2. Public surface (approved design targets; not executable yet)
+
+**Canonical constructor: `Engine()`.** The constructor is not a mode selection: no `Engine.offline()`, `Engine.online()`, class-level `Engine.research()` or mandatory `mode` parameter. Backtest, research, evaluation and future Paper/Live are operation-level capabilities. Market-data transport is independent of execution authority. See [18 normative DX examples](E6_7_SDK_EXAMPLES.md).
 
 ```python
-from invest_engine import Engine, Money, profiles, strategies
+from invest_engine import Engine, strategies
 
-engine = Engine.research(profile=profiles.research_v1())
-data = engine.data.load("datasets/us-2022/manifest.json")
+engine = Engine()
 result = engine.backtest(
-    data=data, strategy=strategies.orb(opening_range="30m"),
-    capital=Money("100000", "USD"),
+    data="datasets/us-2022/manifest.json",
+    strategy=strategies.orb(),
+    capital="100000 USD",
 )
 print(result.summary)
 result.export("artifacts/orb")
 ```
 
-Money string convenience is a proposed boundary parser, not a change to current Decimal core types. Manifest contains exact data scope, identity, calendar, price basis, license/provenance status, hashes and availability. No implicit data download or fabricated calendar. Profile name/version and all expanded costs/risk/fill defaults are visible and hashed. This is offline only. Missing provenance remains provisional or blocked per the existing gate, never silently marked verified.
+Currency-bearing string convenience is a proposed boundary parser, not a change to current Decimal core types. Manifest contains exact data scope, identity, calendar, price basis, license/provenance status, hashes and availability. No implicit data download or fabricated calendar. Profile name/version and all expanded costs/risk/fill defaults are visible and hashed. This is offline only. Missing provenance remains provisional or blocked per the existing gate, never silently marked verified.
 
 Advanced use of the same engine:
 
@@ -29,7 +31,7 @@ Advanced use of the same engine:
 from invest_engine import Engine, BacktestSpec, profiles
 from invest_engine.sdk import data, policies, strategies
 
-engine = Engine.research(profile=profiles.research_v1())
+engine = Engine(profile=profiles.research_v1())
 spec = BacktestSpec(
     data=data.from_manifest("datasets/us-2022/manifest.json"),
     strategy=MyStrategy(),  # implements the existing Strategy protocol
@@ -45,13 +47,13 @@ print(prepared.effective_config)
 result = engine.run(prepared)
 ```
 
-All identifiers above are design proposals. Existing public/internal contracts remain available; SDK classes and function names to be finalized in E6.7a. Mutually exclusive options rejected explicitly; custom components are trusted Python code subject to existing capability boundaries, not sandboxed. Do not introduce a universal options dictionary, a magical fluent DSL, hidden global configuration or a second trading engine.
+The neutral constructor and operation-level API are explicitly agreed. Example names are normative DX targets; E6.7a inventories exact supported combinations and signatures without silently changing the examples. Existing public/internal contracts remain available. Mutually exclusive options rejected explicitly; custom components are trusted Python code subject to existing capability boundaries, not sandboxed. Do not introduce a universal options dictionary, a magical fluent DSL, hidden global configuration or a second trading engine.
 
 ## 3. API architecture
 
 - Root export: Engine, stable input/result/spec types, errors, profiles, deliberate namespace aliases. Minimal root API; structured namespaces for data, strategies, policies, research, reports and future paper.
 - Simple path -> typed spec -> prepare -> validated, immutable normalized configuration + capability checks -> existing orchestration/core -> typed result, report, evidence. Advanced path constructs the exact same spec. CLI decodes the same canonical versioned spec, not a separate engine.
-- `Engine.research(...)` explicit offline context; no default broker, network call, live credentials, connection or automatic run on import/creation. Explicit provider configuration with secrets resolved only at I/O boundary; no secrets in repr, evidence or config hash.
+- `Engine()` neutral, inert construction; `Engine(profile=..., data=..., ...)` optional typed dependency configuration. `engine.backtest(...)`, `engine.research.create(...)`, `engine.evaluate(...)` and future `engine.paper` / `engine.live` determine capabilities, not a constructor mode. No default broker, network call, live credentials, connection or automatic run on import/creation. Explicit provider configuration with secrets resolved only at I/O boundary; no secrets in repr, evidence or config hash.
 - Versioned named profiles are immutable, documented and expanded before execution. Overrides are typed, explicit, deterministic, and validated; no relaxed gates. Same effective inputs -> same economic results, reproducibility hashes where same contract/version.
 - Python SDK is synchronous for offline operations initially. Future async data/paper adapter can implement async lifecycle via separate mode-specific interface, not hide event-loop/network side effects. Live not available or enabled by SDK.
 - Result exposes summary, evidence status/blockers, decisions, fills, equity, holdings (simulated only), per-currency PnL, artifact handles, explain/inspect. Large tapes/outputs stream or use iterators/storage rather than loading all into memory arbitrarily. No uncontrolled raw data export.
@@ -91,6 +93,10 @@ Inventory all implemented APIs at E6.7a, including non-default paths; mark suppo
 - No network/credential use by import or offline facade, no secret logging, no live order route, no simulated-to-real promotion, no false provenance. No fake result when data unavailable. Profile defaults visible in manifest, no hidden state. Performance benchmark against direct engine with overhead budget measured and agreed in E6.7a.
 - README quickstart and advanced cookbook; STATUS/ROADMAP/Issue/ADR updated with actual tests. SDK completion does not mark E5/G1/E6/G2 accepted or authorize E7/E8.
 
-## 7. Non-goals
+## 7. Contract freeze and change control
+
+[ADR-0034](adr/0034-unified-sdk.md) records the approved constructor and operation-level separation. [E6_7_SDK_EXAMPLES.md](E6_7_SDK_EXAMPLES.md) is the normative DX reference; E6.7a maps examples to capability inventory, phases, fixture and expected signatures; executable golden tests and API signature snapshots are added for each implemented example. Proposed deviations to constructor, method/namespace names in the examples, defaults, compatibility or safety require an ADR amendment/replacement, explicit user approval, and coordinated updates to spec, examples, Issue #59, STATUS/ROADMAP and tests **before** implementation. If current capability is insufficient, record the limitation rather than silently changing the API or weakening gates. No future-only example is an implementation or trading approval.
+
+## 8. Non-goals
 
 New profitability algorithm, independent evidence certification, broker execution, live order workflow, rewriting reducer, web UI/SaaS, new data subscription, adding unsupported instrument types or claiming unsupported combinations. Implement separately when authorized.
