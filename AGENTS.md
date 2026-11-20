@@ -1,6 +1,6 @@
 # AGENTS.md — 작업 에이전트용 지속 컨텍스트
 
-**Latest / 2026-11-20:** #52, #53, #54, #55, #56 merged; #57 raw minute pilot merged f4f1038 (60 arms, no profitable active variant); reduced-turnover study underway. 2,674 daily research arms, all five active rules negative; 22,393,263 raw SIP minute observations structurally audited, not execution-certified. E5 #6 / E6 #7 OPEN. Read [STATUS](docs/STATUS.md) for authoritative current state; older dated entries below are historical snapshots. LIVE NOT AUTHORIZED.
+**Latest / 2026-11-20:** #52, #53, #54, #55, #56 merged; #57 raw minute pilot merged f4f1038 (60 arms, no profitable active variant); #61 reduced-turnover verified and merged d75727d; 72 arms, no candidate passes both costs; 2023 temporal replication next. 2,674 daily research arms, all five active rules negative; 22,393,263 raw SIP minute observations structurally audited, not execution-certified. E5 #6 / E6 #7 OPEN. Read [STATUS](docs/STATUS.md) for authoritative current state; older dated entries below are historical snapshots. LIVE NOT AUTHORIZED.
 
 
 이 파일은 채팅 메모리에 의존하지 않고 invest-engine을 이어 개발하기 위한 작업 규칙이다.
