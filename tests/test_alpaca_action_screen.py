@@ -54,3 +54,16 @@ def test_optional_currency_is_not_imputed_and_due_bill_interval_is_checked():
     assert check(action(due_bill_on_date="2022-09-01")) == "UNRESOLVED"
     assert check(action(due_bill_on_date="2022-08-30",
                         due_bill_off_date="2022-09-02")) == "INTERSECTS_WINDOW"
+
+
+def test_split_missing_foreign_is_date_only_not_domestic_certification():
+    record = action()
+    del record["foreign"], record["currency"]
+    output = classify_actions({"forward_splits": [record]}, "TSLA", FIRST, LAST)[0]
+    assert output["classification"] == "OUTSIDE_WINDOW"
+    assert output["foreign_basis"] == "UNSPECIFIED_SPLIT_DATE_ONLY"
+    assert check(record, "cash_dividends") == "UNRESOLVED"
+    assert check(dict(record, payable_date="2022-09-01")) == "INTERSECTS_WINDOW"
+    assert check(dict(record, foreign=True)) == "UNRESOLVED"
+    assert check(dict(record, foreign=None)) == "UNRESOLVED"
+    assert check(record, "cash_mergers") == "UNRESOLVED"
