@@ -28,7 +28,7 @@ MONTHS = (10, 11)
 COSTS = ("base", "stress")
 RULES = {"orb-default": (15, "1.5"), "orb-patient": (30, "1.5"),
          "orb-volume": (15, "2")}
-SOURCE = "Alpaca SIP raw 2022 retrospective minute pilot v2"
+SOURCE = "Alpaca SIP raw 2022 retrospective minute pilot v3"
 UTC = ZoneInfo("UTC")
 
 
@@ -65,15 +65,30 @@ def classify_actions(grouped, symbol, first, last):
             detail["symbol_matches"] = record.get("symbol") == symbol
             detail["usd_explicit"] = record.get("currency") == "USD"
             detail["foreign_false"] = record.get("foreign") is False
-            if record.get("symbol") != symbol or record.get("currency") != "USD":
+            # Currency is optional in provider schema; this screen does not
+            # credit cash or infer USD. Accept omission for date-only analysis
+            # on an explicitly domestic, identified security, never for accounting.
+            currency = record.get("currency")
+            cusip = record.get("cusip")
+            if (record.get("symbol") != symbol or record.get("foreign") is not False
+                    or not isinstance(cusip, str) or not cusip.strip()
+                    or currency not in (None, "", "USD")):
                 detail["reason"] = "IDENTITY_OR_CURRENCY_UNVERIFIED"
                 results.append(detail)
                 continue
+            detail["currency_basis"] = "EXPLICIT_USD" if currency == "USD" else "UNSPECIFIED_DATE_ONLY"
             try:
                 dates = {field: date.fromisoformat(record[field]) for field in DATE_FIELDS}
                 # A non-null optional effective date can only widen the bounds.
-                if record.get("effective_date") is not None:
-                    dates["effective_date"] = date.fromisoformat(record["effective_date"])
+                for field in ("effective_date", "due_bill_on_date", "due_bill_off_date"):
+                    if record.get(field) is not None:
+                        dates[field] = date.fromisoformat(record[field])
+                # An open due-bill interval is ambiguous and cannot be excluded.
+                if ("due_bill_on_date" in dates) != ("due_bill_off_date" in dates):
+                    raise ValueError("INCOMPLETE_DUE_BILL_INTERVAL")
+                if ("due_bill_on_date" in dates
+                        and dates["due_bill_on_date"] > dates["due_bill_off_date"]):
+                    raise ValueError("INVALID_DUE_BILL_INTERVAL")
             except (KeyError, TypeError, ValueError):
                 detail["reason"] = "REQUIRED_DATE_UNVERIFIED"
                 results.append(detail)
@@ -188,7 +203,7 @@ def main():
         raise SystemExit("MISSING_DATA_CREDENTIALS")
     headers = {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret}
     report = {"symbol": symbol, "month": month, "year": 2022, "planned_arms": 10,
-              "study_schema": "alpaca-sip-raw-pilot-v2", "status": "SOURCE_ERROR",
+              "study_schema": "alpaca-sip-raw-pilot-v3", "status": "SOURCE_ERROR",
               "holdout_accessed": False, "execution_certified": False}
     rows, errors = [], []
     try:
