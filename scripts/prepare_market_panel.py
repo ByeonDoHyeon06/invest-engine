@@ -171,13 +171,15 @@ def public_probe(plan):
     return output
 
 
-def alpaca_daily(symbol, year, key, secret):
+def alpaca_daily(symbol, year, key, secret, *, adjustment="raw"):
+    if adjustment not in ("raw", "all"):
+        raise ValueError("UNSUPPORTED_DAILY_PRICE_BASIS")
     # Explicit raw SIP. No fallback to IEX; symbol mapping disabled to expose
     # rename/delisting gaps. A security master must reconcile identities later.
     start = f"{year}-01-01T00:00:00-05:00"
     end = f"{year+1}-01-01T00:00:00-05:00"
     params = {"symbols": symbol, "timeframe": "1Day", "start": start, "end": end,
-              "adjustment": "raw", "feed": "sip", "asof": "-", "limit": 10000, "sort": "asc"}
+              "adjustment": adjustment, "feed": "sip", "asof": "-", "limit": 10000, "sort": "asc"}
     headers = {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret}
     rows, hashes, invalid, tokens = [], [], 0, set()
     while True:
