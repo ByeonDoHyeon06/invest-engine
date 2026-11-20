@@ -16,3 +16,6 @@ python scripts/prepare_market_panel.py alpaca-daily --acknowledge-data-rights
 python scripts/prepare_market_panel.py alpaca-minute --acknowledge-data-rights --year 2021
 ```
 Set the two environment variables through a private secret manager before running; never use a command containing secret values in shell history. Repeat minute years 2020 through 2025 or omit --year for all six. Provider usage rights remain the operator's responsibility.
+
+## Verified result
+#55 merged `d24b192`; run 44519434207 all 8 jobs successful. 58,593/60,320 daily rows, 230/240 complete, 91 zero-volume rows. 22,393,263/23,438,400 minute rows, 1,416/2,880 complete. Zero source/duplicate/invalid errors; no persistent raw archive or E5 acceptance.
