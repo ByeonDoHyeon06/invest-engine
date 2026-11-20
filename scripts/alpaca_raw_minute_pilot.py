@@ -126,15 +126,20 @@ def actions(symbol, first, last, headers):
     return details, digest(raw)
 
 
-def build_grid(symbol, month):
+def build_grid(symbol, month, year=2022):
+    import calendar
     import exchange_calendars as xcals
 
-    exchange = xcals.get_calendar("XNYS", start="2022-07-01", end="2022-11-30")
-    labels = [x for x in exchange.sessions if x.month < month][-20:]
-    start = len(labels)
-    labels.extend(x for x in exchange.sessions if x.month == month)
-    if start != 20 or len(labels) == 20:
+    if type(year) is not int or year not in (2022, 2023):
+        raise ValueError("UNREGISTERED_RESEARCH_YEAR")
+    first = date(year, month, 1)
+    last = date(year, month, calendar.monthrange(year, month)[1])
+    exchange = xcals.get_calendar("XNYS", start=str(first-timedelta(days=100)), end=str(last))
+    prior = [x for x in exchange.sessions if x.date() < first][-20:]
+    evaluation = [x for x in exchange.sessions if first <= x.date() <= last]
+    if len(prior) != 20 or not evaluation:
         raise ValueError("CALENDAR_INCOMPLETE")
+    labels = prior + evaluation
     inst = InstrumentId(Market.US, "US-SIP", symbol, symbol, "USD")
     sessions = tuple(TradingSession(inst.market, inst.venue,
         exchange.session_open(x).to_pydatetime().astimezone(UTC),
