@@ -2,6 +2,7 @@
 
 **Latest / 2026-11-20:** #52, #53, #54, #55, #56 merged; #57 raw minute pilot merged f4f1038 (60 arms, no profitable active variant); #61 reduced-turnover verified and merged d75727d; 72 arms, no candidate passes both costs; 2023 temporal replication next. 2,674 daily research arms, all five active rules negative; 22,393,263 raw SIP minute observations structurally audited, not execution-certified. E5 #6 / E6 #7 OPEN. Read [STATUS](docs/STATUS.md) for authoritative current state; older dated entries below are historical snapshots. LIVE NOT AUTHORIZED.
 
+Latest #62 blocker: Initial temporal replay 44710818827 exhibited ValueError in all 12 arms of AAPL April/July despite complete 15,210/15,420 bar grids. The previous fee config and fixed-fill audit only cover May–Dec 2022. Corrected candidate explicitly selects versioned 2022–2023 SEC/FINRA date intersections only for the registered 2023 study (Jan 1 TAF 0.000145/share, $7.27 cap; Feb 27 SEC 0.000008 vs 0.00002290). ET trading day remains a provisional charge-date proxy. Legacy 2022 policy/identity and default audit unchanged; exact boundary, cross-year warmup, no-trade, replay/audit reconciliation and uncovered-date tests added. No retuning or relaxed gate. New CI/replay and prior economic regression pending; obsolete run is not evidence.
 
 이 파일은 채팅 메모리에 의존하지 않고 invest-engine을 이어 개발하기 위한 작업 규칙이다.
 

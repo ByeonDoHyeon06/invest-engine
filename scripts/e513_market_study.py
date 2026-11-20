@@ -32,7 +32,10 @@ from invest_engine.strategies.contracts import (
     DataRequirement, SignalDirection, StrategyManifest, StrategySignal,
 )
 from invest_engine.strategies.orb import ORBLongStrategy, ORBParameters
-from invest_engine.trading.dated_fees import USDatedFeeConfig
+from invest_engine.trading.dated_fees import (
+    EXPANDED_FEE_VERSION, EXPANDED_RATE_IDENTITY, USDatedFeeConfig,
+)
+from invest_engine.trading.regulatory import US_2022, US_2022_2023
 from invest_engine.trading.models import TradingConfig
 from invest_engine.trading.money import InstrumentRules, MonetaryRules
 from invest_engine.trading.policy import RiskLimits
@@ -141,16 +144,21 @@ class DailyRule:
 
 def run(inst, events, calendar, strategy, cost, source, window=None, *,
         first_entry_only=False, session_flat=False, e514=False, fee_audit=False,
-        fee_replay=False, independent_diagnostics=False):
+        fee_replay=False, independent_diagnostics=False, expanded_fee_dates=False):
+    if expanded_fee_dates and not fee_replay:
+        raise ValueError("EXPANDED_FEE_DATES_REQUIRE_REPLAY")
     fee, spread, impact = COSTS[cost]
     config_cls = USDatedFeeConfig if fee_replay else TradingConfig
+    fee_kwargs = ({"fee_policy_version": EXPANDED_FEE_VERSION,
+                   "regulatory_identity": EXPANDED_RATE_IDENTITY} if expanded_fee_dates else {})
     config = config_cls("e514b-replay" if fee_replay else "e514-study" if e514 else "e513-study", (MonetaryRules("USD", D("0.01")),),
                  ((inst.key, InstrumentRules(D("0.01"), D(1))),),
-                 fee_rate=D(fee), sell_tax_rate=D(0))
+                 fee_rate=D(fee), sell_tax_rate=D(0), **fee_kwargs)
     risk = RiskLimits(per_trade_planned_loss=D("0.005"), max_symbol_cost_fraction=D("0.12"),
                       max_total_cost_fraction=D("0.20"), max_open_positions=1)
     settings = BacktestSettings(code_sha=os.environ.get("GITHUB_SHA", "local"),
-                run_version=("e514b-fee-aware-v1" if fee_replay else
+                run_version=("e514b-fee-aware-2022-2023-v1" if expanded_fee_dates else
+                             "e514b-fee-aware-v1" if fee_replay else
                              "e514-provisional-v1" if e514 else "e5-research-v1"),
                 dataset_source=source, data_license="evaluation only; rights not independently certified",
                 max_mark_age=timedelta(days=7) if window is None else timedelta(minutes=5))
@@ -215,7 +223,9 @@ def run(inst, events, calendar, strategy, cost, source, window=None, *,
                 for e in events),
         })
     if fee_replay:
-        audit = audit_us_fixed_fills(report, events, FeeAssumption(D(fee)))
+        audit = audit_us_fixed_fills(
+            report, events, FeeAssumption(D(fee)),
+            schedule=US_2022_2023 if expanded_fee_dates else US_2022)
         if audit.original_total != audit.repriced_total or audit.fixed_fill_net_pnl != pnl:
             raise RuntimeError("fee-aware replay does not reconcile to cumulative charge audit")
         result.update({

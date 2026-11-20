@@ -227,6 +227,8 @@
 
 **DoD:** 기준선 대비 성능을 미관측 구간과 여러 비용 시나리오로 보고; 실패 전략 기각 기록; 최종 test set 재사용·과적합 경고; 자율 적용은 Shadow까지만.
 
+**E6.6 temporal fee-date correction (candidate):** Initial temporal replay 44710818827 exhibited ValueError in all 12 arms of AAPL April/July despite complete 15,210/15,420 bar grids. The previous fee config and fixed-fill audit only cover May–Dec 2022. Corrected candidate explicitly selects versioned 2022–2023 SEC/FINRA date intersections only for the registered 2023 study (Jan 1 TAF 0.000145/share, $7.27 cap; Feb 27 SEC 0.000008 vs 0.00002290). ET trading day remains a provisional charge-date proxy. Legacy 2022 policy/identity and default audit unchanged; exact boundary, cross-year warmup, no-trade, replay/audit reconciliation and uncovered-date tests added. No retuning or relaxed gate. New CI/replay and prior economic regression pending; obsolete run is not evidence.
+
 **E6.6 reduced-turnover verified:** [study](E6_6_REDUCED_TURNOVER.md); #61 merged, all three new screens improve stress PnL but none pass both costs and stronger benchmarks. Prespecified 2023 temporal replication pending; E5/E6 acceptance remains open.
 
 ### E6.7 — Unified Engine SDK (PLANNED)

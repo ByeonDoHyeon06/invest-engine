@@ -86,13 +86,22 @@ def main():
                             if kind == "hold-retry" else make_strategy(kind))
                         result = run(inst, events, calendar, strat, cost, f"{SOURCE} {year}", window,
                                      first_entry_only=kind == "hold-retry",
-                                     session_flat=kind in SCREENS, e514=True, fee_replay=True)
+                                     session_flat=kind in SCREENS, e514=True, fee_replay=True,
+                                     expanded_fee_dates=year == 2023)
                         row = {"symbol": symbol, "month": month, "year": year,
                                "strategy": kind, "cost": cost, **result}
                         rows.append(row)
                         print("TURNOVER_RUN "+json.dumps(row), flush=True)
                     except Exception as exc:
-                        errors.append({"strategy": kind, "cost": cost, "error_type": type(exc).__name__})
+                        error = {"strategy": kind, "cost": cost, "error_type": type(exc).__name__}
+                        # Allowlist only stable public fee error codes; never log raw provider errors.
+                        if str(exc) in {
+                            "FEE_AUDIT_UNCOVERED_CHARGE_DATE", "UNCOVERED_DATED_FEE_ORDER",
+                            "UNCOVERED_OR_CROSS_DAY_DATED_FEE_FILL", "INVALID_DATED_FEE_CONFIG",
+                            "UNCOVERED_OR_AMBIGUOUS_REGULATORY_DATE",
+                        }:
+                            error["error_code"] = str(exc)
+                        errors.append(error)
                         print("TURNOVER_ARM_FAILED "+json.dumps(errors[-1]), flush=True)
             report["status"] = "PROVISIONAL_COMPLETE" if len(rows) == 12 else "PARTIAL"
     except Exception as exc:

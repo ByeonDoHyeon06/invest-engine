@@ -15,7 +15,10 @@ from invest_engine.research.report import FillTrace
 from invest_engine.research.us_fee_audit import FeeAssumption, US_2022, audit_us_fixed_fills
 from invest_engine.strategies.baselines import BuyHoldBaseline, NoTradeStrategy
 from invest_engine.strategies.contracts import DataRequirement
-from invest_engine.trading.dated_fees import USDatedFeeConfig
+from invest_engine.trading.dated_fees import (
+    EXPANDED_FEE_VERSION, EXPANDED_RATE_IDENTITY, USDatedFeeConfig,
+)
+from invest_engine.trading.regulatory import US_2022_2023
 from invest_engine.trading.models import TradingConfig
 from invest_engine.trading.money import InstrumentRules, MonetaryRules
 from invest_engine.trading.policy import RiskLimits
@@ -24,7 +27,7 @@ INST = InstrumentId(Market.US, "XNAS", "fixture", "FIX", "USD")
 MINUTE = timedelta(minutes=1)
 
 
-def fixture(*, start=datetime(2022, 9, 1, 14, 30, tzinfo=timezone.utc), no_trade=False, dated=False):
+def fixture(*, start=datetime(2022, 9, 1, 14, 30, tzinfo=timezone.utc), no_trade=False, dated=False, expanded=False):
     sessions = tuple(TradingSession(Market.US, "XNAS", start+timedelta(days=i),
                                     start+timedelta(days=i, minutes=4))
                      for i in range(21))
@@ -40,9 +43,11 @@ def fixture(*, start=datetime(2022, 9, 1, 14, 30, tzinfo=timezone.utc), no_trade
                                         end, end, end, i, bar))
     strategy = (NoTradeStrategy(DataRequirement("market.bar", MINUTE)) if no_trade else
                 BuyHoldBaseline(MINUTE, D("0.05"), D("0.1")))
-    config_cls = USDatedFeeConfig if dated else TradingConfig
+    config_cls = USDatedFeeConfig if dated or expanded else TradingConfig
+    kwargs = ({"fee_policy_version": EXPANDED_FEE_VERSION,
+               "regulatory_identity": EXPANDED_RATE_IDENTITY} if expanded else {})
     config = config_cls("sim", (MonetaryRules("USD", D("0.01")),),
-                           ((INST.key, InstrumentRules(D("0.01"), D("1"))),))
+                           ((INST.key, InstrumentRules(D("0.01"), D("1"))),), **kwargs)
     report = HistoricalBacktest(
         calendar=StaticSessionCalendar(sessions), strategies=(strategy,), config=config,
         opening_cash=(Money(D("100000"), "USD"),),
@@ -140,3 +145,37 @@ def test_dated_policy_replay_costs_flow_into_equity_and_attribution():
     assert report.run_sha256 == fixture(dated=True)[0].run_sha256
     checked = audit_us_fixed_fills(report, events, FeeAssumption(D("0.001")))
     assert checked.original_total == checked.repriced_total
+
+
+@pytest.mark.parametrize("start,expected", [
+    (datetime(2022, 12, 20, 14, 30, tzinfo=timezone.utc), D("0.13")),
+    (datetime(2023, 2, 7, 14, 30, tzinfo=timezone.utc), D("0.05")),
+    (datetime(2023, 4, 1, 14, 30, tzinfo=timezone.utc), D("0.05")),
+])
+def test_expanded_fee_replay_and_audit_reconcile_across_boundaries(start, expected):
+    report, events = fixture(start=start, expanded=True)
+    assert report.fills[1].tax == expected
+    assert dict(report.total_taxes)["USD"] == expected
+    checked = audit_us_fixed_fills(report, events, FeeAssumption(D("0.001")),
+                                   schedule=US_2022_2023)
+    assert checked.original_total == checked.repriced_total
+    assert checked.original_net_pnl == checked.fixed_fill_net_pnl
+    assert report.run_sha256 == fixture(start=start, expanded=True)[0].run_sha256
+    with pytest.raises(ValueError, match="UNCOVERED_CHARGE_DATE"):
+        audit_us_fixed_fills(report, events, FeeAssumption(D("0.001")))
+
+
+def test_expanded_no_trade_cross_year_warmup_is_not_an_audit_error():
+    report, events = fixture(start=datetime(2022, 12, 20, 14, 30, tzinfo=timezone.utc),
+                             no_trade=True, expanded=True)
+    result = audit_us_fixed_fills(report, events, FeeAssumption(D("0.001")),
+                                  schedule=US_2022_2023)
+    assert result.orders == () and result.repriced_total == result.fixed_fill_net_pnl == 0
+
+
+def test_expanded_audit_still_rejects_unregistered_future():
+    report, events = fixture(start=datetime(2024, 1, 1, 14, 30, tzinfo=timezone.utc),
+                             no_trade=True)
+    with pytest.raises(ValueError, match="UNCOVERED_CHARGE_DATE"):
+        audit_us_fixed_fills(report, events, FeeAssumption(D("0.001")),
+                             schedule=US_2022_2023)
