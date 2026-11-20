@@ -31,7 +31,7 @@ from invest_engine.strategies.baselines import BuyHoldBaseline, NoTradeStrategy
 from invest_engine.strategies.contracts import (
     DataRequirement, SignalDirection, StrategyManifest, StrategySignal,
 )
-from invest_engine.strategies.orb import ORBLongStrategy
+from invest_engine.strategies.orb import ORBLongStrategy, ORBParameters
 from invest_engine.trading.dated_fees import USDatedFeeConfig
 from invest_engine.trading.models import TradingConfig
 from invest_engine.trading.money import InstrumentRules, MonetaryRules
@@ -338,7 +338,7 @@ def daily():
          "limitations": "cold-start independent months; unverified adjustment basis, actions and vintage"})
 
 
-def minute(symbol, month, *, e514=False, fee_audit=False, fee_replay=False):
+def minute(symbol, month, *, e514=False, fee_audit=False, fee_replay=False, profit_grid=False):
     if (fee_audit or fee_replay) and not e514:
         raise ValueError("fee audit requires E5.14 experiment arms")
     inst = instrument(symbol)
@@ -351,6 +351,22 @@ def minute(symbol, month, *, e514=False, fee_audit=False, fee_replay=False):
                                  "e5.14-provisional-study-v1")
         extra["planned_arms"] = 7
         extra["liquidation_assumption"] = "precommitted final-bar open, adverse price and minute volume cap"
+    if profit_grid:
+        extra.update({"study_schema": "e6-profitability-orb-grid-v1",
+                      "planned_arms": 12, "evaluation_only": True,
+                      "prior_panel_reused": True, "holdout_claim": False,
+                      "grid_opening_minutes": [5, 15, 30],
+                      "grid_volume_multiplier": ["1", "2"],
+                      "grid_additional_default_control": True})
+        # Four deliberately fixed candidates (default + distinct sensitivities);
+        # costs and controls are same as dated E5 baseline.
+        extra["grid_candidates"] = {"orb-default": [15, "1.5"],
+                                    "orb-fast": [5, "1.5"],
+                                    "orb-patient": [30, "1.5"],
+                                    "orb-volume": [15, "2"]}
+        extra.pop("grid_opening_minutes")
+        extra.pop("grid_volume_multiplier")
+        extra.pop("grid_additional_default_control")
     if fee_audit or fee_replay:
         extra["fee_scope"] = ("dated modeled fees change reservations and execution accounting; not broker-certified"
                               if fee_replay else "fixed fill repricing; not broker-certified or re-simulated")
@@ -423,16 +439,25 @@ def minute(symbol, month, *, e514=False, fee_audit=False, fee_replay=False):
                     ("orb-entry", "base"), ("orb-entry", "stress"),
                     ("orb-session-flat", "base"), ("orb-session-flat", "stress")) if e514 else (
                     ("no-trade", "base"), ("hold", "base"), ("orb", "base"), ("orb", "stress"))
+            if profit_grid:
+                arms = tuple((kind, cost)
+                             for kind in ("no-trade", "hold-retry", "orb-default",
+                                          "orb-fast", "orb-patient", "orb-volume")
+                             for cost in ("base", "stress"))
             for kind, cost in arms:
                 try:
                     strat = (NoTradeStrategy(DataRequirement("market.bar", MINUTE)) if kind == "no-trade"
                              else BuyHoldBaseline(MINUTE, TARGET, D("0.015"),
                                                   retry_each_session=kind == "hold-retry")
                              if kind in ("hold", "hold-retry") else ORBLongStrategy())
+                    if profit_grid and kind.startswith("orb-"):
+                        opening, volume = extra["grid_candidates"][kind]
+                        strat = ORBLongStrategy(ORBParameters(
+                            opening_us=timedelta(minutes=opening), volume_multiplier=D(volume)))
                     result = run(inst, tuple(events), cal, strat, cost,
                                  "HistoricalData.net free 2022H2 sample", window,
                                  first_entry_only=kind == "hold-retry",
-                                 session_flat=kind == "orb-session-flat", e514=e514,
+                                 session_flat=(kind == "orb-session-flat" or (profit_grid and kind.startswith("orb-"))), e514=e514,
                                  fee_audit=fee_audit, fee_replay=fee_replay)
                     rows.append({"symbol": symbol, "month": month, "strategy": kind, "cost": cost, **result})
                     print("MINUTE_RUN "+json.dumps(rows[-1]), flush=True)
@@ -449,7 +474,11 @@ def minute(symbol, month, *, e514=False, fee_audit=False, fee_replay=False):
         extra["error"] = type(exc).__name__+":"+str(exc)[:240]
     prefix = ("e514b-replay-minute" if fee_replay else "e514b-minute" if fee_audit
               else "e514-minute" if e514 else "minute")
+    if profit_grid:
+        prefix = "e66-profitability-minute"
     save(f"{prefix}-{symbol}-{month}", rows, extra)
+    if profit_grid and extra["status"] in ("PARTIAL", "PREFLIGHT_PASS"):
+        raise SystemExit("profitability grid incomplete after preflight")
 
 
 if __name__ == "__main__":
@@ -457,7 +486,8 @@ if __name__ == "__main__":
         daily()
     else:
         mode = sys.argv[1]
-        if mode not in ("minute", "minute-e514", "minute-e514b", "minute-fee-replay"):
+        if mode not in ("minute", "minute-e514", "minute-e514b", "minute-fee-replay", "minute-profit-grid"):
             raise ValueError("unknown study mode")
         minute(sys.argv[2], int(sys.argv[3]), e514=mode != "minute",
-               fee_audit=mode == "minute-e514b", fee_replay=mode == "minute-fee-replay")
+               fee_audit=mode == "minute-e514b", fee_replay=mode in ("minute-fee-replay", "minute-profit-grid"),
+               profit_grid=mode == "minute-profit-grid")
