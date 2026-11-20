@@ -13,8 +13,6 @@ from decimal import Decimal as D
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
-import exchange_calendars as xcals
-
 from e513_market_study import MINUTE, TARGET, run, save
 from prepare_market_panel import digest, normalize, request
 from invest_engine.data.calendar import StaticSessionCalendar, TradingSession
@@ -51,8 +49,6 @@ def classify_actions(grouped, symbol, first, last):
         raise ValueError("UNVERIFIABLE_ACTION_RESPONSE")
     results = []
     for kind, records in sorted(grouped.items()):
-        if records is None:
-            continue
         if not isinstance(records, list):
             raise ValueError("UNVERIFIABLE_ACTION_RESPONSE")
         for record in records:
@@ -97,6 +93,8 @@ def actions(symbol, first, last, headers):
 
 
 def build_grid(symbol, month):
+    import exchange_calendars as xcals
+
     exchange = xcals.get_calendar("XNYS", start="2022-07-01", end="2022-11-30")
     labels = [x for x in exchange.sessions if x.month < month][-20:]
     start = len(labels)
