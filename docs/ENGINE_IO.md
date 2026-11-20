@@ -3,6 +3,8 @@
 **Status:** E3 simulation input Python SDK + `e3-sim-v1` strict OrderIntent JSON parser implemented in PR #17. **Run API, Prediction API, trade performance report and broker/live transport remain design only.**  
 **Owner:** Issue #4 · **Scope:** Backtest/Paper/Live 공통 계약. Live는 별도 승인 전 사용 불가.
 
+**Extension plan:** [E6.7 Unified SDK](E6_7_UNIFIED_SDK.md) / [ADR-0034](adr/0034-unified-sdk.md) proposes a shared normalized Python/CLI orchestration contract. Existing E5 `run_experiment` and CLI are implemented offline; newer unified API examples remain illustrative. No change to wire contracts or execution permissions in planning phase.
+
 ## 0. 빠른 결론
 
 엔진은 "무조건 매수/매도 추천" API가 아니다. 외부에 노출할 세 개의 경계를 구분한다.
