@@ -1,6 +1,6 @@
 # AGENTS.md — 작업 에이전트용 지속 컨텍스트
 
-**Latest / 2026-11-20:** #52, #53, #54, #55, #56 merged; #57 raw minute pilot open. 2,674 daily research arms, all five active rules negative; 22,393,263 raw SIP minute observations structurally audited, not execution-certified. E5 #6 / E6 #7 OPEN. Read [STATUS](docs/STATUS.md) for authoritative current state; older dated entries below are historical snapshots. LIVE NOT AUTHORIZED.
+**Latest / 2026-11-20:** #52, #53, #54, #55, #56 merged; #57 raw minute pilot merged f4f1038 (60 arms, no profitable active variant); reduced-turnover study underway. 2,674 daily research arms, all five active rules negative; 22,393,263 raw SIP minute observations structurally audited, not execution-certified. E5 #6 / E6 #7 OPEN. Read [STATUS](docs/STATUS.md) for authoritative current state; older dated entries below are historical snapshots. LIVE NOT AUTHORIZED.
 
 
 이 파일은 채팅 메모리에 의존하지 않고 invest-engine을 이어 개발하기 위한 작업 규칙이다.
@@ -34,7 +34,7 @@
 ## E6.7 통합 SDK 계획 (Issue #59)
 - 사용자 확정 API: `Engine()` 기본 생성자는 중립적이고 I/O 없는 구성 진입점. `Engine.offline()/online()/research()` 형태나 필수 mode 인자를 도입하지 않는다. 기능 호출(백테스트/연구/판단/향후 Paper/Live)에서 목적·권한을 구분한다.
 - [SDK 코드 예제 18개](docs/E6_7_SDK_EXAMPLES.md)는 구현 목표 계약이다. 구현 단계에서 임의로 API 명칭·기본값·권한 모델·호환성·예제를 변경하지 않는다. 변경 필요 시 먼저 사용자 승인 + ADR/명세/이슈/로드맵/예제/계약 테스트를 함께 갱신한다. 미지원 예제는 미지원으로 표시하며 기능을 숨기거나 안전 제한을 풀지 않는다.
-- [계획](docs/E6_7_UNIFIED_SDK.md) / [ADR-0034](docs/adr/0034-unified-sdk.md): E7 전 별도 오프라인 SDK 단계. 현재 #57 검증을 먼저 마무리; 계획 추가만으로 구현 완료 또는 실거래 승인 아님.
+- [계획](docs/E6_7_UNIFIED_SDK.md) / [ADR-0034](docs/adr/0034-unified-sdk.md): E7 전 별도 오프라인 SDK 단계. 현재 #57 병합 완료, 저빈도 전략/증거 검증 우선; 계획 추가만으로 구현 완료 또는 실거래 승인 아님.
 - 단순 API와 고급 API는 같은 typed spec·검증 경로·기존 코어를 사용한다. SDK에서 내부 모듈 기능을 제거하거나 위험/증거 게이트를 우회하지 않는다. 기본값은 명시적 버전 프로필로 공개하고 기능 동등성/기존 CLI 호환성을 테스트한다.
 
 ## E5 연구 엔진 경계
