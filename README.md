@@ -20,7 +20,7 @@
 - [단계별 로드맵 및 완료 조건](docs/ROADMAP.md)
 - [전체 아키텍처](docs/ARCHITECTURE.md)
 - **[Engine 입출력 계약](docs/ENGINE_IO.md)**
-- [E6.7 통합 SDK 계획 (미구현)](docs/E6_7_UNIFIED_SDK.md)
+- [E6.7 통합 SDK 계획 (미구현)](docs/E6_7_UNIFIED_SDK.md) · [사용자 합의 API 예제 18개](docs/E6_7_SDK_EXAMPLES.md) — 기본 진입점 `Engine()`, 실행 목적은 메서드에서 구분
 - **[AI·ML 연구 목표 및 평가 계약 (E6 설계안)](docs/ML_RESEARCH.md)**
 - [E2 이벤트 런타임과 복구 규칙](docs/EVENT_RUNTIME.md)
 - **[E5.1 과거 데이터 재생 및 체결 모델](docs/E5_BACKTEST.md)**
