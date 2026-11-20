@@ -13,7 +13,7 @@ LAST = date(2022, 10, 31)
 
 
 def action(ex="2022-08-25", record="2022-08-25", pay="2022-08-26", **changes):
-    return {"symbol": "TSLA", "currency": "USD", "ex_date": ex,
+    return {"symbol": "TSLA", "currency": "USD", "cusip": "SYNTHETIC", "foreign": False, "ex_date": ex,
             "record_date": record, "payable_date": pay, **changes}
 
 
@@ -40,3 +40,17 @@ def test_unknown_missing_and_identity_fail_closed():
     with pytest.raises(ValueError, match="UNVERIFIABLE"):
         classify_actions({"cash_dividends": None}, "TSLA", FIRST, LAST)
     assert classify_actions({}, "TSLA", FIRST, LAST) == []
+
+
+def test_optional_currency_is_not_imputed_and_due_bill_interval_is_checked():
+    record = action()
+    del record["currency"]
+    output = classify_actions({"forward_splits": [record]}, "TSLA", FIRST, LAST)[0]
+    assert output["classification"] == "OUTSIDE_WINDOW"
+    assert output["currency_basis"] == "UNSPECIFIED_DATE_ONLY"
+    assert check(action(currency=None, pay="2022-09-01")) == "INTERSECTS_WINDOW"
+    assert check(action(currency=None, foreign=True)) == "UNRESOLVED"
+    assert check(action(currency=None, cusip="")) == "UNRESOLVED"
+    assert check(action(due_bill_on_date="2022-09-01")) == "UNRESOLVED"
+    assert check(action(due_bill_on_date="2022-08-30",
+                        due_bill_off_date="2022-09-02")) == "INTERSECTS_WINDOW"
