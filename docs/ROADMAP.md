@@ -236,7 +236,7 @@
 
 **Objective:** common offline use with a small typed public API, advanced access to every existing supported capability without copying internal wiring, no weakening of core restrictions. Plan can be drafted during execution of #57; implementation follows existing validation/research prerequisites and precedes E7. E5/E6 economic/release acceptance is separate.
 
-- [ ] E6.7a public API inventory, namespaces, supported-combination matrix, compatibility, API examples, per-example contract/signature fixture mapping, and finalize remaining ADR details without changing approved DX.
+- [ ] E6.7a public API inventory, namespaces, supported-combination matrix, compatibility, API examples, per-example contract/signature fixture mapping, and finalize remaining ADR details without changing approved DX; design [continuous event ingress, evaluation sessions and managed Paper lifecycle](E6_7_STREAMING_CONTRACT.md) with replay parity and failure fixtures (no streaming implementation).
 - [ ] E6.7b unified facade, immutable validated spec, versioned profiles, local data, backtest, typed results/inspect.
 - [ ] E6.7c custom strategies/providers/policies and supported E5 feature parity; explicit unsupported capability errors.
 - [ ] E6.7d research search/walk-forward/journal/review and report artifacts, shared CLI/Python contract, migration without deleting old paths.
@@ -248,7 +248,7 @@
 **의존성:** E5, E6 일부, E6.7 offline SDK API acceptance; 실시간 데이터 공급자 별도 계약.
 
 **작업:**
-- [ ] Streaming Data Provider + reconnect/heartbeat/staleness detect
+- [ ] Streaming Data Provider + reconnect/heartbeat/staleness detect; caller-fed decision sessions, bounded canonical event ingress, warmup/finalization, source cursor recovery, snapshot freshness/reconciliation, no broker submit. See [streaming contract](E6_7_STREAMING_CONTRACT.md).
 - [ ] Paper Broker, 실제 시세↔모의 체결, 종목별 data-quality dashboard(CLI/로그)
 - [ ] active 전략 vs shadow 후보 독립 비교, 미체결 주문/portfolio 재시작 복구
 - [ ] 양국 정규장·조기폐장·DST·휴장 및 네트워크 장애 처리
