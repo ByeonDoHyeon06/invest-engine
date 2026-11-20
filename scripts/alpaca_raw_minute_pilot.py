@@ -52,11 +52,21 @@ def classify_actions(grouped, symbol, first, last):
         if not isinstance(records, list):
             raise ValueError("UNVERIFIABLE_ACTION_RESPONSE")
         for record in records:
-            detail = {"kind": kind, "classification": "UNRESOLVED", "dates": {}}
+            detail = {"kind": kind, "classification": "UNRESOLVED", "dates": {},
+                      "reason": "UNSUPPORTED_ACTION_TYPE"}
             if kind not in DATE_KINDS or not isinstance(record, dict):
                 results.append(detail)
                 continue
+            detail["schema"] = {field: ("missing" if field not in record else
+                "null" if record[field] is None else "empty" if record[field] == ""
+                else type(record[field]).__name__) for field in (
+                "symbol", "currency", "cusip", "foreign", "ex_date", "record_date",
+                "payable_date", "effective_date", "due_bill_on_date", "due_bill_off_date")}
+            detail["symbol_matches"] = record.get("symbol") == symbol
+            detail["usd_explicit"] = record.get("currency") == "USD"
+            detail["foreign_false"] = record.get("foreign") is False
             if record.get("symbol") != symbol or record.get("currency") != "USD":
+                detail["reason"] = "IDENTITY_OR_CURRENCY_UNVERIFIED"
                 results.append(detail)
                 continue
             try:
@@ -65,6 +75,7 @@ def classify_actions(grouped, symbol, first, last):
                 if record.get("effective_date") is not None:
                     dates["effective_date"] = date.fromisoformat(record["effective_date"])
             except (KeyError, TypeError, ValueError):
+                detail["reason"] = "REQUIRED_DATE_UNVERIFIED"
                 results.append(detail)
                 continue
             detail["dates"] = {k: v.isoformat() for k, v in dates.items()}
@@ -73,6 +84,7 @@ def classify_actions(grouped, symbol, first, last):
                 detail["classification"] = "OUTSIDE_WINDOW"
             else:
                 detail["classification"] = "INTERSECTS_WINDOW"
+            detail["reason"] = "ECONOMIC_DATE_INTERVAL_CLASSIFIED"
             results.append(detail)
     return results
 
@@ -168,6 +180,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("symbol", choices=SYMBOLS)
     parser.add_argument("month", type=int, choices=MONTHS)
+    parser.add_argument("--action-diagnostics-only", action="store_true")
     args = parser.parse_args()
     symbol, month = args.symbol, args.month
     key, secret = os.environ.get("ALPACA_DATA_KEY"), os.environ.get("ALPACA_DATA_SECRET")
@@ -185,6 +198,11 @@ def main():
         report.update({"first_session": str(first), "last_session": str(last),
                        "action_counts": action_counts, "action_classifications": ca,
                        "action_sha256": ca_hash, "action_search_margin_days": 90})
+        if args.action_diagnostics_only:
+            report["status"] = "ACTION_SCHEMA_DIAGNOSTIC"
+            report["errors"] = []
+            save(f"alpaca-action-schema-{symbol}-{month}", [], report)
+            return
         events, coverage = fetch_tape(inst, sessions, headers)
         report.update(coverage)
         blockers = []
