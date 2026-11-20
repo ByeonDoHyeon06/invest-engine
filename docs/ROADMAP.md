@@ -228,11 +228,13 @@
 
 ### E6.7 — Unified Engine SDK (PLANNED)
 
-**Tracking:** [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59) · [SDK spec](E6_7_UNIFIED_SDK.md) · [ADR-0034](adr/0034-unified-sdk.md) (Proposed).
+**Tracking:** [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59) · [SDK spec](E6_7_UNIFIED_SDK.md) · [ADR-0034](adr/0034-unified-sdk.md) (accepted design; not implemented) · [18 normative DX examples](E6_7_SDK_EXAMPLES.md).
+
+**API contract:** user-approved neutral, inert `Engine()`; no offline()/online()/research() class factory or mandatory mode. Explicit calls determine capabilities; network data access independent of trade authority. Changes to the agreed constructor/names/defaults/safety/compatibility require explicit user approval and updated ADR/examples/Issue/tests before implementation.
 
 **Objective:** common offline use with a small typed public API, advanced access to every existing supported capability without copying internal wiring, no weakening of core restrictions. Plan can be drafted during execution of #57; implementation follows existing validation/research prerequisites and precedes E7. E5/E6 economic/release acceptance is separate.
 
-- [ ] E6.7a public API inventory, namespaces, supported-combination matrix, compatibility, API examples and finalize ADR.
+- [ ] E6.7a public API inventory, namespaces, supported-combination matrix, compatibility, API examples, per-example contract/signature fixture mapping, and finalize remaining ADR details without changing approved DX.
 - [ ] E6.7b unified facade, immutable validated spec, versioned profiles, local data, backtest, typed results/inspect.
 - [ ] E6.7c custom strategies/providers/policies and supported E5 feature parity; explicit unsupported capability errors.
 - [ ] E6.7d research search/walk-forward/journal/review and report artifacts, shared CLI/Python contract, migration without deleting old paths.
