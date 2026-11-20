@@ -58,3 +58,5 @@
 - [0031](0031-bounded-parameter-grid.md) — Proposed: budgeted deterministic rule grid and validation replay.
 
 - [0032](0032-search-lineage-stability.md) — Proposed: durable local search lineage, full outcomes and descriptive temporal-block stability.
+
+- [0033](0033-offline-research-pipeline.md) — Proposed: unified deterministic development ORB grid pipeline and explicit validation review/close.
