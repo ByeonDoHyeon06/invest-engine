@@ -226,8 +226,24 @@
 
 **DoD:** 기준선 대비 성능을 미관측 구간과 여러 비용 시나리오로 보고; 실패 전략 기각 기록; 최종 test set 재사용·과적합 경고; 자율 적용은 Shadow까지만.
 
+### E6.7 — Unified Engine SDK (PLANNED)
+
+**Tracking:** [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59) · [SDK spec](E6_7_UNIFIED_SDK.md) · [ADR-0034](adr/0034-unified-sdk.md) (accepted design; not implemented) · [18 normative DX examples](E6_7_SDK_EXAMPLES.md).
+
+**API contract:** user-approved neutral, inert `Engine()`; no offline()/online()/research() class factory or mandatory mode. Explicit calls determine capabilities; network data access independent of trade authority. Changes to the agreed constructor/names/defaults/safety/compatibility require explicit user approval and updated ADR/examples/Issue/tests before implementation.
+
+**Objective:** common offline use with a small typed public API, advanced access to every existing supported capability without copying internal wiring, no weakening of core restrictions. Plan can be drafted during execution of #57; implementation follows existing validation/research prerequisites and precedes E7. E5/E6 economic/release acceptance is separate.
+
+- [ ] E6.7a public API inventory, namespaces, supported-combination matrix, compatibility, API examples, per-example contract/signature fixture mapping, and finalize remaining ADR details without changing approved DX.
+- [ ] E6.7b unified facade, immutable validated spec, versioned profiles, local data, backtest, typed results/inspect.
+- [ ] E6.7c custom strategies/providers/policies and supported E5 feature parity; explicit unsupported capability errors.
+- [ ] E6.7d research search/walk-forward/journal/review and report artifacts, shared CLI/Python contract, migration without deleting old paths.
+- [ ] E6.7e wheel/import smoke, public-contract snapshot, end-to-end/golden parity, failure/security/deterministic replay and DX cookbook.
+
+**DoD:** common offline path ≤10 logical lines after dataset preparation; advanced typed paths; no lost supported options; same normalized config/event input produces equivalent decisions/fills/ledger/PnL and evidence; defaults visible and versioned; no network by import, hidden live mode or risk bypass; actual broker assets remain broker-authoritative. E7's Paper adapter and E8's Live authority remain separate. No production permission or profitability from SDK completion.
+
 ### E7 — Real-time Paper & Shadow
-**의존성:** E5, E6 일부; 실시간 데이터 공급자 별도 계약.
+**의존성:** E5, E6 일부, E6.7 offline SDK API acceptance; 실시간 데이터 공급자 별도 계약.
 
 **작업:**
 - [ ] Streaming Data Provider + reconnect/heartbeat/staleness detect
@@ -262,6 +278,7 @@
 - **R0 — Correct Core:** E0~E3. 주문·자금·이벤트 모델 정확성 입증.
 - **R1 — Researchable Engine:** E4~E5. 재현 가능한 전략 평가 완료.
 - **R2 — Adaptive Research:** E6. 과적합 통제 하에 후보 제안·검증.
+- **R2-SDK — Unified SDK:** E6.7. 검증된 오프라인 SDK 사용성·기능 동등성; 독립적인 수익성/실거래 승인 아님.
 - **R3 — Observable Paper:** E7. 여러 주 동안 실시간 모의 검증.
 - **R4 — Restricted Live:** E8. 별도 승인 후 제한된 주문.
 - **R5 — Optional Product:** E9. 범위·라이선스 재검토.

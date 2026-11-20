@@ -60,3 +60,5 @@
 - [0032](0032-search-lineage-stability.md) — Accepted (offline implementation only; release gates open): durable local search lineage, full outcomes and descriptive temporal-block stability.
 
 - [0033](0033-offline-research-pipeline.md) — Accepted (offline implementation only; release gates open): unified deterministic development ORB grid pipeline and explicit validation review/close.
+
+- [0034](0034-unified-sdk.md) — Accepted design direction (not implemented): neutral inert Engine() constructor, operation-level capabilities, shared CLI/spec and capability parity; Issue #59.

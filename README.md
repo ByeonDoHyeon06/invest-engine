@@ -20,6 +20,7 @@
 - [단계별 로드맵 및 완료 조건](docs/ROADMAP.md)
 - [전체 아키텍처](docs/ARCHITECTURE.md)
 - **[Engine 입출력 계약](docs/ENGINE_IO.md)**
+- [E6.7 통합 SDK 계획 (미구현)](docs/E6_7_UNIFIED_SDK.md) · [사용자 합의 API 예제 18개](docs/E6_7_SDK_EXAMPLES.md) — 기본 진입점 `Engine()`, 실행 목적은 메서드에서 구분
 - **[AI·ML 연구 목표 및 평가 계약 (E6 설계안)](docs/ML_RESEARCH.md)**
 - [E2 이벤트 런타임과 복구 규칙](docs/EVENT_RUNTIME.md)
 - **[E5.1 과거 데이터 재생 및 체결 모델](docs/E5_BACKTEST.md)**
@@ -46,7 +47,7 @@
 Roadmap은 순서와 완료 기준을, Status는 진행 상태를, ADR은 결정 근거를 기록한다. 실제 완료 여부는 테스트와 코드로 검증한다.
 
 ## 예정 순서
-E0 기초 계약 → E1 데이터 → E2 이벤트 코어 → E3 모의 주문·위험·회계 → E4 전략 API/ORB → E5 백테스팅 → E6 리서치·자동 후보 평가 → E7 실시간 Paper/Shadow → E8 통제된 소액 실거래 → E9 후속 고도화.
+E0 기초 계약 → E1 데이터 → E2 이벤트 코어 → E3 모의 주문·위험·회계 → E4 전략 API/ORB → E5 백테스팅 → E6 리서치·자동 후보 평가 → E6.7 통합 Python SDK → E7 실시간 Paper/Shadow → E8 통제된 소액 실거래 → E9 후속 고도화.
 
 **초기 제외:** 실제 주문, 자동 코드 수정/무검증 전략 배포, 대시보드, SaaS, HFT, 공매도·레버리지, 수익 보장.
 
