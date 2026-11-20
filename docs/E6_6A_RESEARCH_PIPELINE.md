@@ -1,6 +1,6 @@
 # E6.6a — Integrated offline development research pipeline
 
-**Status:** implementation candidate; CI pending. E5 issue #6 remains OPEN, E6/G2 NOT ACCEPTED. No Shadow/Paper/LIVE authorization.
+**Status:** implemented and merged #52 (`914439f`), verified Core CI 392 tests each and 42/42 historical regression rows identical; research-only. E5 issue #6 remains OPEN, E6/G2 NOT ACCEPTED. No Shadow/Paper/LIVE authorization.
 
 ## Prior evidence
 
@@ -22,4 +22,4 @@ This is offline deterministic fixed-rule search, not self-learning, autonomous c
 
 ## Tests and next
 
-Four new synthetic cases: complete 16-arm optional regime/exposure pipeline with deterministic retry and review JSON recovery; restore partial reservation and reject premature close; changed scenario or reserved stability policy rejected; exact final metadata universe/range/currency and dataset-reuse validation. CI pending. Next: E6.6b evidence boundary and explicitly selected independent final evaluation; run real market research only after resolving E5 data eligibility and fee/source blockers. Do not mark E6 roadmap DoD complete merely because synthetic integration passes.
+Four new synthetic cases: complete 16-arm optional regime/exposure pipeline with deterministic retry and review JSON recovery; restore partial reservation and reject premature close; changed scenario or reserved stability policy rejected; exact final metadata universe/range/currency and dataset-reuse validation. CI verified. Next: E6.6b evidence boundary and explicitly selected independent final evaluation; run real market research only after resolving E5 data eligibility and fee/source blockers. Do not mark E6 roadmap DoD complete merely because synthetic integration passes.

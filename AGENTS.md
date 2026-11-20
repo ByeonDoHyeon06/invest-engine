@@ -1,6 +1,6 @@
 # AGENTS.md — 작업 에이전트용 지속 컨텍스트
 
-**Latest / 2026-11-17, E5.7 PR #29 MERGED (cf1227b, CI 44060129801 260 passed on 3.12/3.13):** Review docs/E5_CORPORATE_ACTIONS.md, docs/E5_REAL_MARKET_SMOKE.md, ADR-0015. Synthetic issuer events are supported in E3 journal but E5.6 PIT run refuses all in-window corporate actions until explicit validated price-adjustment + E4 attribution bridge. `import-csv` is offline only; TICK_COUNT is not share volume and forbids strategy execution except NoTrade smoke. Actual AAPL preview five rows were used in local pipeline smoke, not profit validation. E5 Issue #6 OPEN. Next E5.8 PIT corporate-action/price-adjustment + strategy attribution bridge, licensed real share-volume feed; forward paper E7. LIVE NOT AUTHORIZED.
+**Latest / 2026-11-20:** #52, #53, #54, #55, #56 merged; #57 raw minute pilot open. 2,674 daily research arms, all five active rules negative; 22,393,263 raw SIP minute observations structurally audited, not execution-certified. E5 #6 / E6 #7 OPEN. Read [STATUS](docs/STATUS.md) for authoritative current state; older dated entries below are historical snapshots. LIVE NOT AUTHORIZED.
 
 
 이 파일은 채팅 메모리에 의존하지 않고 invest-engine을 이어 개발하기 위한 작업 규칙이다.
@@ -11,7 +11,7 @@
 3. docs/ROADMAP.md 읽기 (Epic 순서/DoD/의존성)
 4. E3 이하 개발 전 docs/ENGINE_IO.md · docs/ML_RESEARCH.md · docs/E3_SIMULATION.md · docs/E3_MONITORING.md · docs/E3_SETTLEMENT.md · ADR-0005/0006/0007/0008을 확인한다. E3의 엄격한 주문 JSON만 구현돼 있고, Run/Prediction JSON 예시는 아직 설계안이다.
 5. 수정할 모듈의 docs/ARCHITECTURE.md, DOMAIN.md, STRATEGIES.md, RISK_EXECUTION.md, VALIDATION.md, INTEGRATIONS.md와 docs/adr/ 읽기.
-6. GitHub의 열린 Issue/PR/CI 확인하여 진행 중 작업·실패를 먼저 해결.
+6. GitHub의 열린 Issue/PR/CI 확인하여 진행 중 작업·실패를 먼저 해결. 의존 PR은 선행 검증 후 병합 또는 명시적 보류 사유를 기록한다.
 
 ## 고정된 사용자 합의
 - 1분 OHLCV는 코어 제한이 아니다: TradeTick, QuoteTick, Bar(임의 주기), 기업·공시·거시 관측까지 타입 안전하게 받아야 한다.
@@ -39,7 +39,9 @@
 
 ## 작업 완료 시
 - 실행한 테스트와 결과를 명확히 보고. 실행 못하면 그 사유 기록.
-- docs/STATUS.md의 last commit/PR/next task/blocks/phase 업데이트.
+- docs/STATUS.md의 last commit/PR/next task/blocks/phase 업데이트. docs/ROADMAP.md와 해당 Epic Issue에도 동일한 검증 근거 및 미완료 조건을 반영한다.
+- PR 본문에 해당 Issue, 변경 문서, CI/실험 근거, 병합 조건을 명시한다. 실행 중인 작업은 pending으로 기록하고, 결과 확인 후 상태/문서를 정리하기 전 다음 작업을 완료 처리하지 않는다.
+- 개별 기능 문서와 ADR에 남은 candidate/pending 상태도 실제 병합·검증 결과에 맞춘다. 합성 검증과 실제 데이터/경제적 적격성은 구분한다.
 - 해당 Epic의 체크박스는 실제 검증 증거가 있을 때만 체크.
 - 계약 변경은 ADR 추가/기존 ADR 상태 변경. 주요 버전 반영.
 - Live credential을 요청하거나 commit하지 않는다.

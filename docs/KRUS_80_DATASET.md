@@ -1,6 +1,6 @@
 # KRUS-80 market panel v1 — data acquisition plan
 
-**Status:** universe/period fixed; acquisition utility and public probe CI pending; licensed 80-symbol panel NOT acquired. E5 #6 remains OPEN. No strategy certification/order authorization. Registered 2026-11-19.
+**Status:** #54 merged `8f5a42b`; public probe 96/96 partitions and 24,128 rows, Core CI 393 tests each. #55 authenticated US audit completed; full licensed KR/US panel NOT acquired, raw runner files not retained. E5 #6 remains OPEN. No strategy certification/order authorization. Registered 2026-11-19.
 
 ## Scope
 - 40 US-listed securities, 30 KOSPI and 10 KOSDAQ; exact complete manifest [market_panel_v1.json](../research/market_panel_v1.json). Convenience cohort chosen retrospectively, **not** point-in-time index membership; includes historical removals TWTR, ATVI and 091990. No replacement of failed/delisted symbols; identity/listing intervals must be independently reconciled (incl. market transfers and ticker changes). Benchmarks SPY, QQQ, KOSPI and KOSDAQ are metadata only, not collected by v1.

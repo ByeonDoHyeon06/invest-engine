@@ -45,18 +45,18 @@
 
 - [0025](0025-offline-candidate-gates.md) — Accepted offline research foundation (#44 verified only).
 
-- [0026](0026-durable-research-journal.md) — Proposed: durable local experiment journal and provisional E5 report reconciliation.
+- [0026](0026-durable-research-journal.md) — Accepted (offline implementation only; release gates open): durable local experiment journal and provisional E5 report reconciliation.
 
-- [0027](0027-temporal-walk-forward.md) — Proposed: deterministic temporal folds, label purge, embargo and logical final partition.
+- [0027](0027-temporal-walk-forward.md) — Accepted (offline implementation only; release gates open): deterministic temporal folds, label purge, embargo and logical final partition.
 
-- [0028](0028-fixed-rule-fold-replay.md) — Proposed: fixed-rule, preregistered E5 replay across strict temporal validation folds.
+- [0028](0028-fixed-rule-fold-replay.md) — Accepted (offline implementation only; release gates open): fixed-rule, preregistered E5 replay across strict temporal validation folds.
 
-- [0029](0029-causal-market-regimes.md) — Proposed: causal two-axis intraday regime annotations and fill attribution.
+- [0029](0029-causal-market-regimes.md) — Accepted (offline implementation only; release gates open): causal two-axis intraday regime annotations and fill attribution.
 
-- [0030](0030-regime-exposure-cohorts.md) — Proposed: observed regime exposure denominators and quantity-cohort realized attribution.
+- [0030](0030-regime-exposure-cohorts.md) — Accepted (offline implementation only; release gates open): observed regime exposure denominators and quantity-cohort realized attribution.
 
-- [0031](0031-bounded-parameter-grid.md) — Proposed: budgeted deterministic rule grid and validation replay.
+- [0031](0031-bounded-parameter-grid.md) — Accepted (offline implementation only; release gates open): budgeted deterministic rule grid and validation replay.
 
-- [0032](0032-search-lineage-stability.md) — Proposed: durable local search lineage, full outcomes and descriptive temporal-block stability.
+- [0032](0032-search-lineage-stability.md) — Accepted (offline implementation only; release gates open): durable local search lineage, full outcomes and descriptive temporal-block stability.
 
-- [0033](0033-offline-research-pipeline.md) — Proposed: unified deterministic development ORB grid pipeline and explicit validation review/close.
+- [0033](0033-offline-research-pipeline.md) — Accepted (offline implementation only; release gates open): unified deterministic development ORB grid pipeline and explicit validation review/close.
