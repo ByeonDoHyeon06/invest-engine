@@ -1,0 +1,53 @@
+name: Alpaca reduced-turnover research
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/alpaca_reduced_turnover.py
+      - src/invest_engine/strategies/orb_screen.py
+      - tests/test_orb_e4.py
+      - .github/workflows/alpaca-reduced-turnover.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: authorized-alpaca-market-data
+  cancel-in-progress: false
+
+jobs:
+  minute:
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'research/e66-reduced-turnover')
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        symbol: [AAPL, MSFT, NVDA, TSLA, AMZN, GOOG]
+        month: [10, 11]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e . exchange-calendars==4.13.1 pytest
+      - run: python -m pytest -q tests/test_alpaca_action_screen.py tests/test_orb_e4.py
+      - name: Read-only raw minute research
+        env:
+          ALPACA_DATA_KEY: ${{ secrets.ALPACA_DATA_KEY }}
+          ALPACA_DATA_SECRET: ${{ secrets.ALPACA_DATA_SECRET }}
+          PANEL_SYMBOL: ${{ matrix.symbol }}
+          PANEL_MONTH: ${{ matrix.month }}
+        run: python -u scripts/alpaca_raw_minute_pilot.py "$PANEL_SYMBOL" "$PANEL_MONTH"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: alpaca-reduced-turnover-${{ matrix.symbol }}-${{ matrix.month }}
+          path: research-output/alpaca-reduced-turnover-*
+          if-no-files-found: error
+          retention-days: 7
