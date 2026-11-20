@@ -61,4 +61,4 @@
 
 - [0033](0033-offline-research-pipeline.md) — Accepted (offline implementation only; release gates open): unified deterministic development ORB grid pipeline and explicit validation review/close.
 
-- [0034](0034-unified-sdk.md) — Proposed: unified typed offline SDK facade, shared CLI/spec and capability parity; Issue #59, not implemented.
+- [0034](0034-unified-sdk.md) — Accepted design direction (not implemented): neutral inert Engine() constructor, operation-level capabilities, shared CLI/spec and capability parity; Issue #59.
