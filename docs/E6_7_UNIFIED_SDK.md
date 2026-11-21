@@ -8,7 +8,7 @@ The root `invest_engine` currently exports only version information; Strategy SD
 
 ## 2. Public surface (approved design targets; not executable yet)
 
-**Canonical constructor: `Engine()`.** The constructor is not a mode selection: no `Engine.offline()`, `Engine.online()`, class-level `Engine.research()` or mandatory `mode` parameter. Backtest, research, evaluation and future Paper/Live are operation-level capabilities. Market-data transport is independent of execution authority. See [18 normative DX examples](E6_7_SDK_EXAMPLES.md).
+**Canonical constructor: `Engine()`.** The constructor is not a mode selection: no `Engine.offline()`, `Engine.online()`, class-level `Engine.research()` or mandatory `mode` parameter. Backtest, research, evaluation and future Paper/Live are operation-level capabilities. Market-data transport is independent of execution authority. See [23 normative DX examples](E6_7_SDK_EXAMPLES.md).
 
 ```python
 from invest_engine import Engine, strategies
@@ -61,11 +61,18 @@ The neutral constructor and operation-level API are explicitly agreed. Example n
 - Extension paths: existing Strategy, calendar/data/typed event provider, fee/fill policies, corporate-action evidence, reporting/artifact stores, research timing/grid/journal. Maintain dependency direction SDK -> core; core cannot import SDK/adapters. Extensions may not bypass Risk or manipulate authoritative account state.
 - Portfolio boundary: Backtest/Paper use isolated simulated cash/ledger. Future real-account assets originate from verified broker snapshots; attach/reference them to engine decisions with timestamp, source and freshness rather than duplicating a live authoritative asset database. SDK must not silently make a simulated ledger authoritative for actual holdings.
 
+### 3.1 Streaming compatibility (design, not implementation)
+
+User-approved real-time design extension (2026-11-20): preserve callable `engine.evaluate(...)`, add `engine.evaluate.session(...)` for caller-fed, decision-only observation and `engine.paper.start(...)` for managed simulated execution. [Streaming contract](E6_7_STREAMING_CONTRACT.md), examples 19–23. E6.7a owns signatures/fixtures/architecture only; actual streaming and decision-session lifecycle E7 after independent gate, Live E8 only. No provider calls or real orders in this planning PR.
+
+The SDK exposes a callable evaluation service (equivalent to the agreed single-call method) with a session factory, not a constructor mode. Caller-driven ingestion and provider-managed Paper use the same normalized event/strategy/risk core where supported; transport, clock, account authority and execution are explicitly injected at the boundary. E6.7a maps existing pure reducers and E5 replay orchestration, documents extraction/parity risks, and designs bounded asynchronous session contracts; it must not add live or network execution. No new strategy model or duplicate live portfolio. Historical/streaming event ordering and observation availability must agree on identical canonical tapes, not merely bar timestamps.
+
 ## 4. Capability parity matrix to implement and test
 
 | Capability | Common facade | Advanced typed access | Gate |
 |---|---|---|---|
 | Market data | local manifest/normalized data | event streams, provider adapter, schemas, calendar, resample | provenance and native resolution preserved |
+| Continuous decision / Paper (future) | evaluation session / paper.start | typed event ingestion, account snapshots, transport lifecycle and journal recovery | E7 approval, explicit warmup, freshness, no actual orders |
 | Strategies | presets + custom Strategy | requirements, features, signal, multi-strategy supported paths | no direct order privileges |
 | Backtest | prepare/run/inspect/export | full settings, interval, evaluation, FX, corporate evidence, costs, risk, protection | preserve unsupported-combination restrictions |
 | Risk/execution | explicit profile | RiskLimits, monetary rules, fill & dated fees | no risk bypass, actual broker unavailable |
@@ -78,7 +85,7 @@ Inventory all implemented APIs at E6.7a, including non-default paths; mark suppo
 
 ## 5. Phased implementation
 
-1. E6.7a — API inventory, usage pain points, namespace, signatures, compatibility and capability matrix; finalize ADR and golden examples; no core rewrite.
+1. E6.7a — API inventory, usage pain points, namespace, signatures, compatibility and capability matrix; finalize ADR and golden examples; streaming signature/lifecycle and parity fixture design only, no core rewrite.
 2. E6.7b — Facade + immutable specs, versioned profiles, local data and single backtest path, normalized plan/inspect, typed reports, preserve existing CLI.
 3. E6.7c — Advanced options + custom protocols, all supported E5 configurations (FX, splits/dividend/delisting where already supported, fee models, risk, fill, evaluation); explicit unsupported matrix; avoid duplicated models.
 4. E6.7d — E6 research orchestration, journal/review/reporting, artifact lifecycle, unified CLI + Python API parity; existing e5-research-v1 decode preserved, migration tests and examples. No holdout or deployment gate bypass.

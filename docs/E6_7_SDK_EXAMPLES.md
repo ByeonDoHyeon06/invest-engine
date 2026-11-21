@@ -345,6 +345,115 @@ engine = Engine(
 
 These are trusted typed plugin implementations. Construction is inert; the SDK does not call an injected provider until an explicit operation. Stable plugin identity/version and configuration enter the run manifest. No unrestricted kwargs dictionary or silent fallback, no bypass of validation/risk. Existing low-level paths remain usable.
 
+## 19 — Caller-fed real-time decision session (E7 target; no actual orders)
+
+```python
+from invest_engine import Engine, strategies, market
+
+engine = Engine()
+async with engine.evaluate.session(
+    symbols=["AAPL"],
+    strategy=strategies.orb(),
+) as session:
+    await session.warmup(validated_history)
+    async for tick in my_websocket:
+        result = await session.ingest(
+            market.Trade(
+                symbol=tick.symbol,
+                price=tick.price,            # Decimal or decimal string
+                quantity=tick.quantity,
+                timestamp=tick.event_time,  # timezone-aware exchange event time
+                received_at=tick.received_at,
+                event_id=tick.event_id,
+                source=tick.source,
+            ),
+            portfolio=broker.account_snapshot,
+        )
+        if result.proposed_orders:
+            print(result.proposed_orders)
+```
+
+Application-provided websocket, historical dataset and broker snapshot are not SDK-owned assets or credentials. The symbol is resolved against a declared market/instrument universe; ambiguous identity or insufficient source/time evidence blocks action. Ingest returns a typed observation/decision outcome even when there is no new order; no network or order routing by this session. Snapshot must be timestamped, versioned, trusted by application policy and reconciled. Warmup uses read-only observations, not simulated orders. See [streaming contract](E6_7_STREAMING_CONTRACT.md).
+
+## 20 — Managed market-data streaming with simulated execution (E7 target)
+
+```python
+from invest_engine import Engine, providers, strategies
+
+engine = Engine()
+session = await engine.paper.start(
+    data=providers.Alpaca(credentials="alpaca-market-data"),
+    symbols=["AAPL", "NVDA", "TSLA"],
+    strategy=strategies.orb(),
+    capital="100000 USD",
+)
+async with session:
+    async for event in session.events():
+        print(event)
+```
+
+Explicit start performs permitted read-only market-data I/O after validation and initialization. The async context closes the session and joins tasks; cancellation, errors and bounded output delivery are explicit. Paper cash and fills are isolated simulations. No brokerage trading endpoints or actual order submissions. Source, warmup/backfill, rights, clock, fill and risk policies must be resolved before trading; no implicit fallback to a different feed.
+
+## 21 — Custom strategy, same contract in replay and streaming (E6.7c design / E7 streaming)
+
+```python
+from invest_engine import Strategy, indicators
+
+class MovingAverageCross(Strategy):
+    def setup(self):
+        self.require_bars("1m", warmup=21)
+
+    def on_bar(self, ctx):
+        close = ctx.bars("1m").close
+        average = indicators.sma(close, 20)
+        if indicators.cross_above(close, average):
+            return ctx.long(target="5%", stop_loss="1%")
+        if indicators.cross_below(close, average):
+            return ctx.exit()
+        return ctx.no_action()
+```
+
+One strategy implementation, deterministic state and shared risk boundary regardless of input transport. Current core's on_event protocol remains the underlying contract. Bar callbacks are only for finalized declared bars; optional tick, quote, order-book and timer callbacks are capability-specific proposals, never implicit subscriptions. A 21-bar warmup supplies two valid 20-period SMA points. Actual historical and streaming fills need not match unless the identical normalized tape and execution/account policies are used.
+
+## 22 — External normalized events and snapshot updates (E7 target)
+
+```python
+async with engine.evaluate.session(
+    symbols=["AAPL"],
+    strategy=my_strategy,
+    calendar=my_exchange_calendar,
+) as session:
+    await session.warmup(validated_history)
+    await session.update_portfolio(verified_account_snapshot)
+    async for event in normalized_event_stream:
+        result = await session.ingest(event)
+        if result.blockers:
+            print(result.blockers)
+        if result.proposed_orders:
+            print(result.proposed_orders)
+```
+
+Existing typed EventEnvelope input remains an advanced path; the SDK must not invent a source sequence or publication timestamp. An attached snapshot is not silently reused beyond freshness/causal/reconciliation constraints. Portfolio refresh and market input serialize through the same session writer. No actual submission, no auto-repeat of an old proposal, no mutable broker ledger.
+
+## 23 — Stream recovery and shutdown (E7 target)
+
+```python
+async with engine.evaluate.session(
+    symbols=["AAPL"],
+    strategy=my_strategy,
+    journal=my_session_journal,
+) as session:
+    await session.warmup(validated_history)
+    async for event in normalized_event_stream:
+        result = await session.ingest(event)
+        if result.blockers:
+            print(result.blockers)
+            break
+    print(session.status)
+```
+
+The context drains or explicitly cancels pending work and closes the session. A restart requires verified source cursor/history, journal/state restoration, refreshed authoritative account snapshot and operator-reviewed resume where required; no automatic replay of prior proposals as orders. Gap or conflict cannot be cleared by merely reconnecting. The precise recovery interface remains an E6.7a signature-design item.
+
 ## Contract enforcement and change process
 
-Examples 01–04, 06–09, 11–13, 17–18 are implementation targets subject to documented supported combinations and capabilities. Example 05 requires provider adapter and rights, 10 requires actual allocation support, 14 is external integration, 15 is decision-only future scope, 16 belongs to E7/E8. These flags prevent planning examples from being presented as available features. Maintain a test manifest linking each example to phase, fixture, expected API signatures and evidence. E6.7a implements signature snapshots and executable synthetic golden examples; E6.7b–e enable tests for each completed capability. Use fixed versions/hashes for deterministic parity, no network credentials in CI tests. The SDK contract and examples are normative DX targets; changes to Engine() constructor semantics, top-level call model, mode separation, names in the frozen examples, defaults, safety or compatibility require a documented ADR amendment/replacement, explicit user review/approval and coordinated issue/roadmap/spec/example/test updates before implementation. If an example is impractical or unsupported, report the conflict and propose a change rather than silently rewrite it. Do not claim planned examples already run. Existing #57 and E5/E6 gates are unchanged.
+Examples 01–04, 06–09, 11–13, 17–18 are implementation targets subject to documented supported combinations and capabilities. Example 05 requires provider adapter and rights, 10 requires actual allocation support, 14 is external integration, 15 is decision-only future scope, 16 belongs to E7/E8. Examples 19–23 extend the agreed API design to streaming and caller-driven observation; E6.7a defines typed lifecycle and parity fixtures, E7 implements only after its gate. See [streaming contract](E6_7_STREAMING_CONTRACT.md). These flags prevent planning examples from being presented as available features. Maintain a test manifest linking each example to phase, fixture, expected API signatures and evidence. E6.7a implements signature snapshots and executable synthetic golden examples; E6.7b–e enable tests for each completed capability. Use fixed versions/hashes for deterministic parity, no network credentials in CI tests. The SDK contract and examples are normative DX targets; changes to Engine() constructor semantics, top-level call model, mode separation, names in the frozen examples, defaults, safety or compatibility require a documented ADR amendment/replacement, explicit user review/approval and coordinated issue/roadmap/spec/example/test updates before implementation. If an example is impractical or unsupported, report the conflict and propose a change rather than silently rewrite it. Do not claim planned examples already run. Existing #57 and E5/E6 gates are unchanged.
