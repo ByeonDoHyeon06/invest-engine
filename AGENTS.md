@@ -1,6 +1,6 @@
 # AGENTS.md — 작업 에이전트용 지속 컨텍스트
 
-**Latest / 2026-11-21:** #65 multi-symbol intraday foundation PR 1 is implemented on local branch `feat/multisymbol-portfolio-contracts`; initial implementation ends at `0049b56` and final-review fixes/documentation are at the branch tip. Fixed-universe explicit-watermark frames and portfolio batch validation only. Local 433 tests, Ruff, mypy 78 files, secret/diff checks pass; PR/CI pending. PR 2 shared-account backtest and PR 3 strategy/data study remain unimplemented. #62/#63 are separate green Draft PRs. E5 #6 / E6 #7 OPEN; LIVE NOT AUTHORIZED. Read [STATUS](docs/STATUS.md) for authoritative state.
+**Latest / 2026-11-21:** #65 multi-symbol intraday foundation [PR #66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66) is OPEN on `feat/multisymbol-portfolio-contracts`; initial implementation ends at `0049b56` and final-review fixes/documentation are at the branch tip. Fixed-universe explicit-watermark frames and portfolio batch validation only. Local 433 tests, Ruff, mypy 78 files, secret/diff checks pass; current PR checks must be green before merge. PR 2 shared-account backtest and PR 3 strategy/data study remain unimplemented. #62/#63 are separate green Draft PRs. E5 #6 / E6 #7 OPEN; LIVE NOT AUTHORIZED. Read [STATUS](docs/STATUS.md) for authoritative state.
 
 
 이 파일은 채팅 메모리에 의존하지 않고 invest-engine을 이어 개발하기 위한 작업 규칙이다.
@@ -43,7 +43,7 @@
 - PR 1 로컬 구현은 `UniverseFrameCoordinator`의 명시적 watermark, 완전한 고정 universe, `DATA_UNAVAILABLE`/`NO_ACTION` 분리, late-data halt와 `PortfolioStrategyRunner`의 ordered complete-target/trigger/노출 상한 검증까지만 포함한다.
 - 결측 종목을 빼고 순위를 계산하거나, watermark 뒤의 bar로 과거 frame을 고치거나, 플러그인 출력을 정렬·수선하지 않는다. 복구는 신뢰된 저널 replay로 새 coordinator를 구성한다.
 - 다음 단일 구현은 **PR 2 공유계좌 역사 backtest 조정·position-cycle 보고·기존 hash 호환성**이다. `xs-slot-momentum@1.0.0`, controls 및 실제 데이터 연구는 PR 3 전까지 구현·검증됐다고 쓰지 않는다.
-- 현재 근거는 로컬 433 tests/Ruff/mypy 78 files/secret guard뿐이며 PR/CI는 없다. 수익성, 실제 체결 가능성, Paper/Live 권한을 의미하지 않는다.
+- 현재 로컬 근거는 433 tests/Ruff/mypy 78 files/secret guard이며 [PR #66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66)의 최신 checks가 병합 전 CI 근거다. 수익성, 실제 체결 가능성, Paper/Live 권한을 의미하지 않는다.
 
 ## E5 연구 엔진 경계
 - docs/E5_BACKTEST.md 및 ADR-0010 참고. E5.1은 보수적 Bar LIMIT 모델이지만 실제 체결 가능성을 보장하지 않는다.

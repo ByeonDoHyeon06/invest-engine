@@ -1,6 +1,6 @@
 # Multi-Symbol Intraday Slot-Momentum Research Design
 
-**Status:** Accepted for staged offline implementation. PR 1 contracts are implemented on a local feature branch; PR/CI review is pending. PR 2 shared-account execution and PR 3 strategy/research remain pending.
+**Status:** Accepted for staged offline implementation. PR 1 contracts are proposed in [PR #66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66); current CI/merge review is required. PR 2 shared-account execution and PR 3 strategy/research remain pending.
 
 **Date:** 2026-11-20
 
@@ -249,7 +249,7 @@ Even a passing bar-based candidate cannot advance to Paper. QuoteTick/TradeTick 
 
 This is planned as three reviewable PRs under one dedicated issue:
 
-1. **Implemented locally; PR/CI pending:** universe-frame and portfolio-strategy contracts with synthetic causal/barrier tests;
+1. **PR #66 open; CI/merge review required:** universe-frame and portfolio-strategy contracts with synthetic causal/barrier tests;
 2. **Pending:** shared-account historical coordinator, position-cycle reporting and old-hash compatibility tests;
 3. **Pending:** frozen strategy, controls, the exact `US20-SLOT-V1` October/November 2022 provisional workflow and result reconciliation.
 

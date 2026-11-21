@@ -63,4 +63,4 @@
 
 - [0034](0034-unified-sdk.md) — Accepted design direction (not implemented): neutral inert Engine() constructor, operation-level capabilities, shared CLI/spec and capability parity; Issue #59.
 
-- [0035](0035-multisymbol-portfolio-decision-boundary.md) — Accepted for offline implementation (local branch; PR/CI pending): explicit-watermark fixed-universe barrier and separate trusted portfolio-strategy output validation; no shared-account execution or Live authority.
+- [0035](0035-multisymbol-portfolio-decision-boundary.md) — Accepted for offline implementation (PR #66 open; current CI required): explicit-watermark fixed-universe barrier and separate trusted portfolio-strategy output validation; no shared-account execution or Live authority.

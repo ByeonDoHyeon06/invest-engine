@@ -1,7 +1,7 @@
 # ADR-0035: Explicit-watermark multi-symbol portfolio decision boundary
 
 - Date: 2026-11-21
-- Status: Accepted for offline implementation; local branch verification only, PR/CI pending
+- Status: Accepted for offline implementation; PR #66 open, merge requires current CI
 
 ## Context
 
