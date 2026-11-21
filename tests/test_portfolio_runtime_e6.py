@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal as D
+from decimal import Decimal as D, localcontext
 from typing import Callable
 
 import pytest
@@ -258,6 +258,44 @@ def _exit_second_member(batch: PortfolioSignalBatch) -> PortfolioSignalBatch:
     )
 
 
+def _exit_all_members(batch: PortfolioSignalBatch) -> PortfolioSignalBatch:
+    return replace(
+        batch,
+        signals=tuple(
+            replace(
+                signal,
+                direction=SignalDirection.EXIT,
+                target_fraction=D(0),
+                stop_price=None,
+            )
+            for signal in batch.signals
+        ),
+    )
+
+
+def _high_precision_excess(batch: PortfolioSignalBatch) -> PortfolioSignalBatch:
+    return replace(
+        batch,
+        signals=(
+            replace(
+                batch.signals[0],
+                target_fraction=D("0.10000000000000000000000000001"),
+            ),
+            batch.signals[1],
+        ),
+    )
+
+
+def _low_precision_excess(batch: PortfolioSignalBatch) -> PortfolioSignalBatch:
+    return replace(
+        batch,
+        signals=tuple(
+            replace(signal, target_fraction=D("0.104"))
+            for signal in batch.signals
+        ),
+    )
+
+
 def test_batch_must_match_frame_manifest_time_members_and_triggers() -> None:
     mutations: tuple[
         tuple[str, Callable[[PortfolioSignalBatch], PortfolioSignalBatch]], ...
@@ -289,6 +327,13 @@ def test_batch_must_match_frame_manifest_time_members_and_triggers() -> None:
             lambda batch: _replace_child(
                 batch,
                 generated_at=CHECKPOINT - MINUTE,
+            ),
+        ),
+        (
+            "child instrument metadata",
+            lambda batch: _replace_child(
+                batch,
+                instrument=replace(A, currency="EUR"),
             ),
         ),
         ("child expiry", _expire_child_without_constructor_revalidation),
@@ -388,3 +433,67 @@ def test_runner_invalidation_delegates_without_resetting_strategy_or_stream() ->
         strategy.snapshot_calls,
         strategy.restore_calls,
     ) == strategy_before
+
+
+def test_runner_rejects_manifest_coordinator_mismatch_before_dispatch() -> None:
+    changes = (
+        {"markets": frozenset({Market.KR})},
+        {"bar_interval": timedelta(minutes=5)},
+        {"checkpoint_interval": timedelta(hours=1)},
+    )
+    for change in changes:
+        strategy = FixturePortfolioStrategy()
+        strategy._manifest = replace(strategy.manifest, **change)
+        with pytest.raises(ValueError, match="manifest"):
+            configured_runner(strategy)
+
+
+def test_flatten_frame_rejects_longs_and_accepts_complete_exits() -> None:
+    flatten_at = SESSION_END - CHECKPOINT_INTERVAL
+    long_runner, _ = configured_runner()
+    long_runner.accept(bar_event(A, "bar:a:flatten", flatten_at, 0))
+    long_runner.accept(bar_event(B, "bar:b:flatten", flatten_at, 1))
+    with pytest.raises(InvalidEvent, match="portfolio strategy batch"):
+        long_runner.evaluate(flatten_at)
+    assert long_runner.halt_reason is not None
+
+    exit_runner, _ = configured_runner(MutatingPortfolioStrategy(_exit_all_members))
+    exit_runner.accept(bar_event(A, "bar:a:flatten", flatten_at, 0))
+    exit_runner.accept(bar_event(B, "bar:b:flatten", flatten_at, 1))
+    result = exit_runner.evaluate(flatten_at)
+    assert result.batch is not None
+    assert all(
+        signal.direction is SignalDirection.EXIT
+        for signal in result.batch.signals
+    )
+
+
+def test_repeated_evaluation_returns_cached_result_after_history_invalidation() -> None:
+    runner, strategy = configured_runner()
+    feed_complete_checkpoint(runner)
+    first = runner.evaluate(CHECKPOINT)
+    assert strategy.calls == 1
+
+    assert runner.evaluate(CHECKPOINT) == first
+    assert strategy.calls == 1
+    runner.invalidate_instrument_history(A)
+    assert runner.evaluate(CHECKPOINT) == first
+    assert strategy.calls == 1
+
+
+def test_gross_target_comparison_is_independent_of_decimal_context() -> None:
+    precise_runner, _ = configured_runner(
+        MutatingPortfolioStrategy(_high_precision_excess)
+    )
+    feed_complete_checkpoint(precise_runner)
+    with pytest.raises(InvalidEvent, match="gross target"):
+        precise_runner.evaluate(CHECKPOINT)
+
+    rounded_runner, _ = configured_runner(
+        MutatingPortfolioStrategy(_low_precision_excess)
+    )
+    feed_complete_checkpoint(rounded_runner)
+    with localcontext() as context:
+        context.prec = 2
+        with pytest.raises(InvalidEvent, match="gross target"):
+            rounded_runner.evaluate(CHECKPOINT)

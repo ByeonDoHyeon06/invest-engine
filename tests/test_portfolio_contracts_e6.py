@@ -76,6 +76,18 @@ def test_universe_frame_requires_sorted_exact_one_to_one_trigger_bars():
     with pytest.raises(ValueError, match="future"):
         replace(valid, trigger_bars=(observation(A, "bar:a", known_at=T+MINUTE),
                                      valid.trigger_bars[1]))
+    unfinalized = replace(
+        valid.trigger_bars[0],
+        bar=replace(valid.trigger_bars[0].bar, finalized=False),
+    )
+    with pytest.raises(ValueError, match="finalized"):
+        replace(valid, trigger_bars=(unfinalized, valid.trigger_bars[1]))
+    changed_metadata = replace(
+        valid.trigger_bars[0],
+        instrument=replace(A, currency="EUR"),
+    )
+    with pytest.raises(ValueError, match="exact"):
+        replace(valid, trigger_bars=(changed_metadata, valid.trigger_bars[1]))
     with pytest.raises(ValueError, match="session"):
         replace(valid, session_start=T)
     with pytest.raises(ValueError, match="slot"):

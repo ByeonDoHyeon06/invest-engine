@@ -74,8 +74,12 @@ class UniverseDecisionFrame:
             raise ValueError("frame trigger bars must contain BarObservation values")
 
         for instrument, observation in zip(self.instruments, self.trigger_bars, strict=True):
-            if observation.instrument.key != instrument.key:
-                raise ValueError("trigger bar instrument must match frame instrument")
+            if observation.instrument != instrument:
+                raise ValueError(
+                    "trigger bar must match exact configured instrument metadata"
+                )
+            if not observation.bar.finalized:
+                raise ValueError("trigger bar must be finalized")
             if (
                 observation.bar.interval != _ONE_MINUTE
                 or observation.bar.start != instant - _ONE_MINUTE

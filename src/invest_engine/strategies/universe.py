@@ -47,6 +47,8 @@ class UniverseFrameCoordinator:
             raise ValueError("universe instruments must share one market")
         if len({instrument.currency for instrument in ordered}) != 1:
             raise ValueError("universe instruments must share one currency")
+        if any(instrument.currency != "USD" for instrument in ordered):
+            raise ValueError("v1 universe instruments must use USD")
         if bar_interval != _ONE_MINUTE:
             raise ValueError("universe frames currently require one-minute bars")
         if (
@@ -72,6 +74,7 @@ class UniverseFrameCoordinator:
         self._instrument_by_key = {instrument.key: instrument for instrument in ordered}
         self._observations: list[BarObservation] = []
         self._bar_keys: set[tuple[str, timedelta | None, datetime]] = set()
+        self._pending_by_end: dict[datetime, dict[str, BarObservation]] = {}
         self._seen_ids: set[str] = set()
         self._last_ordinal = -1
         self._last_known: datetime | None = None
@@ -110,6 +113,11 @@ class UniverseFrameCoordinator:
         self._bar_keys = {
             key for key in self._bar_keys if key[0] != instrument.key
         }
+        for end in tuple(self._pending_by_end):
+            pending = self._pending_by_end[end]
+            pending.pop(instrument.key, None)
+            if not pending:
+                del self._pending_by_end[end]
 
     def accept(self, event: EventEnvelope[MarketPayload]) -> None:
         if self._halt_reason is not None:
@@ -135,6 +143,8 @@ class UniverseFrameCoordinator:
             raise InvalidEvent("universe coordinator accepts only TIME bars")
         if event.payload.interval != self.bar_interval:
             raise InvalidEvent("bar interval does not match universe interval")
+        if event.payload.end - event.payload.start != self.bar_interval:
+            raise InvalidEvent("bar duration does not match universe interval")
         if not event.payload.finalized:
             raise InvalidEvent("unfinalized bar cannot enter a universe frame")
         if (
@@ -145,6 +155,9 @@ class UniverseFrameCoordinator:
         instrument = event.instrument_id
         if instrument is None or instrument.key not in self._instrument_by_key:
             raise InvalidEvent("bar instrument is outside the configured universe")
+        configured_instrument = self._instrument_by_key[instrument.key]
+        if instrument != configured_instrument:
+            raise InvalidEvent("bar instrument metadata differs from configured universe")
 
         known_at = max(event.available_at, event.received_at)
         if self._last_known is not None and known_at < self._last_known:
@@ -173,12 +186,11 @@ class UniverseFrameCoordinator:
         self._last_known = known_at
         self._observations.append(observation)
         self._bar_keys.add(bar_key)
+        self._pending_by_end.setdefault(event.payload.end, {})[
+            instrument.key
+        ] = observation
         if len(self._observations) > self.max_bars:
             excess = len(self._observations) - self.max_bars
-            for old in self._observations[:excess]:
-                self._bar_keys.remove(
-                    (old.instrument.key, old.bar.interval, old.bar.start)
-                )
             del self._observations[:excess]
 
     def finalize(self, as_of: datetime) -> UniverseFrameOutcome:
@@ -192,6 +204,11 @@ class UniverseFrameCoordinator:
             self._halt_reason = f"{type(exc).__name__}: {exc}"
             raise
         self._finalized_watermark = outcome.as_of
+        self._pending_by_end = {
+            end: pending
+            for end, pending in self._pending_by_end.items()
+            if end > outcome.as_of
+        }
         return outcome
 
     def _finalize(self, as_of: datetime) -> UniverseFrameOutcome:
@@ -203,11 +220,7 @@ class UniverseFrameCoordinator:
             and instant < self._finalized_watermark
         ):
             raise InvalidEvent("finalization cannot move behind prior watermark")
-        trigger_by_key = {
-            observation.instrument.key: observation
-            for observation in self._observations
-            if observation.bar.end == instant
-        }
+        trigger_by_key = self._pending_by_end.get(instant, {})
         missing = tuple(
             instrument.key
             for instrument in self.instruments
@@ -245,6 +258,7 @@ class UniverseFrameCoordinator:
         elif (
             elapsed >= self.checkpoint_interval
             and instant <= session_end - timedelta(hours=1)
+            and instant < flatten_at
             and elapsed % self.checkpoint_interval == timedelta(0)
         ):
             kind = UniverseCheckpointKind.REBALANCE

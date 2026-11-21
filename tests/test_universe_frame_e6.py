@@ -195,18 +195,17 @@ def test_rebalance_window_always_reserves_the_final_session_hour() -> None:
 
 def test_late_bar_after_finalized_watermark_halts_coordinator() -> None:
     checkpoint = SESSION_START + timedelta(minutes=30)
-    events = (
-        bar_event(A, "bar:a:1000", checkpoint, 0),
-        bar_event(B, "bar:b:1000", checkpoint, 1),
-    )
-    coordinator, outcome = finalize(events, checkpoint)
-    assert outcome.status is UniverseFrameStatus.COMPLETE
+    coordinator = UniverseFrameCoordinator(calendar(), (A, B))
+    coordinator.accept(bar_event(A, "bar:a:1000", checkpoint, 0))
+    outcome = coordinator.finalize(checkpoint)
+    assert outcome.status is UniverseFrameStatus.DATA_UNAVAILABLE
+    assert outcome.missing_instrument_keys == (B.key,)
 
     late = bar_event(
-        A,
-        "bar:a:0959:late",
-        checkpoint - MINUTE,
-        2,
+        B,
+        "bar:b:1000:late",
+        checkpoint,
+        1,
         known_at=checkpoint + MINUTE,
     )
     with pytest.raises(InvalidEvent, match="watermark"):
@@ -308,3 +307,82 @@ def test_invalidate_history_removes_only_one_instrument_without_rewinding_stream
         coordinator.last_known,
         coordinator.finalized_watermark,
     ) == audit_before
+
+
+def test_universe_requires_usd_and_exact_configured_instrument_metadata() -> None:
+    eur_a = replace(A, currency="EUR")
+    eur_b = replace(B, currency="EUR")
+    with pytest.raises(ValueError, match="USD"):
+        UniverseFrameCoordinator(calendar(), (eur_a, eur_b))
+
+    coordinator = UniverseFrameCoordinator(calendar(), (A, B))
+    changed_symbol = replace(A, symbol="AAA.NEW")
+    event = replace(
+        bar_event(A, "bar:a:1000", SESSION_START + 30 * MINUTE, 0),
+        instrument_id=changed_symbol,
+    )
+    with pytest.raises(InvalidEvent, match="metadata"):
+        coordinator.accept(event)
+    assert coordinator.halt_reason is not None
+
+
+def test_bar_duration_must_equal_declared_interval() -> None:
+    checkpoint = SESSION_START + timedelta(minutes=30)
+    event = bar_event(A, "bar:a:bad-duration", checkpoint, 0)
+    event = replace(
+        event,
+        payload=replace(event.payload, start=checkpoint - 2 * MINUTE),
+    )
+    coordinator = UniverseFrameCoordinator(calendar(), (A, B))
+
+    with pytest.raises(InvalidEvent, match="duration"):
+        coordinator.accept(event)
+    assert coordinator.halt_reason is not None
+
+
+def test_bounded_history_keeps_pending_triggers_and_duplicate_identity() -> None:
+    checkpoint = SESSION_START + timedelta(minutes=30)
+    pending = UniverseFrameCoordinator(calendar(), (A, B), max_bars=2)
+    pending.accept(bar_event(A, "bar:a:1000", checkpoint, 0))
+    pending.accept(
+        bar_event(
+            A,
+            "bar:a:0958:delayed",
+            checkpoint - 2 * MINUTE,
+            1,
+            known_at=checkpoint,
+        )
+    )
+    pending.accept(bar_event(B, "bar:b:1000", checkpoint, 2))
+    assert pending.finalize(checkpoint).status is UniverseFrameStatus.COMPLETE
+
+    first_end = SESSION_START + MINUTE
+    duplicate = UniverseFrameCoordinator(calendar(), (A, B), max_bars=1)
+    duplicate.accept(bar_event(A, "bar:a:first", first_end, 0))
+    duplicate.accept(bar_event(B, "bar:b:second", first_end + MINUTE, 1))
+    repeated_interval = bar_event(
+        A,
+        "bar:a:duplicate-interval",
+        first_end,
+        2,
+        known_at=first_end + 2 * MINUTE,
+    )
+    with pytest.raises(InvalidEvent, match="duplicate"):
+        duplicate.accept(repeated_interval)
+    assert duplicate.halt_reason is not None
+
+
+def test_checkpoint_after_flatten_is_never_a_rebalance() -> None:
+    checkpoint_interval = timedelta(minutes=100)
+    after_flatten = SESSION_START + timedelta(minutes=300)
+    coordinator = UniverseFrameCoordinator(
+        calendar(),
+        (A, B),
+        checkpoint_interval=checkpoint_interval,
+    )
+    coordinator.accept(bar_event(A, "bar:a:after-flatten", after_flatten, 0))
+    coordinator.accept(bar_event(B, "bar:b:after-flatten", after_flatten, 1))
+
+    outcome = coordinator.finalize(after_flatten)
+    assert outcome.status is UniverseFrameStatus.NO_ACTION
+    assert outcome.reason_codes == ("NO_ACTION_OUTSIDE_CHECKPOINT_SCHEDULE",)
