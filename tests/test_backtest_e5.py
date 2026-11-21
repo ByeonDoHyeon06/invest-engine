@@ -135,6 +135,7 @@ def test_deterministic_and_same_instance_refused(tmp_path: Path):
     b = make_runner().run(feed())
     assert a == b
     assert a.run_sha256 == b.run_sha256
+    assert a.run_sha256 == "a672226e12320db5baa11b48bf408c3296fcd9df07fa89e9e15b2e23c69b3642"
     a.export(tmp_path)
     assert "dataset_sha256" in (tmp_path / "report.json").read_text()
     assert len((tmp_path / "decisions.jsonl").read_text().splitlines()) == 5

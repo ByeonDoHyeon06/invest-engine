@@ -113,6 +113,7 @@ def propose_simulated_intents(
     state: TradingState, config: TradingConfig,
     marks: tuple[MarketMark, ...], as_of: datetime,
     max_mark_age: timedelta = timedelta(minutes=1),
+    target_equity_by_currency: tuple[tuple[str, Decimal], ...] | None = None,
 ) -> tuple[OrderIntent, ...]:
     """Compute deterministic delta intents; does not submit, reserve, fill, or FX.
 
@@ -127,6 +128,25 @@ def propose_simulated_intents(
     by_key = {mark.instrument.key: mark for mark in marks}
     if len(by_key) != len(marks):
         raise ValueError("conflicting duplicated market marks")
+    target_equity: dict[str, Decimal] | None = None
+    if target_equity_by_currency is not None:
+        if not isinstance(target_equity_by_currency, tuple):
+            raise ValueError("target equity rows must be an immutable tuple")
+        target_equity = {}
+        for currency, value in target_equity_by_currency:
+            if not isinstance(currency, str) or currency in target_equity:
+                raise ValueError("target equity currencies must be unique strings")
+            config.cash_rules(currency)
+            target_equity[currency] = _decimal(
+                value,
+                field="target_equity",
+                positive=True,
+            )
+        missing = {
+            plan.instrument.currency for plan in plans
+        } - target_equity.keys()
+        if missing:
+            raise ValueError("target equity is missing a plan currency")
     for plan in sorted(plans, key=lambda p: p.instrument.key):
         inst = plan.instrument
         if inst.key in seen:
@@ -150,9 +170,13 @@ def propose_simulated_intents(
             continue
         with localcontext() as ctx:
             ctx.prec = 64
-            equity_cost = cash.settled + sum(
-                (p.quantity * p.average_cost for p in state.positions
-                 if p.instrument.currency == inst.currency), Decimal(0)
+            equity_cost = (
+                target_equity[inst.currency]
+                if target_equity is not None
+                else cash.settled + sum(
+                    (p.quantity * p.average_cost for p in state.positions
+                     if p.instrument.currency == inst.currency), Decimal(0)
+                )
             )
             held = state.position(inst)
             held_qty = held.quantity if held is not None else Decimal(0)
