@@ -16,7 +16,14 @@ from invest_engine.strategies.orb import ORBLongStrategy, ORBParameters
 from invest_engine.strategies.orb_screen import ORBScreen, ScreenedORB
 
 COSTS = ("base", "stress")
-SOURCE = "Alpaca raw SIP v4 screen; reduced-turnover reused 2022 study"
+SOURCE = "Alpaca raw SIP v4 screen; fixed reduced-turnover research"
+REGISTERED_MONTHS = {2022: MONTHS, 2023: (1, 4, 7, 10)}
+
+
+def registered_window(year, month):
+    if type(year) is not int or type(month) is not int or month not in REGISTERED_MONTHS.get(year, ()):
+        raise ValueError("UNREGISTERED_TURNOVER_WINDOW")
+    return year, month
 SCREENS = {
     "orb-volume-control": None,
     "orb-weekly": ORBScreen(once_per_week=True),
@@ -34,19 +41,21 @@ def make_strategy(kind):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("symbol", choices=SYMBOLS)
-    parser.add_argument("month", type=int, choices=MONTHS)
+    parser.add_argument("month", type=int)
+    parser.add_argument("--year", type=int, choices=tuple(REGISTERED_MONTHS), default=2022)
     args = parser.parse_args()
-    symbol, month = args.symbol, args.month
+    symbol = args.symbol
+    year, month = registered_window(args.year, args.month)
     key, secret = os.environ.get("ALPACA_DATA_KEY"), os.environ.get("ALPACA_DATA_SECRET")
     if not key or not secret:
         raise SystemExit("MISSING_DATA_CREDENTIALS")
     headers = {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret}
-    report = {"symbol": symbol, "month": month, "year": 2022, "planned_arms": 12,
-              "study_schema": "alpaca-sip-reduced-turnover-v1", "status": "SOURCE_ERROR",
+    report = {"symbol": symbol, "month": month, "year": year, "planned_arms": 12,
+              "study_schema": "alpaca-sip-reduced-turnover-v1" if year == 2022 else "alpaca-sip-turnover-temporal-2023-v1", "status": "SOURCE_ERROR",
               "holdout_accessed": False, "execution_certified": False}
     rows, errors = [], []
     try:
-        inst, sessions, first, last = build_grid(symbol, month)
+        inst, sessions, first, last = build_grid(symbol, month, year)
         ca, ca_hash = actions(symbol, first, last, headers)
         action_counts = {kind: sum(x["kind"] == kind for x in ca) for kind in sorted({x["kind"] for x in ca})}
         report.update({"first_session": str(first), "last_session": str(last),
@@ -75,15 +84,24 @@ def main():
                             if kind == "no-trade" else
                             BuyHoldBaseline(MINUTE, TARGET, D("0.015"), retry_each_session=True)
                             if kind == "hold-retry" else make_strategy(kind))
-                        result = run(inst, events, calendar, strat, cost, SOURCE, window,
+                        result = run(inst, events, calendar, strat, cost, f"{SOURCE} {year}", window,
                                      first_entry_only=kind == "hold-retry",
-                                     session_flat=kind in SCREENS, e514=True, fee_replay=True)
-                        row = {"symbol": symbol, "month": month, "year": 2022,
+                                     session_flat=kind in SCREENS, e514=True, fee_replay=True,
+                                     expanded_fee_dates=year == 2023)
+                        row = {"symbol": symbol, "month": month, "year": year,
                                "strategy": kind, "cost": cost, **result}
                         rows.append(row)
                         print("TURNOVER_RUN "+json.dumps(row), flush=True)
                     except Exception as exc:
-                        errors.append({"strategy": kind, "cost": cost, "error_type": type(exc).__name__})
+                        error = {"strategy": kind, "cost": cost, "error_type": type(exc).__name__}
+                        # Allowlist only stable public fee error codes; never log raw provider errors.
+                        if str(exc) in {
+                            "FEE_AUDIT_UNCOVERED_CHARGE_DATE", "UNCOVERED_DATED_FEE_ORDER",
+                            "UNCOVERED_OR_CROSS_DAY_DATED_FEE_FILL", "INVALID_DATED_FEE_CONFIG",
+                            "UNCOVERED_OR_AMBIGUOUS_REGULATORY_DATE",
+                        }:
+                            error["error_code"] = str(exc)
+                        errors.append(error)
                         print("TURNOVER_ARM_FAILED "+json.dumps(errors[-1]), flush=True)
             report["status"] = "PROVISIONAL_COMPLETE" if len(rows) == 12 else "PARTIAL"
     except Exception as exc:
@@ -91,7 +109,7 @@ def main():
         if str(exc) in {"HTTP_400", "HTTP_401", "HTTP_403", "HTTP_429"}:
             report["error_code"] = str(exc)
     report["errors"] = errors
-    save(f"alpaca-reduced-turnover-{symbol}-{month}", rows, report)
+    save(f"alpaca-reduced-turnover-{year}-{symbol}-{month}", rows, report)
     if report["status"] in ("SOURCE_ERROR", "PARTIAL"):
         raise SystemExit("TURNOVER_STUDY_INCOMPLETE")
 

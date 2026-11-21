@@ -16,6 +16,7 @@ from invest_engine.domain.primitives import AssetClass, Market, _decimal
 from invest_engine.research.report import BacktestReport, FillTrace, sha256
 from invest_engine.trading.regulatory import US_2022 as US_2022
 from invest_engine.trading.regulatory import USRegulatorySchedule as USRegulatorySchedule
+from invest_engine.trading.regulatory import rate_identity, schedule_for_date
 
 D = Decimal
 CENT = D("0.01")
@@ -82,7 +83,7 @@ def _ceil_cent(amount: Decimal) -> Decimal:
 
 def audit_us_fixed_fills(
     report: BacktestReport, events: tuple[EventEnvelope[MarketPayload], ...],
-    assumption: FeeAssumption, *, schedule: USRegulatorySchedule = US_2022,
+    assumption: FeeAssumption, *, schedule: USRegulatorySchedule | tuple[USRegulatorySchedule, ...] = US_2022,
 ) -> FixedFillCostAudit:
     """Reprice the observed simulated US equity/ETF tape, not the replay.
 
@@ -107,14 +108,18 @@ def audit_us_fixed_fills(
     if sha256(tuple(canonical_bytes(e).hex() for e in events)) != report.dataset_sha256:
         raise ValueError("FEE_AUDIT_DATASET_MISMATCH")
     dates: dict[str, date] = {}
+    rates: dict[date, USRegulatorySchedule] = {}
     for event in events:
         bar = event.payload
         assert isinstance(bar, Bar)
         if event.event_id in dates:
             raise ValueError("FEE_AUDIT_DUPLICATE_EVENT")
         day = bar.start.astimezone(ET).date()
-        if not schedule.covers(day):
-            raise ValueError("FEE_AUDIT_UNCOVERED_CHARGE_DATE")
+        if day not in rates:
+            try:
+                rates[day] = schedule_for_date(schedule, day)
+            except ValueError as exc:
+                raise ValueError("FEE_AUDIT_UNCOVERED_CHARGE_DATE") from exc
         dates[event.event_id] = day
     grouped: dict[str, list[tuple[FillTrace, date]]] = {}
     seen: set[str] = set()
@@ -147,9 +152,10 @@ def audit_us_fixed_fills(
             sec = D(0)
             taf = D(0)
             if side == "SELL":
-                sec = _ceil_cent(gross * schedule.sec_rate)
-                taf = sum((_ceil_cent(min(f.quantity * schedule.taf_per_share,
-                                         schedule.taf_cap_per_trade))
+                rate = rates[day]
+                sec = _ceil_cent(gross * rate.sec_rate)
+                taf = sum((_ceil_cent(min(f.quantity * rate.taf_per_share,
+                                         rate.taf_cap_per_trade))
                            for f, _ in records), D(0))
             original = sum((f.fee + f.tax for f, _ in records), D(0))
             orders.append(OrderCost(intent_id, side, day, len(records), gross, qty,
@@ -163,10 +169,9 @@ def audit_us_fixed_fills(
         adjusted = pnl + before - after
         # Report serializer has datetime support, but not date; pin dates
         # explicitly (ISO) rather than altering legacy canonical serialization.
-        policy_hash = sha256((schedule.version, schedule.start.isoformat(),
-                              schedule.end_exclusive.isoformat(), schedule.sec_rate,
-                              schedule.taf_per_share, schedule.taf_cap_per_trade,
-                              schedule.source_urls, assumption))
+        policy_hash = (sha256((*rate_identity(schedule), assumption))
+                       if isinstance(schedule, USRegulatorySchedule) else
+                       sha256((tuple(rate_identity(s) for s in schedule), assumption)))
         order_identity = tuple((o.intent_id, o.side, o.assumed_charge_date.isoformat(),
                                 o.executions, o.gross, o.quantity, o.original_cost,
                                 o.commission, o.sec_fee, o.taf) for o in orders)

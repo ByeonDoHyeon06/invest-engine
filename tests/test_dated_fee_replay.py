@@ -1,13 +1,15 @@
 """E5.14b.2 synthetic replay tests for dated US charges (not brokerage)."""
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal as D
 
 import pytest
 
 from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.primitives import InstrumentId, Market, Money
-from invest_engine.trading.dated_fees import USDatedFeeConfig
+from invest_engine.trading.dated_fees import (
+    EXPANDED_FEE_VERSION, EXPANDED_RATE_IDENTITY, USDatedFeeConfig,
+)
 from invest_engine.trading.journal import SQLiteTradingJournal
 from invest_engine.trading.ledger import TradingStatus
 from invest_engine.trading.models import DecisionStatus, OrderIntent, Side, SellSettlementMode
@@ -140,3 +142,27 @@ def test_fee_schedule_identity_cannot_be_overridden():
         config(sell_tax_rate=D("0.01"))
     with pytest.raises(ValueError, match="INVALID_DATED_FEE_CONFIG"):
         config(fee_policy_version="unrecognized")
+
+
+def test_expanded_policy_selects_exact_effective_dates_and_keeps_legacy_default():
+    cfg = config(fee_policy_version=EXPANDED_FEE_VERSION,
+                 regulatory_identity=EXPANDED_RATE_IDENTITY)
+    for day, sec, taf in (
+        (date(2022, 12, 31), "2.29", "6.49"),
+        (date(2023, 1, 1), "2.29", "7.27"),
+        (date(2023, 2, 26), "2.29", "7.27"),
+        (date(2023, 2, 27), "0.80", "7.27"),
+        (date(2023, 12, 31), "0.80", "7.27"),
+    ):
+        assert cfg.charge_components(D(0), D(1), D("100000"), Side.SELL,
+                                     charge_day=day)[1:] == (D(sec), D(taf))
+    with pytest.raises(ValueError, match="UNCOVERED"):
+        cfg.schedule_for_day(date(2024, 1, 1))
+    with pytest.raises(ValueError, match="CHARGE_DATE_REQUIRED"):
+        cfg.charge_components(D(0), D(1), D(1), Side.SELL)
+    with pytest.raises(ValueError, match="INVALID_DATED_FEE_CONFIG"):
+        config(fee_policy_version=EXPANDED_FEE_VERSION)
+    with pytest.raises(ValueError, match="INVALID_DATED_FEE_CONFIG"):
+        config(regulatory_identity=EXPANDED_RATE_IDENTITY)
+    assert config().charge_components(D(0), D(1), D("100000"), Side.SELL)[1:] == (
+        D("2.29"), D("6.49"))

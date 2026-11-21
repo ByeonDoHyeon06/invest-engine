@@ -49,4 +49,40 @@ US_2022 = USRegulatorySchedule(
     "us-covered-equity-2022-v1",
 )
 
+# Each intersection has independently sourced effective boundaries. Do not
+# extend this research table beyond calendar 2023 without another rate audit.
+US_2023_EARLY = USRegulatorySchedule(
+    date(2023, 1, 1), date(2023, 2, 27), D("0.00002290"),
+    D("0.000145"), D("7.27"),
+    ("https://www.sec.gov/newsroom/press-releases/2023-15",
+     "https://www.govinfo.gov/content/pkg/FR-2020-10-20/pdf/2020-23141.pdf"),
+    "us-covered-equity-2023-early-v1",
+)
+US_2023_LATE = USRegulatorySchedule(
+    date(2023, 2, 27), date(2024, 1, 1), D("0.00000800"),
+    D("0.000145"), D("7.27"),
+    ("https://www.sec.gov/newsroom/press-releases/2023-15",
+     "https://www.sec.gov/newsroom/press-releases/2023-41",
+     "https://www.sec.gov/rules-regulations/fee-rate-advisories/2024-2",
+     "https://www.govinfo.gov/content/pkg/FR-2020-10-20/pdf/2020-23141.pdf"),
+    "us-covered-equity-2023-late-v1",
+)
+US_2022_2023 = (US_2022, US_2023_EARLY, US_2023_LATE)
+RateIdentity = tuple[str, str, str, Decimal, Decimal, Decimal, tuple[str, ...]]
 
+
+def rate_identity(schedule: USRegulatorySchedule) -> RateIdentity:
+    return (schedule.version, schedule.start.isoformat(),
+            schedule.end_exclusive.isoformat(), schedule.sec_rate,
+            schedule.taf_per_share, schedule.taf_cap_per_trade, schedule.source_urls)
+
+
+def schedule_for_date(
+    schedules: USRegulatorySchedule | tuple[USRegulatorySchedule, ...],
+    day: date,
+) -> USRegulatorySchedule:
+    table = (schedules,) if isinstance(schedules, USRegulatorySchedule) else schedules
+    matches = tuple(s for s in table if s.covers(day))
+    if len(matches) != 1:
+        raise ValueError("UNCOVERED_OR_AMBIGUOUS_REGULATORY_DATE")
+    return matches[0]
