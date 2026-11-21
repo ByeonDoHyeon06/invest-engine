@@ -47,6 +47,17 @@ E3 RiskDecision → virtual outbox (no broker)
 - Portfolio allocation fraction is computed **per currency without implicit FX**. Global cross-currency optimization remains future research; E3 hard risk limits remain authoritative.
 - No auto-generated market fills, no exchange order matching, no actual Tax/FX/broker live API, no ML, no overfitted performance claim.
 
+### 3.1 Additive multi-symbol portfolio boundary (local candidate)
+
+[ADR-0035](adr/0035-multisymbol-portfolio-decision-boundary.md) adds a separate offline-only path without changing `StrategyRunner`:
+
+- immutable `UniverseDecisionFrame`/`UniverseFrameOutcome` contracts distinguish `COMPLETE`, `DATA_UNAVAILABLE` and `NO_ACTION`;
+- `UniverseFrameCoordinator` consumes contiguous causal bar events, finalizes only at explicit watermarks, rejects late/duplicate/mixed-session input and never ranks a partial universe;
+- `PortfolioStrategyRunner` supplies an immutable causal history to a trusted `PortfolioStrategy`, then validates the complete ordered signal batch, trigger lineage, manifest identity and LONG/gross exposure envelope; and
+- pre-split history invalidation removes only the affected instrument's observations without rewinding stream audit state or resetting strategy state.
+
+This implementation is in-memory and locally verified only until PR/CI evidence exists. It does **not** implement the shared-account historical coordinator, target allocation/order lifecycle, portfolio report, `xs-slot-momentum@1.0.0`, controls, real-data workflow or profitability study. Those remain staged PR 2/PR 3 work under [Issue #65](https://github.com/ByeonDoHyeon06/invest-engine/issues/65). No path submits an order or changes Paper/Live authority.
+
 ## 4. Verification
 
 Test files: `tests/test_strategy_e4.py`, `test_features_e4.py`, `test_orb_e4.py`, `test_allocation_e4.py`.

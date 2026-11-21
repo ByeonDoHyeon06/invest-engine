@@ -1,10 +1,10 @@
 # Multi-Symbol Intraday Slot-Momentum Research Design
 
-**Status:** Proposed for user approval
+**Status:** Accepted for staged offline implementation. PR 1 contracts are implemented on a local feature branch; PR/CI review is pending. PR 2 shared-account execution and PR 3 strategy/research remain pending.
 
 **Date:** 2026-11-20
 
-**Tracking:** E5 #6 and E6 #7; create a dedicated implementation issue after approval
+**Tracking:** [Issue #65](https://github.com/ByeonDoHyeon06/invest-engine/issues/65), E5 #6 and E6 #7; decision boundary: [ADR-0035](../../adr/0035-multisymbol-portfolio-decision-boundary.md)
 
 **Authority:** Offline research only. This design does not authorize Paper or Live trading and does not change the accepted E6.7 `Engine()` contract.
 
@@ -249,9 +249,9 @@ Even a passing bar-based candidate cannot advance to Paper. QuoteTick/TradeTick 
 
 This is planned as three reviewable PRs under one dedicated issue:
 
-1. universe-frame and portfolio-strategy contracts with synthetic causal/barrier tests;
-2. shared-account historical coordinator, position-cycle reporting and old-hash compatibility tests;
-3. frozen strategy, controls, the exact `US20-SLOT-V1` October/November 2022 provisional workflow and result reconciliation.
+1. **Implemented locally; PR/CI pending:** universe-frame and portfolio-strategy contracts with synthetic causal/barrier tests;
+2. **Pending:** shared-account historical coordinator, position-cycle reporting and old-hash compatibility tests;
+3. **Pending:** frozen strategy, controls, the exact `US20-SLOT-V1` October/November 2022 provisional workflow and result reconciliation.
 
 The first implementation PR must add an ADR for the new portfolio decision boundary. `docs/STATUS.md`, `docs/ROADMAP.md`, E5 #6 and E6 #7 are updated with evidence at each merge. No PR checks an E5/E6 acceptance box merely because code tests pass.
 

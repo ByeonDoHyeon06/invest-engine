@@ -1,6 +1,6 @@
 # AGENTS.md — 작업 에이전트용 지속 컨텍스트
 
-**Latest / 2026-11-20:** #52, #53, #54, #55, #56 merged; #57 raw minute pilot merged f4f1038 (60 arms, no profitable active variant); reduced-turnover study underway. 2,674 daily research arms, all five active rules negative; 22,393,263 raw SIP minute observations structurally audited, not execution-certified. E5 #6 / E6 #7 OPEN. Read [STATUS](docs/STATUS.md) for authoritative current state; older dated entries below are historical snapshots. LIVE NOT AUTHORIZED.
+**Latest / 2026-11-21:** #65 multi-symbol intraday foundation PR 1 is implemented on local branch `feat/multisymbol-portfolio-contracts` through `0049b56` plus this documentation reconciliation: fixed-universe explicit-watermark frames and portfolio batch validation only. Local 425 tests, Ruff, mypy 78 files, secret/diff checks pass; PR/CI pending. PR 2 shared-account backtest and PR 3 strategy/data study remain unimplemented. #62/#63 are separate green Draft PRs. E5 #6 / E6 #7 OPEN; LIVE NOT AUTHORIZED. Read [STATUS](docs/STATUS.md) for authoritative state.
 
 
 이 파일은 채팅 메모리에 의존하지 않고 invest-engine을 이어 개발하기 위한 작업 규칙이다.
@@ -36,6 +36,14 @@
 - [SDK 코드 예제 18개](docs/E6_7_SDK_EXAMPLES.md)는 구현 목표 계약이다. 구현 단계에서 임의로 API 명칭·기본값·권한 모델·호환성·예제를 변경하지 않는다. 변경 필요 시 먼저 사용자 승인 + ADR/명세/이슈/로드맵/예제/계약 테스트를 함께 갱신한다. 미지원 예제는 미지원으로 표시하며 기능을 숨기거나 안전 제한을 풀지 않는다.
 - [계획](docs/E6_7_UNIFIED_SDK.md) / [ADR-0034](docs/adr/0034-unified-sdk.md): E7 전 별도 오프라인 SDK 단계. 현재 #57 병합 완료, 저빈도 전략/증거 검증 우선; 계획 추가만으로 구현 완료 또는 실거래 승인 아님.
 - 단순 API와 고급 API는 같은 typed spec·검증 경로·기존 코어를 사용한다. SDK에서 내부 모듈 기능을 제거하거나 위험/증거 게이트를 우회하지 않는다. 기본값은 명시적 버전 프로필로 공개하고 기능 동등성/기존 CLI 호환성을 테스트한다.
+
+## 다중종목 인트라데이 연구 기반 (Issue #65)
+
+- [설계](docs/superpowers/specs/2026-11-20-multisymbol-intraday-slot-momentum-design.md)와 [ADR-0035](docs/adr/0035-multisymbol-portfolio-decision-boundary.md)가 권위 있는 경계다. 기존 `StrategyRunner`/`HistoricalBacktest` 계약은 변경하지 않는다.
+- PR 1 로컬 구현은 `UniverseFrameCoordinator`의 명시적 watermark, 완전한 고정 universe, `DATA_UNAVAILABLE`/`NO_ACTION` 분리, late-data halt와 `PortfolioStrategyRunner`의 ordered complete-target/trigger/노출 상한 검증까지만 포함한다.
+- 결측 종목을 빼고 순위를 계산하거나, watermark 뒤의 bar로 과거 frame을 고치거나, 플러그인 출력을 정렬·수선하지 않는다. 복구는 신뢰된 저널 replay로 새 coordinator를 구성한다.
+- 다음 단일 구현은 **PR 2 공유계좌 역사 backtest 조정·position-cycle 보고·기존 hash 호환성**이다. `xs-slot-momentum@1.0.0`, controls 및 실제 데이터 연구는 PR 3 전까지 구현·검증됐다고 쓰지 않는다.
+- 현재 근거는 로컬 425 tests/Ruff/mypy 78 files/secret guard뿐이며 PR/CI는 없다. 수익성, 실제 체결 가능성, Paper/Live 권한을 의미하지 않는다.
 
 ## E5 연구 엔진 경계
 - docs/E5_BACKTEST.md 및 ADR-0010 참고. E5.1은 보수적 Bar LIMIT 모델이지만 실제 체결 가능성을 보장하지 않는다.
