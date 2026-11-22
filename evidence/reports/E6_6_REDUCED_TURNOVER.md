@@ -1,0 +1,57 @@
+# E6.6 — Reduced-turnover research (candidate, 2026-11-20)
+Tracking #6 and #7. Parent #57 merged f4f1038; v4 run 44700445084, 12/12 jobs, 190,800 complete window-bars including overlapping warmups; six provisional windows, 60 arms, five dividend overlaps and one unsupported merger blocked. No candidate positive aggregate at either cost. All these windows have been observed; this is exploratory reused-sample research, not an independent test or verified expected return.
+
+## Fixed hypotheses and protocol
+Retain the stronger-volume ORB control (15-minute opening range, 2x same-minute volume, original ATR stop, 5% target) and matched cash and entered hold controls. Add three screens: a maximum of one emitted signal per instrument and UTC ISO week; minimum opening-range width 200 bps of first opening price; both together. The range floor is a volatility-capacity proxy only, not a prediction of returns or executable net reward. 200 bps is a fixed exploratory threshold above the modeled 130 bps stress round-trip commission+spread+impact proxy before regulatory fees; it is not an exact break-even calculation or a bound on actual costs. Do not tune thresholds on observed outcomes. Weekly cap counts signals, not fills; veto consumes the first otherwise qualified daily trigger, no retries later that session. UTC ISO weeks fit this fixed US regular-session panel, not a generic exchange-week contract. The original strategy remains unchanged; screens use causal finalized observations and snapshot state, preserve Risk, allocation, dated fee replay, and session-flat exit behavior.
+
+Same 12 declared symbol-months, AAPL/MSFT/NVDA/TSLA/AMZN/GOOG, Oct/Nov 2022, 20-session warmup. Same v4 corporate-action and strict minute-grid checks. Six strategies/controls × two costs = 144 intended arms; if coverage unchanged, 72 arms expected. Keep blocked/failed windows explicit, all independent USD100k accounts, no 2026 access or selection. Compare original volume-control rows against v4 on common windows, excluding source/version hashes and elapsed time; report matched net PnL, MDD, signals, fills, cost, entered-hold/cash excess and no-fill counts. Positive results demand independent data, no auto promotion. If no strategy passes, record rejection. Data rights, historical identity and PIT verification, Korean coverage, true costs remain open. Three new fixture tests; Core CI and historical research pending. No real-order access. SDK E6.7 agreed constructor and examples are unaffected; implementation remains later.
+
+## Verified #61 final result (2026-11-20)
+Merged d75727d. [Research 44704634903](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44704634903) all 12 jobs, 6 provisional windows and 72 arms, 6 action-blocked windows, no missing minutes or replay errors. [Core CI 44704634900](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44704634900) 405 tests each 3.12/3.13 and mypy 75 files. All 36 common cash/hold/volume-control rows matched #57 v4 on every field except strategy label, elapsed and three version-linked hashes. Independent $100k accounts, not sequential portfolio returns.
+
+| Strategy | Base PnL USD | Stress PnL USD | Base/stress fills | Base/stress modeled fees USD | Base/stress excess vs max(cash, entered hold) |
+|---|---:|---:|---:|---:|---:|
+| volume control | -269.13 | -1249.70 | 54/52 | 269.57/642.22 | -801.92/-1767.56 |
+| weekly | -118.55 | -552.38 | 26/26 | 130.00/321.84 | -651.34/-1070.24 |
+| range200 | +93.63 | -252.08 | 22/22 | 110.24/272.96 | -439.16/-769.94 |
+| combined | +64.63 | -162.80 | 14/14 | 70.31/174.06 | -468.16/-680.66 |
+
+Cash zero; entered hold -1459.11/-1458.12; all 6 entered both costs. Positive windows base/stress: volume 2/0, weekly 2/1, range 2/1, combined 2/1; range and combined have two no-fill windows per cost. Combined reduces stress loss 86.97% and fills 73.08%, but fails economic acceptance; no candidate promotion. A zero-trade window has no evidence of trading profitability.
+
+## Frozen temporal replication (protocol at registration)
+Use same six symbols and all six arms/costs without retuning, 2023 January/April/July/October (first month each quarter, 24 windows, 288 intended arms). Prior 20 full exchange sessions may include 2022; session calendar covers January prior December and July early close. A separate CI job enforces restricted years/months, no 2026 access; no credentials exposed or raw artifacts retained. Same v4 corporate-action screen, same strict grid, same raw SIP/costs/5% allocation, no missing bars invented. No exception relaxation. This is separate temporal sample replication, but the broader panel's 2023 structural and daily data were previously inspected; not an independently sealed holdout. Compare each strategy on complete both-cost common windows and entered hold/cash excess; report blocked windows, zero-trade counts and quarter dispersion. Do not tune thresholds or select a strategy because one cost variant is positive. No E5/E6 or live authorization. Three added panel fixtures (calendar-dependent ones run in provider workflow); CI and historical results pending. E6.7 SDK design unchanged.
+
+## Fee-date compatibility correction (protocol at registration)
+Initial temporal replay 44710818827 exhibited ValueError in all 12 arms of AAPL April/July despite complete 15,210/15,420 bar grids. The previous fee config and fixed-fill audit only cover May–Dec 2022. Corrected candidate explicitly selects versioned 2022–2023 SEC/FINRA date intersections only for the registered 2023 study (Jan 1 TAF 0.000145/share, $7.27 cap; Feb 27 SEC 0.000008 vs 0.00002290). ET trading day remains a provisional charge-date proxy. Legacy 2022 policy/identity and default audit unchanged; exact boundary, cross-year warmup, no-trade, replay/audit reconciliation and uncovered-date tests added. No retuning or relaxed gate. New CI/replay and prior economic regression pending; obsolete run is not evidence.
+
+## Final temporal replication evidence — 2026-11-20
+
+[#62](https://github.com/ByeonDoHyeon06/invest-engine/pull/62) temporal replication evidence complete (code `a3ab56b`, [run 44713239696](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239696)): 24/24 jobs, 14 eligible windows, 168/288 intended arms; 10 corporate-action blocks (8 warmup dividend overlaps, 2 unresolved cash merger), no replay errors; 375,660 observed/expected window-bars including warmups. All 14 hold pairs entered, 112 active arms end flat, no active arm exceeds max(cash, entered hold). Aggregate base/stress USD PnL volume -739.12/-1770.15, weekly -641.24/-1228.40, range -140.00/-249.32, combined -282.63/-361.69; hold +2323.67/+2024.59. No strategy promoted; not independent holdout. Core [44713239712](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239712) 412 passed/2 skipped each, mypy 75; legacy fee replay [44713239638](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239638) 20 jobs, 42 matched prior numeric/result rows (elapsed and three hashes excluded). This closes the frozen experiment, not E5/E6 gates. Final docs-only CI/review/merge pending.
+
+### Coverage and exclusions
+
+All 24 scheduled symbol-months finished successfully at workflow level. 14/24 eligible, 168 complete strategy/cost arms, 120 intended arms blocked before replay. Each eligible window has all 12 distinct arms and entered hold at both costs. AAPL, TSLA and GOOG 4 months each, AMZN July/October. MSFT and NVDA all four months blocked by dividend interval overlapping warmup, payment dates before evaluation start; source currency unspecified (date-only classifier, no cash ledger assertion). AMZN Jan/Apr unresolved cash_mergers unsupported type, not sufficient to infer economic dates or identity. No missing, duplicate or invalid minute observations on any 24 complete grids; no replay errors. Eligible window-bars 219,630; blocked 156,030; overlaps count as window observations, not distinct market ticks. Fixed action gate remained unchanged.
+
+| Strategy | Base/stress net USD | Base/stress fills | Base/stress total modeled charges USD | Base/stress stronger-baseline excess USD | Base/stress no-fill windows | Base/stress positive windows |
+|---|---:|---:|---:|---:|---:|---:|
+| cash | 0.00/0.00 | 0/0 | 0.00/0.00 | -4700.175/-4437.505 | 14/14 | 0/0 |
+| entered hold | 2323.67/2024.59 | 14/14 | 68.57/171.67 | -2376.505/-2412.915 | 0/0 | 9/9 |
+| volume control | -739.12/-1770.15 | 82/56 | 406.51/690.15 | -5439.295/-6207.655 | 1/3 | 3/0 |
+| weekly | -641.24/-1228.40 | 46/34 | 227.89/418.43 | -5341.415/-5665.905 | 3/4 | 0/0 |
+| range200 | -140.00/-249.32 | 14/10 | 69.53/123.89 | -4840.175/-4686.825 | 9/10 | 1/1 |
+| combined | -282.63/-361.69 | 12/8 | 59.28/98.50 | -4982.805/-4799.195 | 9/10 | 0/0 |
+
+Exact log PnL summed before display, preserving mills on fractional marked inventory; independent $100k accounts, not a compounded portfolio. Modeled charges include commissions and SEC/TAF (spread/impact reflected in fill prices). Stronger comparator independently takes max(cash, entered hold) per window/cost, diagnostic ex-post hurdle rather than tradable rule. All 112 active arms end flat; 0/112 strictly beat stronger comparator. No-fill arms have zero trade evidence; Range/Combined abstain in 9/14 base and 10/14 stress. Worst single-window stress MDD %: volume 0.388920, weekly 0.212700, range 0.141140, combined 0.104900, hold 1.477371. Range stress loss down 85.92%, fills 82.14%, modeled charges 82.05% vs original volume; combined loss down 79.57%, fills 85.71%, charges 85.73%. All candidates negative base and stress net and stronger-baseline excess. 2022 base positives of Range/Combined fail temporal replication. Lower turnover reduces loss, not proof of alpha. No candidate selection, no automatic promotion.
+
+### Quarter dispersion — USD base/stress
+
+| Evaluation month | Eligible windows | Entered hold | Volume control | Weekly | Range200 | Combined |
+|---|---:|---:|---:|---:|---:|---:|
+| Jan | 3 | 3429.96/3407.75 | -45.24/-292.54 | -182.46/-335.63 | 41.95/7.47 | -100.68/-104.90 |
+| Apr | 3 | -464.08/-682.30 | 80.07/-76.01 | -46.15/-76.01 | -46.15/-76.01 | -46.15/-76.01 |
+| Jul | 4 | 484.015/454.765 | -349.13/-638.92 | -172.29/-382.39 | 0.00/0.00 | 0.00/0.00 |
+| Oct | 4 | -1126.225/-1155.625 | -424.82/-762.68 | -240.34/-434.37 | -135.80/-180.78 | -135.80/-180.78 |
+
+Previously seen broader daily/structural data, uneven selected symbols, four months, overlapping warmups, retrospective action evidence, provisional bar/fill/fees and no independent holdout. No broker invoice verification or executable price claim. This is a reproducible rejection of these frozen hypotheses on eligible windows, not a profitability statement for every strategy or market. Permission/rights and independent data certification remain separate.
+
+Next: finalize #62 review/merge and reconcile parallel SDK design #63 (design only); E6.7a API inventory/contracts may proceed in parallel, implementation follows existing evidence prerequisites. Separately predeclare corporate-action coverage follow-up (warmup-only domestic cash dividends with complete dates/no entitlement, raw-price discontinuity and feature checks; investigate unresolved merger identity with provider evidence; never relax evaluation-window action gates or invent data). No new parameter tuning on this panel, no independent holdout access, provider/PIT/actual cost/KR evidence still open.
