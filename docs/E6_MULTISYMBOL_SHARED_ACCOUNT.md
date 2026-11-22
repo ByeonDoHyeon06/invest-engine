@@ -94,7 +94,7 @@ a672226e12320db5baa11b48bf408c3296fcd9df07fa89e9e15b2e23c69b3642
 
 PR-2 synthetic tests cover later-bar fills, deterministic replay, partial-fill cycles, entry expiry, replacement, incomplete/late data, unresolved exits/final inventory, shared caps, pending sale proceeds, stale marks and daily-loss exit overlay. Local full verification is recorded in `docs/STATUS.md`; stacked PR CI remains the merge gate.
 
-The current Core CI `pull_request.branches` allowlist does not include the PR-1 feature branch used as PR #69's stacked base. CI is therefore triggered against the exact PR head through a temporary eligible base, then the PR base is restored to `feat/multisymbol-portfolio-contracts` before review. The run's recorded `head_sha`, not the temporary comparison diff, is the code identity used as evidence.
+PR #69 adds `feat/multisymbol-portfolio-contracts` to the Core CI `pull_request.branches` allowlist so its stacked comparison runs normally on the exact PR head. Re-evaluate that temporary branch entry when PR #66 merges and PR #69 is retargeted to `main`.
 
 ## Explicitly still open
 
