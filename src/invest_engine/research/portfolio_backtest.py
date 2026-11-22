@@ -340,6 +340,12 @@ class _PortfolioReplay:
         while checkpoint <= final_checkpoint:
             checkpoints.append(checkpoint)
             checkpoint += interval
+        if (
+            session.start < final_checkpoint < session.end
+            and final_checkpoint not in checkpoints
+        ):
+            checkpoints.append(final_checkpoint)
+            checkpoints.sort()
         if not checkpoints:
             raise InvalidEvent("portfolio session has no decision checkpoint")
         session_id = f"{session.market.value}:{session.start.date().isoformat()}"

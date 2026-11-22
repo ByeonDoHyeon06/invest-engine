@@ -235,7 +235,7 @@ Expected: collection fails because `research.portfolio_backtest` does not exist.
 
 - [ ] **Step 3: Implement constructor validation and deterministic scheduling**
 
-Reject non-USD/mixed universe, incomplete instrument rules, non-immediate settlement, monitoring disabled, account-reference requirements, duplicate opening currencies and reused instances. Register calendar session windows from the first observed bar; schedule explicit half-hour watermarks from `session.start + checkpoint_interval` through `session.end - checkpoint_interval`; finalize a watermark only after the known clock advances beyond it or at EOF.
+Reject non-USD/mixed universe, incomplete instrument rules, non-immediate settlement, monitoring disabled, account-reference requirements, duplicate opening currencies and reused instances. Register calendar session windows from the first observed bar; schedule the regular `checkpoint_interval` grid and always include the independent flatten watermark at `session.end - checkpoint_interval`, even when it is off-grid; finalize a watermark only after the known clock advances beyond it or at EOF.
 
 - [ ] **Step 4: Implement the minimal checkpoint-to-order path**
 

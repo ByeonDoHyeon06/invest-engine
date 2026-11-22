@@ -43,6 +43,7 @@ class TwoSymbolRoundTripStrategy:
         *,
         target_fraction: D = D("0.10"),
         max_gross_target_fraction: D | None = None,
+        checkpoint_interval: timedelta = CHECKPOINT_INTERVAL,
     ) -> None:
         self.target_fraction = target_fraction
         self._manifest = PortfolioStrategyManifest(
@@ -50,7 +51,7 @@ class TwoSymbolRoundTripStrategy:
             "1.0.0",
             frozenset({Market.US}),
             MINUTE,
-            CHECKPOINT_INTERVAL,
+            checkpoint_interval,
             2,
             max_gross_target_fraction or target_fraction * 2,
         )
@@ -295,6 +296,66 @@ def test_two_symbols_share_one_monitored_account_and_fill_only_later() -> None:
     assert entry_notional / D("100000") == D("0.20")
     assert len(report.cycles) == 2
     assert all(cycle.entry_quantity == cycle.exit_quantity == D("100") for cycle in report.cycles)
+    assert report.account_report.by_currency_end == (("USD", D("101000")),)
+
+
+def test_flatten_checkpoint_is_scheduled_outside_rebalance_grid() -> None:
+    checkpoint_interval = timedelta(minutes=60)
+    first_checkpoint = SESSION_START + checkpoint_interval
+    flatten = SESSION_END - checkpoint_interval
+    backtest, strategy = make_backtest(
+        TwoSymbolRoundTripStrategy(checkpoint_interval=checkpoint_interval)
+    )
+    events = (
+        bar_event(A, "trigger:a", first_checkpoint, 0, price="100"),
+        bar_event(B, "trigger:b", first_checkpoint, 1, price="100"),
+        bar_event(
+            A,
+            "entry-fill:a",
+            first_checkpoint + MINUTE,
+            2,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(
+            B,
+            "entry-fill:b",
+            first_checkpoint + MINUTE,
+            3,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(A, "flatten:a", flatten, 4, price="105"),
+        bar_event(B, "flatten:b", flatten, 5, price="105"),
+        bar_event(
+            A,
+            "exit-fill:a",
+            flatten + MINUTE,
+            6,
+            price="105",
+            low="104",
+            high="107",
+        ),
+        bar_event(
+            B,
+            "exit-fill:b",
+            flatten + MINUTE,
+            7,
+            price="105",
+            low="104",
+            high="107",
+        ),
+        bar_event(A, "session-end:a", SESSION_END, 8, price="105"),
+        bar_event(B, "session-end:b", SESSION_END, 9, price="105"),
+    )
+
+    report = backtest.run(events)
+
+    assert len(strategy.calls) == 2
+    assert report.account_report.entry_fill_count == 2
+    assert report.account_report.exit_fill_count == 2
     assert report.account_report.by_currency_end == (("USD", D("101000")),)
 
 
