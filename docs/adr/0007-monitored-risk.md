@@ -30,4 +30,4 @@ E3.1/E3.2 evaluate pretrade risk using acquisition-cost exposure and have no cur
 
 Additional typed E3 events and policy-specific journal identity. Existing unmonitored test scenarios continue; monitored code requires caller-supplied as-of price, FX and baseline information. Session IDs are **not trusted trading-calendar evidence** until E7. Risk estimates are model outputs and do not guarantee a maximum realized loss.
 
-**See:** `docs/E3_MONITORING.md`, `docs/RISK_EXECUTION.md`, `docs/ENGINE_IO.md`.
+**See:** `docs/milestones/e3/E3_MONITORING.md`, `docs/RISK_EXECUTION.md`, `docs/ENGINE_IO.md`.

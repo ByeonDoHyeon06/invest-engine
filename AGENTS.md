@@ -1,6 +1,6 @@
 # AGENTS.md — 작업 에이전트용 지속 컨텍스트
 
-**Latest / 2026-11-22:** #62/#63/#67 merged; E6.7 has **two canonical design documents**: [SDK design and technical contracts](docs/E6_7_UNIFIED_SDK.md) and [23 code examples with expected outcomes](docs/E6_7_SDK_EXAMPLES.md). [ADR-0034](docs/adr/0034-unified-sdk.md) preserves design history. Four execution roots `simulation/research/evaluate/session`, common typed `source=`, additive advanced options and typed return/status contracts are planning-only. #66 multi-symbol PR remains separate; E5 #6 / E6 #7 OPEN; E7/E8 unauthorized.
+**Latest / 2026-11-22:** #62/#63/#67 merged; E6.7 has **two canonical design documents**: [SDK design and technical contracts](docs/milestones/e6.7/E6_7_UNIFIED_SDK.md) and [23 code examples with expected outcomes](docs/milestones/e6.7/E6_7_SDK_EXAMPLES.md). [ADR-0034](docs/adr/0034-unified-sdk.md) preserves design history. Four execution roots `simulation/research/evaluate/session`, common typed `source=`, additive advanced options and typed return/status contracts are planning-only. #66 multi-symbol PR remains separate; E5 #6 / E6 #7 OPEN; E7/E8 unauthorized.
 
 Latest frozen historical evidence: [#62](https://github.com/ByeonDoHyeon06/invest-engine/pull/62) 2023 frozen research merged (`41bbb23`): 24/24 jobs successful, 14 eligible symbol-months/168 arms, 10 corporate-action blocks, all candidate strategies fail both costs and stronger benchmark. [#63](https://github.com/ByeonDoHyeon06/invest-engine/pull/63) E6.7 streaming design merged (`791789f`), with user-approved 2026-11-22 public naming revision now in [PR #67](https://github.com/ByeonDoHyeon06/invest-engine/pull/67). Neither merge accepts E5/G1 or E6/G2, nor authorizes E7/E8.
 
@@ -12,7 +12,7 @@ Next: review #67 consistent SDK docs and E6.7a actual API/capability inventory. 
 1. README.md 읽기 (프로젝트 범위/원칙)
 2. docs/STATUS.md 읽기 (현재 단계·다음 실행 항목·블로커)
 3. docs/ROADMAP.md 읽기 (Epic 순서/DoD/의존성)
-4. E3 이하 개발 전 docs/ENGINE_IO.md · docs/ML_RESEARCH.md · docs/E3_SIMULATION.md · docs/E3_MONITORING.md · docs/E3_SETTLEMENT.md · ADR-0005/0006/0007/0008을 확인한다. E3의 엄격한 주문 JSON만 구현돼 있고, Run/Prediction JSON 예시는 아직 설계안이다.
+4. E3 이하 개발 전 docs/ENGINE_IO.md · docs/ML_RESEARCH.md · docs/milestones/e3/E3_SIMULATION.md · docs/milestones/e3/E3_MONITORING.md · docs/milestones/e3/E3_SETTLEMENT.md · ADR-0005/0006/0007/0008을 확인한다. E3의 엄격한 주문 JSON만 구현돼 있고, Run/Prediction JSON 예시는 아직 설계안이다.
 5. 수정할 모듈의 docs/ARCHITECTURE.md, DOMAIN.md, STRATEGIES.md, RISK_EXECUTION.md, VALIDATION.md, INTEGRATIONS.md와 docs/adr/ 읽기.
 6. GitHub의 열린 Issue/PR/CI 확인하여 진행 중 작업·실패를 먼저 해결. 의존 PR은 선행 검증 후 병합 또는 명시적 보류 사유를 기록한다.
 
@@ -36,13 +36,13 @@ Next: review #67 consistent SDK docs and E6.7a actual API/capability inventory. 
 
 ## E6.7 통합 SDK 계획 (Issue #59)
 - 사용자 확정 공개 SDK: inert `Engine()` + **four** operations `simulation`, `research`, `evaluate`, `session`; Simulation terminal `.historical()`/`.paper()`; no new `engine.backtest/engine.paper/engine.live`, no constructor mode. Existing working low-level `HistoricalBacktest` and CLI retained.
-- [SDK 코드 예제 23개](docs/E6_7_SDK_EXAMPLES.md)는 구현 목표 계약이다. 구현 단계에서 임의로 API 명칭·기본값·권한 모델·호환성·예제를 변경하지 않는다. 변경 필요 시 먼저 사용자 승인 + ADR/명세/이슈/로드맵/예제/계약 테스트를 함께 갱신한다. 미지원 예제는 미지원으로 표시하며 기능을 숨기거나 안전 제한을 풀지 않는다.
-- [계획](docs/E6_7_UNIFIED_SDK.md) / [ADR-0034](docs/adr/0034-unified-sdk.md): E7 전 별도 오프라인 SDK 단계. 현재 #57 병합 완료, 저빈도 전략/증거 검증 우선; 계획 추가만으로 구현 완료 또는 실거래 승인 아님.
-- **2026-11-22 사용자 승인 advanced-DX 개선:** typed operation-level `source=` for Simulation/Research/Session (`sources.local/dataset` historical, `sources.alpaca` managed streaming market data, `sources.manual` caller-fed). **Paper and Session both** support provider-managed or manual `ingest()`, only their authority differs (synthetic fills vs decision proposals). One-shot `evaluate(market_data=..., portfolio=...)` remains supplied snapshots. Common `strategy=`, supported `risk=`, synthetic `capital=`/`execution=`, optional operation-level advanced settings. Proposed public constructor names `risk.Limits`, `execution.Model`, `allocation.Weights` and `simulation.inspect()` must be verified at E6.7a. Advanced SDK never requires a separate public `HistoricalSimulationSpec/ResearchSpec → prepare/run` ceremony; low-level/internal typed specs and legacy E0–E6 Python/CLI preserved with full parity. Docs in use-case order [23 examples](docs/E6_7_SDK_EXAMPLES.md); see [public grammar](docs/E6_7_UNIFIED_SDK.md#typed-market-sources), [matrix](docs/E6_7_UNIFIED_SDK.md#compatibility-migration-and-acceptance), [streaming](docs/E6_7_UNIFIED_SDK.md#continuous-session-and-paper-runtime), [ADR](docs/adr/0034-unified-sdk.md). Strict source rights/PIT/calendar/fees/corporate/holdout/risk gates; actual broker order/account ownership stays external; E7/E8 separate.
+- [SDK 코드 예제 23개](docs/milestones/e6.7/E6_7_SDK_EXAMPLES.md)는 구현 목표 계약이다. 구현 단계에서 임의로 API 명칭·기본값·권한 모델·호환성·예제를 변경하지 않는다. 변경 필요 시 먼저 사용자 승인 + ADR/명세/이슈/로드맵/예제/계약 테스트를 함께 갱신한다. 미지원 예제는 미지원으로 표시하며 기능을 숨기거나 안전 제한을 풀지 않는다.
+- [계획](docs/milestones/e6.7/E6_7_UNIFIED_SDK.md) / [ADR-0034](docs/adr/0034-unified-sdk.md): E7 전 별도 오프라인 SDK 단계. 현재 #57 병합 완료, 저빈도 전략/증거 검증 우선; 계획 추가만으로 구현 완료 또는 실거래 승인 아님.
+- **2026-11-22 사용자 승인 advanced-DX 개선:** typed operation-level `source=` for Simulation/Research/Session (`sources.local/dataset` historical, `sources.alpaca` managed streaming market data, `sources.manual` caller-fed). **Paper and Session both** support provider-managed or manual `ingest()`, only their authority differs (synthetic fills vs decision proposals). One-shot `evaluate(market_data=..., portfolio=...)` remains supplied snapshots. Common `strategy=`, supported `risk=`, synthetic `capital=`/`execution=`, optional operation-level advanced settings. Proposed public constructor names `risk.Limits`, `execution.Model`, `allocation.Weights` and `simulation.inspect()` must be verified at E6.7a. Advanced SDK never requires a separate public `HistoricalSimulationSpec/ResearchSpec → prepare/run` ceremony; low-level/internal typed specs and legacy E0–E6 Python/CLI preserved with full parity. Docs in use-case order [23 examples](docs/milestones/e6.7/E6_7_SDK_EXAMPLES.md); see [public grammar](docs/milestones/e6.7/E6_7_UNIFIED_SDK.md#typed-market-sources), [matrix](docs/milestones/e6.7/E6_7_UNIFIED_SDK.md#compatibility-migration-and-acceptance), [streaming](docs/milestones/e6.7/E6_7_UNIFIED_SDK.md#continuous-session-and-paper-runtime), [ADR](docs/adr/0034-unified-sdk.md). Strict source rights/PIT/calendar/fees/corporate/holdout/risk gates; actual broker order/account ownership stays external; E7/E8 separate.
 - 단순 API와 고급 API는 같은 typed spec·검증 경로·기존 코어를 사용한다. SDK에서 내부 모듈 기능을 제거하거나 위험/증거 게이트를 우회하지 않는다. 기본값은 명시적 버전 프로필로 공개하고 기능 동등성/기존 CLI 호환성을 테스트한다.
 
 ## E5 연구 엔진 경계
-- docs/E5_BACKTEST.md 및 ADR-0010 참고. E5.1은 보수적 Bar LIMIT 모델이지만 실제 체결 가능성을 보장하지 않는다.
+- docs/milestones/e5/E5_BACKTEST.md 및 ADR-0010 참고. E5.1은 보수적 Bar LIMIT 모델이지만 실제 체결 가능성을 보장하지 않는다.
 - 보고서 PnL은 통화별로 분리, FX 미확인 시 자동 합산 금지. 신호생성 봉과 동일한 봉에서 체결 금지.
 - E5.1 (PR #23)은 병합. E5.2 (PR #24)은 오프라인 CLI/실험 manifest. E5.3 stop/target·갭 모델 검증 전 E5 전체를 완료라고 표시하지 않는다.
 - 실제 브로커 연결은 E8 승인 전 금지.
@@ -90,25 +90,25 @@ Next: review #67 consistent SDK docs and E6.7a actual API/capability inventory. 
 - Trusted internal strategies only; no Python code sandbox. LIVE NOT AUTHORIZED.
 
 ## E5.3 protection boundary (2026-11-17)
-- Read `docs/E5_PROTECTION.md` / ADR-0011 before changing bar-fill/protection logic.
+- Read `docs/milestones/e5/E5_PROTECTION.md` / ADR-0011 before changing bar-fill/protection logic.
 - Protective stop/target is opt-in offline stress approximation, not a broker order; activated only **after** a confirmed entry Fill observation, never same entry bar.
 - Unknown bar path uses stop-first, opening gap may be worse than planned stop; target requires strict penetration and adverse fill assumptions; all price/volume assumptions are version-pinned.
 - If a competing existing SELL order conflicts with a protective trigger in the same OHLCV bar, fail with explicit InvalidEvent; do not fabricate a causal ordering.
 - E5 is still in-progress pending full robustness/data provenance/cost/FX gates; no Live transport.
 
 ## E5.4 이후 지속 개발 규칙
-- [E5_ROBUSTNESS.md](docs/E5_ROBUSTNESS.md) · ADR-0012 참조. 4종 비용/유동성 스트레스는 합성 연구 가정이며 실제 브로커 체결/수수료의 검증 결과가 아니다.
+- [E5_ROBUSTNESS.md](docs/milestones/e5/E5_ROBUSTNESS.md) · ADR-0012 참조. 4종 비용/유동성 스트레스는 합성 연구 가정이며 실제 브로커 체결/수수료의 검증 결과가 아니다.
 - data audit은 누락 Bar/partial session과 파일 해시만 검사한다. Corporate actions, PIT issuer/universe, 법적 데이터 라이선스, 실거래 비용·FX는 명시적으로 UNVERIFIED 처리한다.
 - 실험 manifest의 사용자 선언 code_sha와 실제 소스트리 sha256은 다르다. 암호서명이나 공급자 원본의 진위를 보증한다고 주장하지 않는다.
 - E5 Issue #6은 남은 PIT/FX/비용/Quote·Tick 모델 범위 결정을 완료하기 전까지 닫지 않는다. Live 금지.
 
 ### E5.5 FX reporting guard
-- docs/E5_FX_REPORTING.md: research-only direct-pair as-of FX marks. Never use converted equity as broker buying power or E3 risk input.
+- docs/milestones/e5/E5_FX_REPORTING.md: research-only direct-pair as-of FX marks. Never use converted equity as broker buying power or E3 risk input.
 - Missing/stale/unreleased FX implies null base-currency PnL/drawdown; do not silently invert, interpolate, backfill or convert.
 - E5 real provider fees, corporate actions, point-in-time universe and tick/quote fill verification gates remain OPEN. LIVE NOT AUTHORIZED.
 
 ## E5.6 point-in-time research gate (2026-11-17)
-- [PR #28](https://github.com/ByeonDoHyeon06/invest-engine/pull/28), [E5_PIT_EVIDENCE.md](docs/E5_PIT_EVIDENCE.md), [ADR-0014](docs/adr/0014-pit-universe-vintage-gate.md): source-declared membership/vintage/corporate-action catalogue proof is an optional, strictly validated research-only boundary.
+- [PR #28](https://github.com/ByeonDoHyeon06/invest-engine/pull/28), [E5_PIT_EVIDENCE.md](docs/milestones/e5/E5_PIT_EVIDENCE.md), [ADR-0014](docs/adr/0014-pit-universe-vintage-gate.md): source-declared membership/vintage/corporate-action catalogue proof is an optional, strictly validated research-only boundary.
 - A split, dividend, delisting, merger or symbol change effective in a test window **blocks the whole experiment**, not an individual symbol. This cannot silently filter out delisted firms. Never create prices/dividends/adjustment ratios.
 - Metadata hashes/declared dates DO NOT authenticate provider origin, historical universe completeness or rights. Source may be dishonest; all source-release flags remain false. E5 and real market readiness gates stay OPEN.
 - E5.6 only validates input metadata; no broker/Live route or E6 automatic strategy promotion.
@@ -118,10 +118,10 @@ Next: review #67 consistent SDK docs and E6.7a actual API/capability inventory. 
 ## E5.8 research replay guard (2026-11-17)
 - [PR #30](https://github.com/ByeonDoHyeon06/invest-engine/pull/30), [CI 44067166215](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44067166215). Strict SHA/PIT matched session-open RAW_UNADJUSTED share split only.
 - E3/E4 quantity and cost basis parity; invalidate E4 pre-split feature history; reject dividends, delistings, mergers, intraday actions and active protective-lot modeling.
-- docs/E5_SPLIT_REPLAY.md and ADR-0016 authoritative. Provider completeness / price convention remain caller-attested, not independently verified. E5 Issue #6 OPEN; LIVE not authorized.
+- docs/milestones/e5/E5_SPLIT_REPLAY.md and ADR-0016 authoritative. Provider completeness / price convention remain caller-attested, not independently verified. E5 Issue #6 OPEN; LIVE not authorized.
 
 ### E5.9 dividend replay boundary (2026-11-17)
-- [E5_DIVIDEND_REPLAY.md](docs/E5_DIVIDEND_REPLAY.md) / ADR-0017: PIT/SHA-gated ex-date entitlement at witnessed session-open; payment at a later witnessed bar.
+- [E5_DIVIDEND_REPLAY.md](docs/milestones/e5/E5_DIVIDEND_REPLAY.md) / ADR-0017: PIT/SHA-gated ex-date entitlement at witnessed session-open; payment at a later witnessed bar.
 - Net unpaid dividend contributes to research equity but never E3 buying power. Raw unadjusted bars required; tax fraction synthetic.
 - PIT delisting/merger remains fail-closed without verified settlement proceeds. E5 Issue #6 OPEN, LIVE NOT AUTHORIZED.
 
@@ -144,4 +144,4 @@ Next: review #67 consistent SDK docs and E6.7a actual API/capability inventory. 
 - E5.13: obtain actual permitted bars and run a predeclared one-month study plus 20 prior sessions; independently verify data and cost provenance. Report provisional studies as such; never fabricate PIT timestamps/evidence. E5 Issue #6 stays OPEN, E6 promotion blocked, no LIVE.
 
 ## E5.14a verified; E5.14b / E5.15a next (2026-11-19)
-- PR #40 merged 1d63a3c; Core CI 44497904693 311 tests per Python. Provisional results in docs/E5_14B_FEE_AUDIT.md. E5.14b.1 fixed-fill costs only, not cash/risk ledger; E5.15a fixed Aug/Dec expansion; complete fees and broader source evidence before E5 release. LIVE NOT AUTHORIZED.
+- PR #40 merged 1d63a3c; Core CI 44497904693 311 tests per Python. Provisional results in evidence/reports/E5_14B_FEE_AUDIT.md. E5.14b.1 fixed-fill costs only, not cash/risk ledger; E5.15a fixed Aug/Dec expansion; complete fees and broader source evidence before E5 release. LIVE NOT AUTHORIZED.

@@ -3,7 +3,7 @@
 **Status (2026-11-22):** E3 simulation OrderIntent parser and **E5 offline `run_experiment`/BacktestReport/CLI are implemented**; E6 development pipeline partly implemented. **Unified E6.7 SDK, prediction and broker/Live transport remain unimplemented.** Historical wire sketches below are not executable E5 configs.  
 **Owner:** Issue #4 + #64 · **Scope:** 실제 E1/E5/E6 계약과 과거 wire 스케치를 구분. 실제 증권사 주문 실행은 엔진 외부.
 
-**Extension plan:** [E6.7 Unified SDK](E6_7_UNIFIED_SDK.md) / [ADR-0034](adr/0034-unified-sdk.md) defines the user-approved, neutral and inert `Engine()` constructor with operation-level capabilities and a proposed shared normalized Python/CLI orchestration contract. See [normative API examples](E6_7_SDK_EXAMPLES.md); changes require explicit user approval. Existing E5 `run_experiment` and CLI are implemented offline; newer unified API examples remain illustrative. No change to wire contracts or execution permissions in planning phase.
+**Extension plan:** [E6.7 Unified SDK](milestones/e6.7/E6_7_UNIFIED_SDK.md) / [ADR-0034](adr/0034-unified-sdk.md) defines the user-approved, neutral and inert `Engine()` constructor with operation-level capabilities and a proposed shared normalized Python/CLI orchestration contract. See [normative API examples](milestones/e6.7/E6_7_SDK_EXAMPLES.md); changes require explicit user approval. Existing E5 `run_experiment` and CLI are implemented offline; newer unified API examples remain illustrative. No change to wire contracts or execution permissions in planning phase.
 
 ## Pre-SDK Contract Reset — SDK 구현 전 내부 계약 전면 통일 계획 (PLANNED)
 
@@ -58,7 +58,7 @@
 
 ## CURRENT contract kernel — E1 ↔ E5 ↔ E6 (2026-11-22)
 
-**우선 이 절을 기준으로 구현 상태를 판단합니다.** 아래의 오래된 `RunRequest/RunResult` 예제·`Live` wire 구상은 설계 이력이며 현재 실행 API가 아닙니다. E6.7 통합 [공개 SDK 문법](E6_7_UNIFIED_SDK.md)과 실제 [E5 CLI](E5_EXPERIMENT.md)는 구분해야 합니다.
+**우선 이 절을 기준으로 구현 상태를 판단합니다.** 아래의 오래된 `RunRequest/RunResult` 예제·`Live` wire 구상은 설계 이력이며 현재 실행 API가 아닙니다. E6.7 통합 [공개 SDK 문법](milestones/e6.7/E6_7_UNIFIED_SDK.md)과 실제 [E5 CLI](milestones/e5/E5_EXPERIMENT.md)는 구분해야 합니다.
 
 ### 실제 구현된 경계 (AS-IS)
 
@@ -110,7 +110,7 @@ E5 `run_experiment()`는 `report.json`, `decisions/fills/equity.jsonl`, `audit.j
 
 코어에는 DB, 네트워크, Toss SDK, 벽시계, 학습모델 호출이 없다. 외부 I/O shell이 Command를 처리하고 그 결과를 다음 DomainEvent로 환류한다.
 
-**당시 E3 단계의 구현 상태 (역사적 기록):** E0/E1 market EventEnvelope, E2 observation runtime/journal, E3 simulated TradingEvent / RiskDecision / Portfolio ledger 및 `decode_order_intent`. **그 이후 E5 `run_experiment`와 실제 보고서/CLI가 구현되었으며** 아래 E3시점 `RunRequest/RunResult` 및 `RiskDecision` JSON 초안과 **동일한 wire API가 아닙니다**. 유효한 실행 계약은 상단 CURRENT 표와 [E5 experiment](E5_EXPERIMENT.md)를 확인하세요.
+**당시 E3 단계의 구현 상태 (역사적 기록):** E0/E1 market EventEnvelope, E2 observation runtime/journal, E3 simulated TradingEvent / RiskDecision / Portfolio ledger 및 `decode_order_intent`. **그 이후 E5 `run_experiment`와 실제 보고서/CLI가 구현되었으며** 아래 E3시점 `RunRequest/RunResult` 및 `RiskDecision` JSON 초안과 **동일한 wire API가 아닙니다**. 유효한 실행 계약은 상단 CURRENT 표와 [E5 experiment](milestones/e5/E5_EXPERIMENT.md)를 확인하세요.
 
 ## 1. 공통 직렬화·버전 규칙 (제안)
 
@@ -325,5 +325,5 @@ E3는 ML/전략/백테스트 결과를 만들지 않는다. 입력 fixture와 �
 - 지원: Python `TradingRuntime.submit(OrderIntent)` → `SubmitOutcome(RiskDecision, SimulatedSubmitCommand[])`. 주문 확인/체결/취소는 **직접 호출한 합성 이벤트**로만 처리.
 - 지원: JSON 명령 `schema_version="e3-sim-v1"` + `kind="PROPOSE_ORDER_INTENT"` strict parser(`invest_engine.trading.wire.decode_order_intent`). 허용하지 않은 필드, float, 비UTC timestamp, 통화불일치, LIVE mode 요청 거부.
 - 지원: immutable `TradingState` 현금(settled/reserved/unsettled), 주문·부분체결·포지션·realized PnL, 이벤트 digest. `SQLiteTradingJournal`에 E2의 `events` 테이블과 충돌하지 않는 `trading_events`/outbox 버전 테이블 사용.
-- 실제 Python 사용 예시: [E3_SIMULATION.md](E3_SIMULATION.md). 입력 예제: [examples/e3_simulated_order.py](../examples/e3_simulated_order.py).
+- 실제 Python 사용 예시: [E3_SIMULATION.md](milestones/e3/E3_SIMULATION.md). 입력 예제: [docs/milestones/e3/e3_simulated_order.py](milestones/e3/e3_simulated_order.py).
 - 여전히 초안: `RunRequest/RunResult`, `PredictionResult`, 자동 시장/실시간 주문 데이터 연결, 계좌·위험 통합 마크 평가.

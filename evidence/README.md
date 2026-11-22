@@ -2,6 +2,10 @@
 
 **This is the canonical index for historical experiment records, validation outcomes and data acquisition audits.** These are **not** SDK API specifications, strategy recommendations, or certified executable profits. Current project contracts live in [docs](../docs/README.md).
 
+## Historical research plans
+
+- [KR/US 80개 종목 연구 계획](plans/market_panel_v1.json): 당시 등록된 종목 구성, 학습·검증 기간 및 홀드아웃 예약 메타데이터. 실행 결과나 검증된 원시 시세는 아님.
+
 ## Historical study records (versioned aggregate only)
 
 | Record | Run evidence | Result |
@@ -11,7 +15,7 @@
 | [2022 raw-minute pilot](records/e6-2022-raw-minute-pr57.json) | [Original report](reports/ALPACA_RAW_MINUTE_PILOT.md) | 60 arms; modeled costs and corporate-action exclusions |
 | [2023 fixed replication](records/e6-2023-frozen-replication-pr62.json) | [Original report](reports/E6_6_REDUCED_TURNOVER.md) | 168 arms; 0/112 active arms beat stronger comparator |
 
-The [reports](reports/) retain original experiment narrative, protocols, negative findings, CI links and corrections. The [data audits](data/) preserve acquisition scope and limitations. Legacy `docs/<old-report>.md` links remain as brief **compatibility pointers only** while concurrent PR #66/#69 continue to edit Roadmap/Status/AGENTS; remove these aliases only after a coordinated reference migration.
+The [reports](reports/) retain original experiment narrative, protocols, negative findings, CI links and corrections. The [data audits](data/) preserve acquisition scope and limitations. 현재 브랜치에서 보고서 원문은 `evidence/reports/`와 `evidence/data/`만 유지하고, `docs/`의 중복 안내 파일은 제거합니다. 기존 PR의 오래된 경로는 병합 시 새 evidence 경로로 다시 연결해야 합니다.
 
 ## What is actually preserved?
 

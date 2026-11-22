@@ -99,4 +99,4 @@ Core/domain/strategies/risk 및 신규 통합 Engine SDK는 Toss/Alpaca 등의 *
 
 ## 8. 2026-11-22 SDK 책임 경계 개정
 
-현재 설계의 신규 공개 API는 `Engine()` 아래 `simulation(...).historical()`, `simulation(...).paper()`, `research(...)`, `evaluate(...)`, `session(...)`이다. 앞의 Simulation만 가상 계좌·가상 체결을 소유한다. Evaluate/Session은 외부 브로커의 신뢰 가능한 계좌 스냅샷을 받아 **제안만 생성**한다. 실주문 실행은 외부 서비스가 따로 승인·대조하고, 엔진은 실계좌 권위 원장을 보관하거나 외부 주문 기능을 제공하지 않는다. E8은 그 외부 서비스의 선택적 연동 검증 단계다. [SDK 명세](E6_7_UNIFIED_SDK.md), [시뮬레이션 계약](E6_7_UNIFIED_SDK.md#historical-and-paper-simulation), [ADR-0034](adr/0034-unified-sdk.md) 참고. 이 경계 개정은 기존 E0–E6 구현/API를 삭제하거나 실거래를 승인하지 않는다.
+현재 설계의 신규 공개 API는 `Engine()` 아래 `simulation(...).historical()`, `simulation(...).paper()`, `research(...)`, `evaluate(...)`, `session(...)`이다. 앞의 Simulation만 가상 계좌·가상 체결을 소유한다. Evaluate/Session은 외부 브로커의 신뢰 가능한 계좌 스냅샷을 받아 **제안만 생성**한다. 실주문 실행은 외부 서비스가 따로 승인·대조하고, 엔진은 실계좌 권위 원장을 보관하거나 외부 주문 기능을 제공하지 않는다. E8은 그 외부 서비스의 선택적 연동 검증 단계다. [SDK 명세](milestones/e6.7/E6_7_UNIFIED_SDK.md), [시뮬레이션 계약](milestones/e6.7/E6_7_UNIFIED_SDK.md#historical-and-paper-simulation), [ADR-0034](adr/0034-unified-sdk.md) 참고. 이 경계 개정은 기존 E0–E6 구현/API를 삭제하거나 실거래를 승인하지 않는다.

@@ -1,6 +1,6 @@
 # E5.14 — Executable entry comparator and protected session-flat research
 
-**Status:** E5.14a PR #40 merged with 311×2 CI and all 21 eligible provisional arms complete. [Results](E5_14B_FEE_AUDIT.md). E5 Issue #6 remains OPEN; E6 release acceptance blocked. LIVE NOT AUTHORIZED.
+**Status:** E5.14a PR #40 merged with 311×2 CI and all 21 eligible provisional arms complete. [Results](../../../evidence/reports/E5_14B_FEE_AUDIT.md). E5 Issue #6 remains OPEN; E6 release acceptance blocked. LIVE NOT AUTHORIZED.
 
 ## Fixed policies (research only)
 

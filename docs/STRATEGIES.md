@@ -55,7 +55,7 @@ L1 매매결과 분석 → L2 시장상태별 전략선택 → L3 파라미터 �
 
 ## E4 실제 구현 계약 (PR #21)
 
-- [E4_STRATEGY.md](E4_STRATEGY.md): `StrategyManifest`, `DataRequirement`, readonly `StrategyContext`, `StrategySignal`, `NoTradeStrategy`, ORB baseline, FeatureRegistry, target allocator, synthetic OrderIntent planner.
+- [E4_STRATEGY.md](milestones/e4/E4_STRATEGY.md): `StrategyManifest`, `DataRequirement`, readonly `StrategyContext`, `StrategySignal`, `NoTradeStrategy`, ORB baseline, FeatureRegistry, target allocator, synthetic OrderIntent planner.
 - **E4 설계 명세가 곧 실거래 전략의 입증이 아니다**. ORB의 5m/15m 및 ×1.5 거래량 필터는 백테스트 전 연구 가설.
 - 목표 할당은 fill별 전략 손익 장부가 아니므로, 정확한 전략별 기여도와 포지션 귀속은 후속 설계가 필요하다.
 
