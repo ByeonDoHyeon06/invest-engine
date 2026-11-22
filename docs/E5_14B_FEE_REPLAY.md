@@ -1,18 +1,5 @@
-# E5.14b.2 — Dated fee-aware simulation (candidate)
+# Archived: E5 14B FEE REPLAY
 
-**Status:** implementation candidate, CI and market replay not yet verified. Depends on PR #41. Issue #6 OPEN; no broker connection or LIVE authorization.
+This is a **compatibility link** for previous roadmap/ADR/PR references. The complete immutable historical report has moved to [the evidence archive](../evidence/reports/E5_14B_FEE_REPLAY.md). New research results belong under `evidence/`, not `docs/`.
 
-## Design
-
-`USDatedFeeConfig` is an explicit opt-in subclass of `TradingConfig`. Legacy percentage config does not gain fields or change serialization identity. It reuses shared dated Section 31 and TAF evidence from `trading/regulatory.py` (see [E5.14b.1](E5_14B_FEE_AUDIT.md)). The only available schedule is May 14–December 31 2022, inclusive. Assumed effective date is ET local order/execution day, not certified charge date. Commission rate and minimum are explicit scenario inputs. No waiver, real broker charges, currency conversion, financing or settlement calendar certified.
-
-- Scope: USD US equity/ETF, whole shares, cent-priced executions, USD cent settlement. Reject unsupported order/date via risk; cross-date/invalid execution fails closed. DAY order only; no overnight per-order fee attribution.
-- Reserve BUY notional at limit + incremental cumulative commission; recompute reserve after each partial fill with remaining quantity and prior executed gross. Initial/minimum commission charged once per order with half-up cents on cumulative executed gross. No bill on unfilled order. Incremental BUY fees included in cost basis.
-- SELL commission similarly incremental; SEC ceil-cent cumulative gross difference; TAF ceil-cent after per-execution cap. Combined SEC+TAF is stored in the existing `tax`/total_taxes regulatory-levy slot (not actual income tax). Separate SEC/TAF components reconstructed independently in the study by auditing the immutable tape. No invented fills. Negative sale proceeds fail closed. Explicit settlement pending amount is net. Cash, cost basis, realized PnL and E4 attribution include actual modeled costs.
-- Risk planned stop loss adds estimated BUY and SELL commission plus regulatory charges at stop; pessimistic one-share TAF rounding estimate. It does not bound price gaps, actual broker charge grouping, or execution liquidity. Symbol allocation still based on notional; buying power and planned loss account for fees. Risk can reject rather than silently shrink strategy quantity.
-- No ledger schema change. Version, minimum, rate and date/URL identity pinned in journal and report config hash. Deterministic cumulative charges derived from prior same-intent entries of the event-sourced tape. Invalid fills do not create an accounting entry; duplicate execution id is idempotent and changed details rejected. Cancellation releases only remaining reserve.
-- Keep independent E5.14b.1 fixed-fill audit output distinct from a full rerun. New mode `minute-fee-replay` re-executes all seven arms on each of the 20 prespecified windows, using unchanged strategy, target, data and slippage assumptions. Reconcile realized cost and net PnL against the independent fee auditor on the new tape. Compare original, fixed-fill sensitivity and full replay: orders may differ. Preserve existing study modes and schemas. Publish aggregated results only.
-
-## Verification plan
-
-New tests cover partial/cancel and minimum, incremental rounding and sell charge, insufficient cash & fee-aware planned loss, unsupported dates/cross-day fill, journal restart/idempotency and config-change rejection, net explicit settlement, policy version validation and historical report reconciliation. Core CI and dedicated 20-window workflow; legacy regression through PR41 and subsequent main PR. New market study does not establish financial viability. E5.15b still requires separate licensed independent dataset, recorded source and PIT evidence, plus non-survivorship panel.
+**Historical evidence only:** past CI results and modeled performance are not live trading approval, data-rights certification or proof of future profitability.

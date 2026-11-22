@@ -1,0 +1,40 @@
+{
+  "schema_version": "evidence-summary-v1",
+  "study_id": "e6-2021-2025-daily-pr56",
+  "kind": "historical_research_summary",
+  "source_report": "evidence/reports/ALPACA_DAILY_STRATEGY_PANEL.md",
+  "source_report_original_git_blob_sha": "04db3fb4faa99d50be1a8fd7df74f7e994154998",
+  "workflow_url": "https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44692687102",
+  "pr_url": "https://github.com/ByeonDoHyeon06/invest-engine/pull/56",
+  "reported_at": "2026-11-20",
+  "data_basis": "retrospective adjusted daily research proxy; not executable or independently held-out",
+  "data_retained_in_repository": false,
+  "data_rights_certified": false,
+  "historical_pit_certified": false,
+  "executable_prices_certified": false,
+  "real_broker_fees_verified": false,
+  "accounts_are_independent": true,
+  "compounded_portfolio_returns": false,
+  "currency": "USD",
+  "modeled_costs": [
+    "base",
+    "stress"
+  ],
+  "windows": {
+    "planned": 200,
+    "eligible": 191,
+    "matched_for_economic_comparison": 115
+  },
+  "arms": {
+    "planned": 2800,
+    "completed": 2674
+  },
+  "net_pnl_by_model": null,
+  "conclusion": "All five active strategies showed negative mean return and negative matched excess in both modeled cost scenarios; adjusted prices are exploratory only.",
+  "release_gates": {
+    "e5_g1": false,
+    "e6_g2": false,
+    "paper": false,
+    "real_orders": false
+  }
+}

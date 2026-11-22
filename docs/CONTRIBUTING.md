@@ -33,3 +33,11 @@
 
 ## 검증 불가 경우
 실제 API 접근이나 데이터가 없어 확인 못한 작업은 UNVERIFIED로 두고 synthetic test/contract stub와 남은 검증 계획을 적는다. 실행하지 않은 테스트를 성공했다고 쓰지 않는다.
+
+## 문서·실험 증거 관리 (2026-11-22)
+
+- 신규 설계 문서가 필요하기 전에 [docs/README](README.md)에서 **현재 정식 문서**를 찾고 기존 문서에 통합합니다. SDK 관련 문서는 [E6.7 통합 스펙](E6_7_UNIFIED_SDK.md)과 [예제집](E6_7_SDK_EXAMPLES.md)으로 관리합니다.
+- 실험 프로토콜·실제 실행·기각·부적격 데이터의 근거는 **[evidence/](../evidence/README.md)** 로 이동합니다. `docs/`의 Archived 안내 파일은 병렬 PR의 과거 링크를 보존하기 위한 임시 호환성 안내입니다.
+- 공유 가능한 집계 결과는 기계 판독형 `evidence/records/` 에 추가하고 `python scripts/check_evidence_records.py`로 검증합니다. 원시 시세·거래 로그·개인 계좌·자격 증명은 공개 Git에 두지 않습니다.
+- E5의 `manifest.json`과 산출물 해시는 기존 실행기의 계약입니다. 상세 파일 장기 보존이 허용된다면 **명시적으로** `scripts/preserve_run_evidence.py --include-traces`를 사용하여 승인된 비공개 저장소에 보존합니다. 테스트용 수익률을 실제·미관측 근거로 승격하지 않습니다.
+- 병렬 개발에서는 **독립 브랜치/PR 단위로 작업**하고 현재 진행 중인 PR의 파일 소유 범위를 검토합니다. 특히 #66/#69의 `ROADMAP`, `STATUS`, `AGENTS` 및 다종목 런타임은 별도 검토·순차 병합하고 무단으로 덮어쓰지 않습니다.
