@@ -1,7 +1,7 @@
 # E5.4 — Data Audit, Integrity & Cost Stress
 
 **Status:** implemented for synthetic/offline historical research (2026-11-17). **No Live API or real-money trading.**  
-**Related:** [E5_BACKTEST](E5_BACKTEST.md), [E5_EXPERIMENT](E5_EXPERIMENT.md), [E5_PROTECTION](E5_PROTECTION.md), [ADR-0012](adr/0012-audit-stress.md).
+**Related:** [E5_BACKTEST](E5_BACKTEST.md), [E5_EXPERIMENT](E5_EXPERIMENT.md), [E5_PROTECTION](E5_PROTECTION.md), [ADR-0012](../../adr/0012-audit-stress.md).
 
 ## 1. What changed
 
