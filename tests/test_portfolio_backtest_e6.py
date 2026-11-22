@@ -6,6 +6,7 @@ from decimal import Decimal as D
 import pytest
 
 from invest_engine.data.calendar import StaticSessionCalendar, TradingSession
+from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.events import Bar, EventEnvelope
 from invest_engine.domain.primitives import InstrumentId, Market, Money
 from invest_engine.research.fills import BarFillPolicy
@@ -36,7 +37,10 @@ B = InstrumentId(Market.US, "XNYS", "US-B", "BBB", "USD")
 
 
 class TwoSymbolRoundTripStrategy:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        selections_by_slot: dict[int, tuple[str, ...]] | None = None,
+    ) -> None:
         self._manifest = PortfolioStrategyManifest(
             "two-symbol-round-trip",
             "1.0.0",
@@ -47,6 +51,7 @@ class TwoSymbolRoundTripStrategy:
             D("0.20"),
         )
         self.calls: list[str] = []
+        self.selections_by_slot = selections_by_slot
 
     @property
     def manifest(self) -> PortfolioStrategyManifest:
@@ -59,6 +64,11 @@ class TwoSymbolRoundTripStrategy:
     ) -> PortfolioSignalBatch:
         self.calls.append(frame.frame_id)
         is_flatten = frame.kind is UniverseCheckpointKind.FLATTEN
+        selected = (
+            frozenset(instrument.key for instrument in frame.instruments)
+            if self.selections_by_slot is None
+            else frozenset(self.selections_by_slot.get(frame.slot_index, ()))
+        )
         signals = tuple(
             StrategySignal(
                 signal_id=f"signal:{frame.frame_id}:{instrument.key}",
@@ -66,13 +76,23 @@ class TwoSymbolRoundTripStrategy:
                 strategy_version=self.manifest.version,
                 instrument=instrument,
                 direction=(
-                    SignalDirection.EXIT if is_flatten else SignalDirection.LONG
+                    SignalDirection.EXIT
+                    if is_flatten or instrument.key not in selected
+                    else SignalDirection.LONG
                 ),
-                target_fraction=D(0) if is_flatten else D("0.10"),
+                target_fraction=(
+                    D(0)
+                    if is_flatten or instrument.key not in selected
+                    else D("0.10")
+                ),
                 generated_at=frame.as_of,
                 expires_at=frame.as_of + timedelta(minutes=5),
                 trigger_event_id=trigger.event_id,
-                stop_price=None if is_flatten else trigger.bar.close * D("0.99"),
+                stop_price=(
+                    None
+                    if is_flatten or instrument.key not in selected
+                    else trigger.bar.close * D("0.99")
+                ),
             )
             for instrument, trigger in zip(
                 frame.instruments,
@@ -89,7 +109,7 @@ class TwoSymbolRoundTripStrategy:
         )
 
     def snapshot(self) -> bytes:
-        return b"two-symbol-round-trip-v1"
+        return repr(self.selections_by_slot).encode("utf-8")
 
     def restore(self, data: bytes) -> None:
         if data != self.snapshot():
@@ -115,6 +135,7 @@ def bar_event(
     low: str | None = None,
     high: str | None = None,
     volume: str = "10000",
+    known_at: datetime | None = None,
 ) -> EventEnvelope[Bar]:
     close = D(price)
     bar = Bar(
@@ -127,14 +148,15 @@ def bar_event(
         D(volume),
         interval=MINUTE,
     )
+    observed_at = known_at or end
     return EventEnvelope(
         event_id,
         "market.bar",
         "fixture",
         instrument,
         end,
-        end,
-        end,
+        observed_at,
+        observed_at,
         ordinal,
         bar,
     )
@@ -278,3 +300,265 @@ def test_portfolio_replay_is_deterministic_and_single_use() -> None:
     assert first_report == second_report
     with pytest.raises(RuntimeError, match="single-use"):
         first.run(happy_path_events())
+
+
+def test_entry_expiry_processes_last_eligible_bar_then_cancels_remainder() -> None:
+    strategy = TwoSymbolRoundTripStrategy({1: (A.key,)})
+    backtest, _ = make_backtest(strategy)
+    events: list[EventEnvelope[Bar]] = [
+        bar_event(A, "trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(B, "trigger:b", FIRST_CHECKPOINT, 1, price="100"),
+    ]
+    for minute in range(1, 6):
+        events.append(
+            bar_event(
+                A,
+                f"partial-entry:a:{minute}",
+                FIRST_CHECKPOINT + minute * MINUTE,
+                len(events),
+                price="100",
+                low="98",
+                high="101",
+                volume="200",
+            )
+        )
+    events.extend(
+        (
+            bar_event(A, "flatten:a", FLATTEN, 7, price="105"),
+            bar_event(B, "flatten:b", FLATTEN, 8, price="105"),
+            bar_event(
+                A,
+                "exit-fill:a",
+                FLATTEN + MINUTE,
+                9,
+                price="105",
+                low="104",
+                high="107",
+            ),
+            bar_event(A, "session-end:a", SESSION_END, 10, price="105"),
+            bar_event(B, "session-end:b", SESSION_END, 11, price="105"),
+        )
+    )
+
+    report = backtest.run(tuple(events))
+
+    assert report.account_report.entry_fill_count == 5
+    assert report.account_report.exit_fill_count == 1
+    assert len(report.cycles) == 1
+    assert report.cycles[0].entry_quantity == D("50")
+    assert report.cycles[0].exit_quantity == D("50")
+    entry_decision = next(
+        decision
+        for decision in report.universe_decisions
+        if decision.as_of == FIRST_CHECKPOINT
+    )
+    assert len(entry_decision.canceled_intent_ids) == 1
+    assert "ENTRY_EXPIRED" in entry_decision.reason_codes
+
+
+def test_bar_starting_at_expiry_cannot_fill_canceled_entry() -> None:
+    strategy = TwoSymbolRoundTripStrategy({1: (A.key,)})
+    backtest, _ = make_backtest(strategy)
+    expiry = FIRST_CHECKPOINT + timedelta(minutes=5)
+    events = (
+        bar_event(A, "trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(B, "trigger:b", FIRST_CHECKPOINT, 1, price="100"),
+        bar_event(A, "last-eligible:no-cross", expiry, 2, price="100"),
+        bar_event(
+            A,
+            "starts-at-expiry:cross",
+            expiry + MINUTE,
+            3,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(A, "flatten:a", FLATTEN, 4, price="105"),
+        bar_event(B, "flatten:b", FLATTEN, 5, price="105"),
+        bar_event(A, "session-end:a", SESSION_END, 6, price="105"),
+        bar_event(B, "session-end:b", SESSION_END, 7, price="105"),
+    )
+
+    report = backtest.run(events)
+
+    assert report.account_report.entry_fill_count == 0
+    assert report.executions == ()
+    entry_decision = next(
+        decision
+        for decision in report.universe_decisions
+        if decision.as_of == FIRST_CHECKPOINT
+    )
+    assert entry_decision.canceled_intent_ids == entry_decision.intent_ids
+
+
+def test_later_checkpoint_cancels_replaceable_buy_before_new_targets() -> None:
+    second_checkpoint = FIRST_CHECKPOINT + CHECKPOINT_INTERVAL
+    strategy = TwoSymbolRoundTripStrategy(
+        {1: (A.key,), 2: (B.key,)}
+    )
+    backtest, _ = make_backtest(strategy)
+    events = (
+        bar_event(A, "first-trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(B, "first-trigger:b", FIRST_CHECKPOINT, 1, price="100"),
+        bar_event(A, "second-trigger:a", second_checkpoint, 2, price="100"),
+        bar_event(B, "second-trigger:b", second_checkpoint, 3, price="100"),
+        bar_event(
+            B,
+            "second-entry-fill:b",
+            second_checkpoint + MINUTE,
+            4,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(A, "flatten:a", FLATTEN, 5, price="105"),
+        bar_event(B, "flatten:b", FLATTEN, 6, price="105"),
+        bar_event(
+            B,
+            "exit-fill:b",
+            FLATTEN + MINUTE,
+            7,
+            price="105",
+            low="104",
+            high="107",
+        ),
+        bar_event(A, "session-end:a", SESSION_END, 8, price="105"),
+        bar_event(B, "session-end:b", SESSION_END, 9, price="105"),
+    )
+
+    report = backtest.run(events)
+
+    first = next(
+        decision
+        for decision in report.universe_decisions
+        if decision.as_of == FIRST_CHECKPOINT
+    )
+    second = next(
+        decision
+        for decision in report.universe_decisions
+        if decision.as_of == second_checkpoint
+    )
+    assert first.canceled_intent_ids == first.intent_ids
+    assert "REPLACED_ENTRY_CANCELED" in first.reason_codes
+    assert second.intent_ids
+    assert second.decisions[0][1] == "APPROVED"
+    assert {execution.instrument for execution in report.executions} == {B}
+
+
+def test_incomplete_checkpoint_records_data_unavailable_without_strategy_or_order() -> None:
+    strategy = TwoSymbolRoundTripStrategy({1: (A.key,)})
+    backtest, _ = make_backtest(strategy)
+    events = (
+        bar_event(A, "incomplete-trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(A, "flatten:a", FLATTEN, 1, price="100"),
+        bar_event(B, "flatten:b", FLATTEN, 2, price="100"),
+        bar_event(A, "session-end:a", SESSION_END, 3, price="100"),
+        bar_event(B, "session-end:b", SESSION_END, 4, price="100"),
+    )
+
+    report = backtest.run(events)
+
+    unavailable = next(
+        decision
+        for decision in report.universe_decisions
+        if decision.as_of == FIRST_CHECKPOINT
+    )
+    assert unavailable.status is UniverseFrameStatus.DATA_UNAVAILABLE
+    assert unavailable.missing_instrument_keys == (B.key,)
+    assert unavailable.signal_ids == ()
+    assert unavailable.intent_ids == ()
+    assert len(strategy.calls) == 1  # only the complete final flatten frame
+
+
+def test_delayed_bar_behind_finalized_watermark_fails_replay() -> None:
+    backtest, _ = make_backtest(TwoSymbolRoundTripStrategy({1: (A.key,)}))
+    events = (
+        bar_event(A, "trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(
+            A,
+            "clock-advance:a",
+            FIRST_CHECKPOINT + MINUTE,
+            1,
+            price="100",
+        ),
+        bar_event(
+            B,
+            "delayed-trigger:b",
+            FIRST_CHECKPOINT,
+            2,
+            price="100",
+            known_at=FIRST_CHECKPOINT + 2 * MINUTE,
+        ),
+    )
+
+    with pytest.raises(InvalidEvent, match="watermark"):
+        backtest.run(events)
+
+
+def test_unresolved_exit_at_replacement_checkpoint_invalidates_arm() -> None:
+    second_checkpoint = FIRST_CHECKPOINT + CHECKPOINT_INTERVAL
+    third_checkpoint = second_checkpoint + CHECKPOINT_INTERVAL
+    strategy = TwoSymbolRoundTripStrategy(
+        {1: (A.key,), 2: (B.key,), 3: (B.key,)}
+    )
+    backtest, _ = make_backtest(strategy)
+    events = (
+        bar_event(A, "first-trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(B, "first-trigger:b", FIRST_CHECKPOINT, 1, price="100"),
+        bar_event(
+            A,
+            "first-entry-fill:a",
+            FIRST_CHECKPOINT + MINUTE,
+            2,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(A, "second-trigger:a", second_checkpoint, 3, price="100"),
+        bar_event(B, "second-trigger:b", second_checkpoint, 4, price="100"),
+        bar_event(
+            B,
+            "second-entry-fill:b",
+            second_checkpoint + MINUTE,
+            5,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(A, "third-trigger:a", third_checkpoint, 6, price="100"),
+        bar_event(B, "third-trigger:b", third_checkpoint, 7, price="100"),
+        bar_event(
+            B,
+            "third-clock-advance:b",
+            third_checkpoint + MINUTE,
+            8,
+            price="100",
+        ),
+    )
+
+    with pytest.raises(InvalidEvent, match="unresolved EXIT"):
+        backtest.run(events)
+
+
+def test_unresolved_final_inventory_invalidates_session() -> None:
+    strategy = TwoSymbolRoundTripStrategy({1: (A.key,)})
+    backtest, _ = make_backtest(strategy)
+    events = (
+        bar_event(A, "trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(B, "trigger:b", FIRST_CHECKPOINT, 1, price="100"),
+        bar_event(
+            A,
+            "entry-fill:a",
+            FIRST_CHECKPOINT + MINUTE,
+            2,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(A, "incomplete-flatten:a", FLATTEN, 3, price="100"),
+        bar_event(A, "session-end:a", SESSION_END, 4, price="100"),
+        bar_event(B, "session-end:b", SESSION_END, 5, price="100"),
+    )
+
+    with pytest.raises(InvalidEvent, match="final inventory"):
+        backtest.run(events)

@@ -254,6 +254,7 @@ class _PortfolioReplay:
         self.decisions: list[_DecisionBuilder] = []
         self.tickets: dict[str, AttributionTicket] = {}
         self.intent_source: dict[str, _DecisionBuilder] = {}
+        self.intent_expiry: dict[str, datetime] = {}
         self.executions: list[PortfolioExecutionRecord] = []
         self.fill_traces: list[FillTrace] = []
         self.equity: list[EquityPoint] = []
@@ -277,7 +278,9 @@ class _PortfolioReplay:
             self._finalize_due(now, inclusive=False)
 
             self.observation.accept(event)
+            self._cancel_entries_before_bar(event, now)
             self._fill_existing_orders(event, session)
+            self._cancel_entries_after_bar(event, now)
             self.marks[instrument.key] = MarketMark(
                 instrument,
                 bar.close,
@@ -412,6 +415,18 @@ class _PortfolioReplay:
 
     def _evaluate_checkpoint(self, checkpoint: datetime) -> None:
         session = self._session_for_checkpoint(checkpoint)
+        unresolved_exits = tuple(
+            order
+            for order in self.trader.state.orders
+            if order.intent.side is Side.SELL
+            and order.status not in _TERMINAL_ORDER_STATUSES
+            and self.intent_source[order.intent.intent_id].as_of < checkpoint
+        )
+        if unresolved_exits:
+            raise InvalidEvent(
+                "portfolio checkpoint has unresolved EXIT order from an older frame"
+            )
+        self._cancel_replaced_entries(checkpoint)
         monitor = (
             self._observe(session, checkpoint)
             if self._checkpoint_has_current_marks(checkpoint)
@@ -477,7 +492,91 @@ class _PortfolioReplay:
             plan = plans_by_key[intent.instrument.key]
             self.tickets[intent.intent_id] = ticket_for_plan(plan, intent)
             self.intent_source[intent.intent_id] = builder
+            if intent.side is Side.BUY:
+                self.intent_expiry[intent.intent_id] = plan.expires_at
             self.trader.accept_simulated(intent.intent_id, checkpoint)
+
+    def _cancel_entry(self, intent_id: str, at: datetime, reason: str) -> None:
+        order = self.trader.state.order(intent_id)
+        if order is None or order.status not in {
+            OrderStatus.ACCEPTED,
+            OrderStatus.PARTIALLY_FILLED,
+        }:
+            return
+        if order.intent.side is not Side.BUY:
+            raise InvalidEvent("only a replaceable BUY may use entry cancellation")
+        self.trader.request_cancel(intent_id, at)
+        self.trader.confirm_cancel(intent_id, at)
+        source = self.intent_source.get(intent_id)
+        if source is None:
+            raise InvalidEvent("entry cancellation has no source decision")
+        source.canceled_intent_ids.append(intent_id)
+        source.reason_codes.add(reason)
+
+    def _cancel_replaced_entries(self, checkpoint: datetime) -> None:
+        replaceable = sorted(
+            (
+                order
+                for order in self.trader.state.orders
+                if order.intent.side is Side.BUY
+                and order.status
+                in {OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED}
+                and self.intent_source[order.intent.intent_id].as_of < checkpoint
+            ),
+            key=lambda item: item.intent.intent_id,
+        )
+        for order in replaceable:
+            self._cancel_entry(
+                order.intent.intent_id,
+                checkpoint,
+                "REPLACED_ENTRY_CANCELED",
+            )
+
+    def _cancel_entries_before_bar(
+        self,
+        event: EventEnvelope[MarketPayload],
+        now: datetime,
+    ) -> None:
+        if not isinstance(event.payload, Bar) or event.instrument_id is None:
+            return
+        for order in tuple(self.trader.state.orders):
+            expiry = self.intent_expiry.get(order.intent.intent_id)
+            if (
+                expiry is not None
+                and order.intent.instrument == event.instrument_id
+                and event.payload.start >= expiry
+            ):
+                at_later_checkpoint = any(
+                    event.payload.end in session.checkpoints
+                    and self.intent_source[order.intent.intent_id].as_of
+                    < event.payload.end
+                    for session in self.sessions.values()
+                )
+                self._cancel_entry(
+                    order.intent.intent_id,
+                    now,
+                    (
+                        "REPLACED_ENTRY_CANCELED"
+                        if at_later_checkpoint
+                        else "ENTRY_EXPIRED"
+                    ),
+                )
+
+    def _cancel_entries_after_bar(
+        self,
+        event: EventEnvelope[MarketPayload],
+        now: datetime,
+    ) -> None:
+        if not isinstance(event.payload, Bar) or event.instrument_id is None:
+            return
+        for order in tuple(self.trader.state.orders):
+            expiry = self.intent_expiry.get(order.intent.intent_id)
+            if (
+                expiry is not None
+                and order.intent.instrument == event.instrument_id
+                and event.payload.end >= expiry
+            ):
+                self._cancel_entry(order.intent.intent_id, now, "ENTRY_EXPIRED")
 
     def _fill_existing_orders(
         self,
