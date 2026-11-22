@@ -61,10 +61,10 @@ The source is read-only market data. Paper owns synthetic cash, orders and fills
 
 
 ```python
-from invest_engine import Engine, research, strategies
+from invest_engine import Engine, research, strategies, sources
 
 result = Engine().research(
-    data="datasets/us/manifest.json",
+    source=sources.local("datasets/us/manifest.json"),
     strategy=strategies.orb(),
     capital="100000 USD",
     search=research.Grid({
@@ -93,7 +93,7 @@ print(decision.status, decision.proposed_orders)
 
 The broker account snapshot is provided and owned by the caller, timestamped and checked for identity/freshness/positions/open orders. A proposed order has `submitted=False`. The engine **does not send it**.
 
-### 06 — Continuous caller-fed decision session (E7)
+### 06 — Continuous managed-source decision session (E7)
 
 ```python
 from invest_engine import sources
@@ -143,7 +143,6 @@ from invest_engine import sources
 
 stream = sources.alpaca(credentials="market-data-secret-ref")
 async with engine.session(
-    source=sources.manual(),
     source=stream,
     strategy=my_strategy,
     symbols=["AAPL"],
@@ -192,7 +191,7 @@ Context entry opens only permitted market-data I/O; context exit joins tasks and
 
 Add registered search and walk-forward options without an alternate ResearchSpec execution ceremony.
 
-### 11 — Registered research spec / phased execution (E6.7d)
+### 11 — Advanced research validation without new execution grammar (E6.7d)
 
 ```python
 from invest_engine import sources, research, risk, execution
@@ -310,7 +309,7 @@ result = engine.simulation(
 
 Proposed list/allocation syntax is future-only, if shared-account multi-strategy execution becomes supported. Allocation is an option on Simulation, not a nested new execution grammar. PR #66 alone does not establish this capability.
 
-### 17 — Explicit immutable historical spec (E6.7b/c)
+### 17 — Inspect configured Simulation without changing its execution method (E6.7b/c)
 
 ```python
 from invest_engine import sources, risk
