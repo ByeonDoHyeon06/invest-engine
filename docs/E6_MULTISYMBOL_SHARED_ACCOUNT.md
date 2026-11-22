@@ -1,6 +1,6 @@
 # E6 multi-symbol shared-account historical replay
 
-**Status:** PR-2 candidate in stacked [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69). Synthetic contract verification only; CI is pending and PR #66 must merge first.
+**Status:** PR-2 candidate in stacked [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69). [CI 44984035724](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44984035724) at `3c58002` passed 463 tests on each of Python 3.12/3.13 plus Ruff, mypy 80 files and credential guard. Synthetic contract verification only; PR #66 must merge first.
 
 **Tracking:** Issue #65 · E5 #6 · E6 #7 · [design](superpowers/specs/2026-11-20-multisymbol-intraday-slot-momentum-design.md) · [ADR-0035](adr/0035-multisymbol-portfolio-decision-boundary.md)
 

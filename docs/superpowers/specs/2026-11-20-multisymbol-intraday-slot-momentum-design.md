@@ -1,6 +1,6 @@
 # Multi-Symbol Intraday Slot-Momentum Research Design
 
-**Status:** Accepted for staged offline implementation. PR 1 [#66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66) is open at `52ce1da`; CI 44894840967 passed and latest merge review remains required. PR 2 shared-account execution/reporting is candidate [#69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `289980e` with 463 local tests; stacked CI pending. PR 3 strategy/controls/data research remains pending.
+**Status:** Accepted for staged offline implementation. PR 1 [#66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66) is open at `52ce1da`; CI 44894840967 passed and latest merge review remains required. PR 2 shared-account execution/reporting is candidate [#69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `289980e`; CI 44984035724 at `3c58002` passed 463 tests per Python 3.12/3.13 plus static/secret checks. PR 3 strategy/controls/data research remains pending.
 
 **Date:** 2026-11-20
 
@@ -250,7 +250,7 @@ Even a passing bar-based candidate cannot advance to Paper. QuoteTick/TradeTick 
 This is planned as three reviewable PRs under one dedicated issue:
 
 1. **PR #66 open at `52ce1da`; CI 44894840967 passed, latest merge review required:** universe-frame and portfolio-strategy contracts with synthetic causal/barrier tests;
-2. **Candidate [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `289980e`; stacked CI pending:** shared-account historical coordinator, monitored risk/order lifecycle, position-cycle reporting and old-hash compatibility tests. [Implementation boundary](../../E6_MULTISYMBOL_SHARED_ACCOUNT.md);
+2. **Candidate [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `289980e`; CI 44984035724 passed at `3c58002`:** shared-account historical coordinator, monitored risk/order lifecycle, position-cycle reporting and old-hash compatibility tests. [Implementation boundary](../../E6_MULTISYMBOL_SHARED_ACCOUNT.md);
 3. **Pending:** frozen strategy, controls, the exact `US20-SLOT-V1` October/November 2022 provisional workflow and result reconciliation.
 
 The first implementation PR must add an ADR for the new portfolio decision boundary. `docs/STATUS.md`, `docs/ROADMAP.md`, E5 #6 and E6 #7 are updated with evidence at each merge. No PR checks an E5/E6 acceptance box merely because code tests pass.
