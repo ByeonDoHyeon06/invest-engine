@@ -1,6 +1,6 @@
 # AGENTS.md — 작업 에이전트용 지속 컨텍스트
 
-**Latest / 2026-11-21:** #65 multi-symbol intraday foundation [PR #66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66) is OPEN on `feat/multisymbol-portfolio-contracts`; initial implementation ends at `0049b56` and final-review fixes/documentation are at the branch tip. Fixed-universe explicit-watermark frames and portfolio batch validation only. Local 433 tests and all checks pass; [PR CI 44894640980](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44894640980) passed Python 3.12/3.13, 433 tests each, Ruff, mypy 78 files and secret guard. Latest PR checks remain the merge gate. PR 2 shared-account backtest and PR 3 strategy/data study remain unimplemented. #62/#63 are separate green Draft PRs. E5 #6 / E6 #7 OPEN; LIVE NOT AUTHORIZED. Read [STATUS](docs/STATUS.md) for authoritative state.
+**Latest / 2026-11-22:** #65 PR 1 [#66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66) is OPEN at `52ce1da`; [CI 44894840967](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44894840967) passed 433 tests per Python 3.12/3.13 plus static/secret checks. PR 2 local candidate `feat/multisymbol-shared-account-backtest` implements the monitored shared USD account, order lifetime/fail-closed finalization and position-cycle report through `289980e`; local 463 tests and all checks pass, stacked PR/CI pending. PR 3 strategy/data study remains unimplemented. E5 #6 / E6 #7 and G1/G2 OPEN; LIVE NOT AUTHORIZED. Read [STATUS](docs/STATUS.md) and [PR-2 boundary](docs/E6_MULTISYMBOL_SHARED_ACCOUNT.md).
 
 
 이 파일은 채팅 메모리에 의존하지 않고 invest-engine을 이어 개발하기 위한 작업 규칙이다.
@@ -40,10 +40,11 @@
 ## 다중종목 인트라데이 연구 기반 (Issue #65)
 
 - [설계](docs/superpowers/specs/2026-11-20-multisymbol-intraday-slot-momentum-design.md)와 [ADR-0035](docs/adr/0035-multisymbol-portfolio-decision-boundary.md)가 권위 있는 경계다. 기존 `StrategyRunner`/`HistoricalBacktest` 계약은 변경하지 않는다.
-- PR 1 로컬 구현은 `UniverseFrameCoordinator`의 명시적 watermark, 완전한 고정 universe, `DATA_UNAVAILABLE`/`NO_ACTION` 분리, late-data halt와 `PortfolioStrategyRunner`의 ordered complete-target/trigger/노출 상한 검증까지만 포함한다.
+- PR 1은 `UniverseFrameCoordinator`의 명시적 watermark, 완전한 고정 universe, `DATA_UNAVAILABLE`/`NO_ACTION` 분리, late-data halt와 `PortfolioStrategyRunner`의 ordered complete-target/trigger/노출 상한 검증까지만 포함한다. PR #66 병합 전 최신 review/check를 다시 확인한다.
 - 결측 종목을 빼고 순위를 계산하거나, watermark 뒤의 bar로 과거 frame을 고치거나, 플러그인 출력을 정렬·수선하지 않는다. 복구는 신뢰된 저널 replay로 새 coordinator를 구성한다.
-- 다음 단일 구현은 **PR 2 공유계좌 역사 backtest 조정·position-cycle 보고·기존 hash 호환성**이다. `xs-slot-momentum@1.0.0`, controls 및 실제 데이터 연구는 PR 3 전까지 구현·검증됐다고 쓰지 않는다.
-- 현재 로컬 근거는 433 tests/Ruff/mypy 78 files/secret guard이며 [PR #66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66)의 최신 checks가 병합 전 CI 근거다. 수익성, 실제 체결 가능성, Paper/Live 권한을 의미하지 않는다.
+- PR 2 로컬 후보는 별도 `HistoricalPortfolioBacktest`로 한 개의 monitored USD account/E3 risk/virtual ledger를 공유한다. 신호 봉 체결 금지, plan expiry의 마지막 적격 봉 후 BUY 잔량 취소, 다음 checkpoint 전 교체 취소, 미체결 EXIT/장 종료 잔고 fail-closed, daily-loss 전 종목 EXIT overlay와 fill/position-cycle 분리 보고를 유지한다.
+- PR 2는 `src/invest_engine/research/backtest.py`, 기존 `BacktestReport`, E6.7 SDK 계약과 broker/network 모듈을 변경하지 않는다. [E6_MULTISYMBOL_SHARED_ACCOUNT](docs/E6_MULTISYMBOL_SHARED_ACCOUNT.md)가 구현 경계다.
+- 다음 구현은 PR 2 stacked CI/review 이후 **PR 3 `xs-slot-momentum@1.0.0` + cash/hold/placebo controls + preregistered provisional data workflow**다. 기업행동/PIT preflight, provider/cost/identity/untouched holdout, Quote/Trade 실행 검증은 여전히 열려 있다. 인프라 테스트를 수익성 또는 Paper/Live 근거로 쓰지 않는다.
 
 ## E5 연구 엔진 경계
 - docs/E5_BACKTEST.md 및 ADR-0010 참고. E5.1은 보수적 Bar LIMIT 모델이지만 실제 체결 가능성을 보장하지 않는다.

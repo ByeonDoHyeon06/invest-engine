@@ -1,7 +1,7 @@
 # ADR-0035: Explicit-watermark multi-symbol portfolio decision boundary
 
 - Date: 2026-11-21
-- Status: Accepted for offline implementation; PR #66 open, CI 44894640980 passed, latest checks required for merge
+- Status: Accepted for offline implementation; PR #66 open at `52ce1da`, CI 44894840967 passed; stacked PR-2 local candidate through `289980e`, PR/CI pending
 
 ## Context
 
@@ -17,7 +17,12 @@ The first proposed higher-frequency study needs all required instruments observe
 4. Late bars at or before a finalized watermark are rejected. Instrument-history invalidation may remove stale observations and duplicate-bar keys, but it never rewinds seen event IDs, ordinal, known time or watermark.
 5. Add a separate trusted-internal `PortfolioStrategy` protocol and `PortfolioStrategyRunner`. It receives an immutable causal context and emits one ordered `StrategySignal` per frame member in a frame-bound `PortfolioSignalBatch`.
 6. The runner validates frame/manifest identity, generation time, member order, trigger lineage, signal expiry, LONG count and gross target envelope. It does not sort, repair, allocate, submit or fill plugin output.
-7. This boundary is offline and in-memory. It has no broker, database, network, account mutation or order authority. Shared-account historical execution remains a separate follow-up.
+7. The strategy boundary remains offline and in-memory. It has no broker, database, network, account mutation or direct order authority.
+8. Add a separate, single-use `HistoricalPortfolioBacktest` research coordinator. It owns one existing E3 `TradingRuntime`, one virtual attribution ledger and one mark map for the complete USD universe; the existing single-instrument `HistoricalBacktest` and `BacktestReport` stay unchanged.
+9. Schedule session-relative checkpoints explicitly. Finalize one before accepting the first observation whose known clock passes it, or at EOF when equal. Previously accepted orders are evaluated before the current bar updates marks or enters a strategy frame.
+10. Require a flat session boundary, a session-opening USD baseline and E3 monitoring. Re-observe before every BUY after state changes. Pending BUYs share portfolio exposure; pending SELL proceeds are unavailable. A latched daily-loss session replaces execution input with a deterministic complete EXIT set while retaining the strategy's original audit output.
+11. Preserve the allocation plan expiry for each BUY. Process its final eligible bar before canceling a remainder; reject a bar starting at expiry. Cancel older replaceable BUYs before a later decision, but never cancel an unresolved SELL to manufacture a flat result. Unresolved EXITs, orders or final inventory invalidate the arm.
+12. Wrap the unchanged account report with checkpoint lineage, exact executions, flat-to-long-to-flat position cycles, session/symbol summaries and deterministic artifacts. Fill counts remain fills and are not renamed trades.
 
 ## Consequences
 
@@ -26,6 +31,8 @@ The first proposed higher-frequency study needs all required instruments observe
 - Cross-venue instruments may share a frame only when their session bounds align; venue names need not match.
 - The coordinator can retain substantially more bar history than the event-scoped runner, so callers must configure and monitor its bounded in-memory capacity.
 - Crash recovery requires replaying the trusted event journal and restoring strategy-owned state. This ADR does not add durable portfolio decisions or atomic order handoff.
+- Shared-capital and monitoring behavior can now be tested synthetically without implementing the proposed strategy. Corporate-action/PIT preflight and paired base/stress orchestration remain follow-ups.
+- Bar penetration remains an offline approximation. This ADR adds no QuoteTick/TradeTick queue evidence, provider attestation, Paper transport or Live authority.
 - Passing contract tests establishes implementation correctness only. It provides no evidence that `xs-slot-momentum@1.0.0` is profitable or executable.
 
 ## Alternatives rejected
@@ -39,4 +46,4 @@ The first proposed higher-frequency study needs all required instruments observe
 
 Revisit this decision before adding a continuously running streaming/Paper lifecycle, any partial-universe policy, untrusted plugin process isolation, or QuoteTick/TradeTick execution and queue modeling. A changed recovery or persistence model, distributed watermark source, or permission boundary requires a replacement/amending ADR and replay compatibility tests.
 
-The staged implementation and remaining shared-account/strategy work are specified in [the multi-symbol intraday research design](../superpowers/specs/2026-11-20-multisymbol-intraday-slot-momentum-design.md).
+The implemented PR-2 boundary is documented in [E6 multi-symbol shared-account historical replay](../E6_MULTISYMBOL_SHARED_ACCOUNT.md). Remaining strategy/research work is specified in [the multi-symbol intraday research design](../superpowers/specs/2026-11-20-multisymbol-intraday-slot-momentum-design.md).
