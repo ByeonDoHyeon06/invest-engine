@@ -1,0 +1,63 @@
+{
+  "schema_version": "evidence-summary-v1",
+  "study_id": "e6-2023-frozen-replication-pr62",
+  "kind": "historical_research_summary",
+  "source_report": "evidence/reports/E6_6_REDUCED_TURNOVER.md",
+  "source_report_original_git_blob_sha": "16f2ff9f5fba20bfa8a406aee37fd9aceecbcd63",
+  "workflow_url": "https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239696",
+  "pr_url": "https://github.com/ByeonDoHyeon06/invest-engine/pull/62",
+  "reported_at": "2026-11-20",
+  "data_basis": "2023 retrospective fixed temporal replication, broader data previously inspected; not sealed untouched holdout",
+  "data_retained_in_repository": false,
+  "data_rights_certified": false,
+  "historical_pit_certified": false,
+  "executable_prices_certified": false,
+  "real_broker_fees_verified": false,
+  "accounts_are_independent": true,
+  "compounded_portfolio_returns": false,
+  "currency": "USD",
+  "modeled_costs": [
+    "base",
+    "stress"
+  ],
+  "windows": {
+    "planned": 24,
+    "eligible": 14,
+    "corporate_action_blocked": 10
+  },
+  "arms": {
+    "planned": 288,
+    "completed": 168,
+    "active": 112,
+    "beat_stronger_baseline": 0
+  },
+  "net_pnl_by_model": {
+    "volume_control": {
+      "base": "-739.12",
+      "stress": "-1770.15"
+    },
+    "weekly": {
+      "base": "-641.24",
+      "stress": "-1228.40"
+    },
+    "range200": {
+      "base": "-140.00",
+      "stress": "-249.32"
+    },
+    "combined": {
+      "base": "-282.63",
+      "stress": "-361.69"
+    },
+    "entered_hold": {
+      "base": "2323.67",
+      "stress": "2024.59"
+    }
+  },
+  "conclusion": "No active variant outperformed the stronger benchmark on complete eligible matched windows; stress loss reduction is not positive alpha.",
+  "release_gates": {
+    "e5_g1": false,
+    "e6_g2": false,
+    "paper": false,
+    "real_orders": false
+  }
+}
