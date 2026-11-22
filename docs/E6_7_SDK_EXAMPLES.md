@@ -1,6 +1,8 @@
 # E6.7 — Unified SDK examples (23 design targets)
 
-**DESIGN ONLY — NOT RUNNABLE YET.** This E6.7a DX revision uses four execution roots and a single typed market-source grammar. It does not change the currently implemented E0–E6 engine, release gates or broker permissions. [SDK specification](E6_7_UNIFIED_SDK.md), [public grammar](E6_7_PUBLIC_DX_GRAMMAR.md), [simulation contract](E6_7_SIMULATION_CONTRACT.md), [streaming contract](E6_7_STREAMING_CONTRACT.md), [API migration matrix](E6_7_API_CONTRACT_MATRIX.md), [ADR-0034](adr/0034-unified-sdk.md).
+**DESIGN ONLY — NOT RUNNABLE YET.** All per-example **Expected contract** notes describe proposed return types and *illustrative, separately named toy-fixture outcomes*, not observed stdout or performance from any referenced market dataset. See [output contracts and toy fixtures](E6_7_SDK_OUTPUT_CONTRACTS.md) for status fields, nullable metrics, block reasons and expected JSON-like projections.
+
+This E6.7a DX revision uses four execution roots and a single typed market-source grammar. It does not change the currently implemented E0–E6 engine, release gates or broker permissions. [SDK specification](E6_7_UNIFIED_SDK.md), [public grammar](E6_7_PUBLIC_DX_GRAMMAR.md), [simulation contract](E6_7_SIMULATION_CONTRACT.md), [streaming contract](E6_7_STREAMING_CONTRACT.md), [API migration matrix](E6_7_API_CONTRACT_MATRIX.md), [output contracts and toy fixtures](E6_7_SDK_OUTPUT_CONTRACTS.md), [ADR-0034](adr/0034-unified-sdk.md).
 
 **Rules:** Four execution roots: simulation / research / evaluate / session. Use a typed `source=` for historical, Paper, Research and Session; Evaluate accepts a one-shot `market_data=` snapshot instead. Apply `strategy`, `risk`, simulated `capital`, and simulated `execution` consistently where relevant. Advanced options never require a different `HistoricalSimulationSpec → engine.prepare → engine.run` public ceremony; immutable specs remain available internally/for low-level compatibility. Proposed factories `sources.*`, `risk.Limits`, `execution.Model`, `allocation.Weights`, `simulation.inspect()` require E6.7a capability/signature verification. No actual broker order route.
 
@@ -17,6 +19,12 @@ from invest_engine import Engine
 
 engine = Engine()
 ```
+
+**Expected contract (proposed):** `Engine`.
+
+- Construction: inert facade; no configured market source, account, tasks or I/O
+- No result metrics or trading status yet.
+
 
 Neither package import nor construction fetches data, resolves broker credentials, opens accounts, starts tasks or executes strategies. No `mode`, `offline()` or `online()` constructor.
 
@@ -38,6 +46,12 @@ print(result.status, result.summary)
 result.export("artifacts/aapl-orb")
 ```
 
+**Expected contract (proposed):** `SimulationResult`.
+
+- Toy fixture `toy_no_trade_v1` (NOT an AAPL run): `status=NO_TRADE`, `summary.starting_cash=100000.00 USD`, `summary.ending_cash=100000.00 USD`
+- `fills=()`, `blockers=()`, `metrics=None`; `export()` explicitly writes permitted artifacts.
+
+
 `.historical()` executes a finite, verified local historical replay and returns `SimulationResult`; it does not automatically fetch a ticker's data. Historical Backtest is a *kind of simulation*, not an additional public `engine.backtest()` method.
 
 ### 03 — Paper simulation (E7; not implemented)
@@ -54,6 +68,13 @@ async with engine.simulation(
     async for event in paper.events():
         print(event.status)
 ```
+
+**Expected contract (proposed):** `AsyncContextManager[PaperSession] → PaperEvent stream`.
+
+- Upon context entry: `paper.status=WARMING → READY` when warmup/source checks pass
+- Toy `toy_manual_paper_v1` PaperEvent: `synthetic_fills=[{id:sim:fill:001, quantity:1, price:100.00 USD}]`; **real broker orders=0**
+- After safe close: `paper.status=CLOSED`; terminal `paper.result` is an audited synthetic result (E7 only).
+
 
 The source is read-only market data. Paper owns synthetic cash, orders and fills, never broker trading credentials. E7 only; design target, not runnable.
 
@@ -77,6 +98,12 @@ result = Engine().research(
 print(result.review, result.best_candidate)
 ```
 
+**Expected contract (proposed):** `ResearchResult`.
+
+- Toy `toy_research_rejected_v1`: `status=COMPLETED`, `review.evaluated_candidates=2`, `review.eligible_candidates=0`, `best_candidate=None`
+- This is **not** an observed strategy-performance result or holdout approval. The example's actual 6-candidate search has no claimed numerical output.
+
+
 This invokes a bounded *registered historical* study under E6 journal/search/holdout restrictions. No strategy auto-promotion; `best_candidate` is `None` when no admissible candidate exists.
 
 ### 05 — Single-time proposal (future; E6.7a signature design)
@@ -90,6 +117,12 @@ decision = engine.evaluate(
 )
 print(decision.status, decision.proposed_orders)
 ```
+
+**Expected contract (proposed):** `DecisionResult`.
+
+- Toy valid no-action snapshot: `status=NO_ACTION`, `proposed_orders=()`, `submitted=False`
+- Toy stale snapshot: `status=BLOCKED`, `reason_codes=(SNAPSHOT_STALE,)`; never a real order.
+
 
 The broker account snapshot is provided and owned by the caller, timestamped and checked for identity/freshness/positions/open orders. A proposed order has `submitted=False`. The engine **does not send it**.
 
@@ -108,6 +141,12 @@ async with engine.session(
     async for decision in session.decisions():
         print(decision.proposed_orders)
 ```
+
+**Expected contract (proposed):** `AsyncContextManager[DecisionSession] → DecisionResult stream`.
+
+- After eligible warmup and broker snapshot: `session.status=READY`; toy decision `status=NO_ACTION`, `proposed_orders=()`
+- Stale/missing account snapshot yields `BLOCKED/SNAPSHOT_STALE`, no proposed exposure. No synthetic fills or actual orders.
+
 
 Session supports a managed market-data source just like Paper, but emits proposals only. Use `source=sources.manual()` and `session.ingest()` when the application owns the feed. E7 only.
 
@@ -134,6 +173,12 @@ result = engine.simulation(
 ).historical()
 ```
 
+**Expected contract (proposed):** `SimulationResult (same as #02)`.
+
+- Adding `risk.Limits` and `execution.Model` changes `result.config` and may alter synthetic fills/fees/metrics; it **does not change the result type**.
+- No invented PnL: toy no-action fixture remains `NO_TRADE` if the strategy never issues an order.
+
+
 Explicit profile overrides compose into the same immutable typed spec. Bps values are simulated costs, not certified broker fees. Mandatory risk checks cannot be disabled by a convenience constructor.
 
 ### 08 — Caller-fed Paper with a manual source (E7; future)
@@ -151,6 +196,12 @@ async with engine.simulation(
         print(outcome.status)
 ```
 
+**Expected contract (proposed):** `AsyncContextManager[PaperSession] → PaperEvent via ingest()`.
+
+- `outcome` is one typed PaperEvent/ingest outcome, e.g. toy `status=READY`, `reason_codes=()` after eligible event
+- When the synthetic fill model fires: `outcome.synthetic_fills` holds synthetic fill IDs, never real order IDs; gap gives a blocked/halted outcome.
+
+
 The same `source=` contract supports a read-only managed stream (example 03) **or** explicit caller-owned ingress. The **Paper simulation engine remains identical**, and real broker orders are never submitted. Manual events require validated identity, provenance, causal ordering, completeness and data rights.
 
 ### 09 — Local load, resample and data-quality inspection (E6.7c)
@@ -163,6 +214,12 @@ bars = data.resample(dataset, interval="5m")
 quality = data.inspect(bars)
 print(quality.blockers)
 ```
+
+**Expected contract (proposed):** `ValidatedDataset, ResampledData, DataQualityReport`.
+
+- Clean fixture: `quality.blockers=()`; missing interval: `quality.blockers=(DATA_GAP, ...)`
+- `data.resample()` only returns validated eligible coarser bars, not artificial ticks/quotes.
+
 
 Coarsening native supported bar intervals is allowed; reconstructing quotes/ticks from OHLCV is not. Quality gates fail closed rather than invent missing market observations.
 
@@ -182,6 +239,12 @@ async with engine.simulation(
             break
     print(paper.status)
 ```
+
+**Expected contract (proposed):** `PaperSession.status + PaperEvent.blockers`.
+
+- Toy feed gap: `event.blockers=(DATA_GAP,)`, `paper.status=HALTED`; after context exit, `paper.status=CLOSED` with halt reason retained
+- A disconnect is not proof of recovery; no broker order calls.
+
 
 Context entry opens only permitted market-data I/O; context exit joins tasks and persists allowed audit. Resume requires verified source cursor, journal, synthetic ledger and state. No live order calls.
 
@@ -206,6 +269,12 @@ study = engine.research(
 print(study.status, study.review)
 ```
 
+**Expected contract (proposed):** `ResearchResult (same as #04)`.
+
+- Toy `toy_research_rejected_v1`: `status=COMPLETED`, `best_candidate=None`, `review.reason_codes=(NO_ELIGIBLE_CANDIDATE,)`
+- `config` records modeled costs, validation folds and risk settings; actual eligible-candidate count comes only from an executed eligible fixture.
+
+
 Advanced research uses the **same** source/strategy/capital/risk/execution option names, adding research-specific search and validation. Immutable registered study specs, journaling, holdout and resource gates still execute internally; no public second prepare/run grammar required.
 
 ## Decision
@@ -224,6 +293,12 @@ async with engine.session(symbols=["AAPL"], strategy=my_strategy) as s:
         proposal = await s.ingest(event)
         await external_execution_host.review(proposal)
 ```
+
+**Expected contract (proposed):** `DecisionResult from ingest(); external review is not SDK output`.
+
+- Toy eligible snapshot: `proposal.status=NO_ACTION`, `proposal.proposed_orders=()`
+- `external_execution_host.review(...)` returns an **application-defined** value, not an Invest Engine type or proof of order placement.
+
 
 `external_execution_host` and `app` are **application-owned placeholders, not invest_engine modules**. The application alone would handle authorization, broker SDK, reconciliation, and any actual order submission. `review()` here is not automatic trading approval.
 
@@ -245,6 +320,12 @@ async with engine.session(symbols=["AAPL"], strategy=my_strategy) as s:
         print(outcome.status, outcome.reason_codes)
 ```
 
+**Expected contract (proposed):** `DecisionResult per normalized market event`.
+
+- Eligible no-action toy: `status=NO_ACTION`, `reason_codes=()`
+- Stale account toy: `status=BLOCKED`, `reason_codes=(SNAPSHOT_STALE,)`, `proposed_orders=()`. Normalizing an event does not invent missing source proof.
+
+
 Never synthesize instrument identity, source sequence, publication timestamp, or unobservable trade volume. Missing/stale broker snapshots block new exposure. Serialized writer and explicit data gap/late policies required.
 
 ## Customization
@@ -260,6 +341,12 @@ from invest_engine import indicators
 average = indicators.sma(prices, period=20)
 range_ = indicators.atr(bars, period=14)
 ```
+
+**Expected contract (proposed):** `Typed indicator series / numeric features`.
+
+- Illustrative **separate** SMA fixture: `sma([1, 2, 3], period=3)` → prefix unavailable, final value `2.0`
+- Exact array/Decimal/NaN representation and ATR warmup convention are E6.7a type decisions. These are **not** computed from the snippet's unspecified `prices`/`bars`.
+
 
 Standalone pure helpers do not require an Engine. They are subject to typed data/warmup and numerical parity.
 
@@ -289,6 +376,12 @@ result = Engine().simulation(
 ).historical()
 ```
 
+**Expected contract (proposed):** `SimulationResult; strategy callbacks return signal intents`.
+
+- `on_bar()` returns a typed long/exit/no-action intent based on actual eligible data; risk/fill model determines any synthetic order/fill
+- No predetermined buy signal, trade count or performance without a specified fixture. The final `result` has the same shape as #02.
+
+
 High-level callbacks adapt to existing read-only manifest/context/signal/snapshot contracts. This is trusted plugin code, not a sandbox. Independent runs require isolated strategy state, canonical event visibility and snapshot/restore parity.
 
 ### 16 — Multiple instruments/strategies (future supported combinations only)
@@ -304,6 +397,12 @@ result = engine.simulation(
     risk=risk.Limits(max_total_exposure="20%"),
 ).historical()
 ```
+
+**Expected contract (proposed):** `SimulationResult if supported; typed rejection otherwise`.
+
+- Until single-account multi-strategy execution is implemented: expected `ConfigurationError.reason_codes=(UNSUPPORTED_COMBINATION,)` (proposed code)
+- Do **not** report fabricated portfolio performance, separate virtual accounts, or silently run just one strategy.
+
 
 Proposed list/allocation syntax is future-only, if shared-account multi-strategy execution becomes supported. Allocation is an option on Simulation, not a nested new execution grammar. PR #66 alone does not establish this capability.
 
@@ -323,6 +422,12 @@ print(plan.effective_config, plan.blockers)
 result = simulation.historical()
 ```
 
+**Expected contract (proposed):** `PlanPreview, then SimulationResult`.
+
+- Proposed preflight on toy eligible source: `plan.blockers=()`, `plan.effective_config.risk.max_position=5%`
+- An empty preview blocker set is **not** a guaranteed success; `historical()` revalidates runtime inputs and can return `BLOCKED`.
+
+
 Optional `inspect()` is read-only preflight (possibly reading explicitly permitted local manifests), never a new mandatory lifecycle or provider/trading connection. Internal typed specs and existing low-level prepare/run paths remain available for compatibility; advanced SDK callers use the same Simulation terminal.
 
 ### 18 — Multi-currency reporting (E6.7c; existing support-dependent)
@@ -338,6 +443,12 @@ result = engine.simulation(
 ).historical()
 print(result.summary)
 ```
+
+**Expected contract (proposed):** `SimulationResult with currency-separated summary`.
+
+- Toy no-action fixture: `summary.cash_by_currency={USD:100000.00, KRW:1000000}`
+- No invented cross-currency aggregate, FX trade or automatic buying power; unsupported combination yields a typed blocker/error.
+
 
 Multi-currency reporting extends Simulation with optional configuration, not another run API. Reporting never confers FX execution or buying power; unsupported combinations fail explicitly.
 
@@ -357,6 +468,12 @@ result = engine.simulation(
     artifact_store=my_artifact_store,
 ).historical()
 ```
+
+**Expected contract (proposed):** `SimulationResult (same finite contract)`.
+
+- `result.config` exposes the normalized redacted calendar, fill/fees and reporting policy IDs/versions; `result.evidence` refers to eligible actual sources
+- Custom policy errors are typed; no generic performance output can be promised before running the chosen deterministic fixture.
+
 
 Typed advanced adapters/policies are optional **operation-level** arguments. No hidden Engine-global source precedence, arbitrary untyped kwargs, mandatory alternate Spec/prepare/run or safety bypass.
 
@@ -380,6 +497,12 @@ if result.metrics is not None:
 result.export("artifacts/study-001")
 ```
 
+**Expected contract (proposed):** `SimulationResult and explicit ArtifactReceipt (proposed)`.
+
+- Toy no-trade fixture: `status=NO_TRADE`, `metrics=None`, `blockers=()`, `evidence.fixture=toy_no_trade_v1`
+- Proposed `result.export(path)` → `ArtifactReceipt(location, schema_version, content_hash, redacted=True)` **only when** rights checks pass.
+
+
 Finite `SimulationResult` and `ResearchResult` share `status/summary/metrics?/evidence/config/blockers/export`; specialized `fills/equity/portfolio/review` are typed. No fabricated success/PnL for invalid data.
 
 ### 21 — Failure handling is not zero-trade (E6.7b/c)
@@ -402,6 +525,12 @@ else:
         print(result.metrics)
 ```
 
+**Expected contract (proposed):** `ConfigurationError OR typed SimulationResult`.
+
+- Bad source/config: `ConfigurationError.reason_codes=(SOURCE_MODE_MISMATCH,)` (proposed)
+- Already-started run with discovered data gap: `result.status=BLOCKED`, `result.blockers=(DATA_GAP,)`, `result.metrics=None`; valid zero trades are instead `NO_TRADE`.
+
+
 Invalid construction/configuration raises typed errors. Started runs may yield explicit BLOCKED/FAILED evidence. Valid NO_TRADE is a distinct outcome from broken or missing data.
 
 ### 22 — Shared CLI / Python contract (E6.7d)
@@ -412,6 +541,12 @@ invest-engine run --config configs/historical-simulation.json
 invest-engine inspect --run-id study-001
 invest-engine explain --run-id study-001 --decision-id decision-001
 ```
+
+**Expected contract (proposed):** `CLI status and artifact references; exact CLI formatting TBD`.
+
+- Toy future CLI target, **not existing CLI stdout**: `{status: NO_TRADE, run_id: toy_no_trade_v1, metrics: null}`
+- `inspect`/`explain` should expose versioned reason/evidence references; existing commands/flags and their real output remain compatible.
+
 
 Planned new config decodes the same normalized spec as `.historical()`. Preserve working legacy commands (`backtest`, `import-csv`, `stress`, `replay-synthetic`, `e5-research-v1`) through documented migration.
 
@@ -428,6 +563,12 @@ proposal = engine.evaluate(
 await external_execution_host.review(proposal)
 # Real-order approval/submission, if ever authorized, belongs to the host.
 ```
+
+**Expected contract (proposed):** `DecisionResult followed by application-defined review`.
+
+- Toy snapshot: `proposal.status=NO_ACTION`, `proposal.proposed_orders=()`, `proposal.submitted=False`
+- `external_execution_host.review()` returns an independently defined application decision; the engine submits **zero** actual broker orders.
+
 
 There is no `engine.live`, `engine.simulation(...).live()` or `engine.orders.submit()` interface. A separate broker adapter/application project owns credentials, broker-specific REST/WebSocket, real account authority, outbox, order reconciliation and kill switch. The original E8 live milestone becomes an **external integration verification track**, not an engine public execution mode.
 
