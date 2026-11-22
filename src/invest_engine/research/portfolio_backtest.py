@@ -45,7 +45,7 @@ from invest_engine.strategies.attribution import (
     record_simulated_fill,
     ticket_for_plan,
 )
-from invest_engine.strategies.contracts import SignalDirection
+from invest_engine.strategies.contracts import SignalDirection, StrategySignal
 from invest_engine.strategies.portfolio_contracts import (
     PortfolioStrategy,
     UniverseFrameStatus,
@@ -448,6 +448,7 @@ class _PortfolioReplay:
             raise InvalidEvent("complete portfolio checkpoint has no strategy batch")
         if monitor is None:
             monitor = self._observe(session, checkpoint)
+        builder.reason_codes.update(monitor.reasons)
 
         signals = evaluation.batch.signals
         builder.signal_ids = tuple(signal.signal_id for signal in signals)
@@ -456,8 +457,40 @@ class _PortfolioReplay:
             for signal in signals
             if signal.direction is SignalDirection.LONG
         )
+        execution_signals = signals
+        if session.session_id in self.trader.state.daily_loss_sessions:
+            builder.reason_codes.add("DAILY_LOSS_EXIT_OVERRIDE")
+            if "DAILY_LOSS_LIMIT" not in monitor.reasons:
+                builder.reason_codes.add("DAILY_LOSS_LATCHED")
+            execution_signals = tuple(
+                StrategySignal(
+                    signal_id=(
+                        "risk:daily-loss:"
+                        + outcome.frame.frame_id
+                        + ":"
+                        + instrument.key
+                    ),
+                    strategy_id="e6-daily-loss-overlay",
+                    strategy_version="1.0.0",
+                    instrument=instrument,
+                    direction=SignalDirection.EXIT,
+                    target_fraction=Decimal(0),
+                    generated_at=checkpoint,
+                    expires_at=(
+                        checkpoint
+                        + self.owner.strategy.manifest.checkpoint_interval
+                    ),
+                    trigger_event_id=trigger.event_id,
+                    reason_codes=("DAILY_LOSS_EXIT_OVERRIDE",),
+                )
+                for instrument, trigger in zip(
+                    outcome.frame.instruments,
+                    outcome.frame.trigger_bars,
+                    strict=True,
+                )
+            )
         allocated = allocate_targets(
-            signals,
+            execution_signals,
             as_of=checkpoint,
             policy=self.owner.allocation_policy,
         )

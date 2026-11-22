@@ -40,7 +40,11 @@ class TwoSymbolRoundTripStrategy:
     def __init__(
         self,
         selections_by_slot: dict[int, tuple[str, ...]] | None = None,
+        *,
+        target_fraction: D = D("0.10"),
+        max_gross_target_fraction: D | None = None,
     ) -> None:
+        self.target_fraction = target_fraction
         self._manifest = PortfolioStrategyManifest(
             "two-symbol-round-trip",
             "1.0.0",
@@ -48,7 +52,7 @@ class TwoSymbolRoundTripStrategy:
             MINUTE,
             CHECKPOINT_INTERVAL,
             2,
-            D("0.20"),
+            max_gross_target_fraction or target_fraction * 2,
         )
         self.calls: list[str] = []
         self.selections_by_slot = selections_by_slot
@@ -83,7 +87,7 @@ class TwoSymbolRoundTripStrategy:
                 target_fraction=(
                     D(0)
                     if is_flatten or instrument.key not in selected
-                    else D("0.10")
+                    else self.target_fraction
                 ),
                 generated_at=frame.as_of,
                 expires_at=frame.as_of + timedelta(minutes=5),
@@ -109,7 +113,13 @@ class TwoSymbolRoundTripStrategy:
         )
 
     def snapshot(self) -> bytes:
-        return repr(self.selections_by_slot).encode("utf-8")
+        return repr(
+            (
+                self.selections_by_slot,
+                self.target_fraction,
+                self.manifest.max_gross_target_fraction,
+            )
+        ).encode("utf-8")
 
     def restore(self, data: bytes) -> None:
         if data != self.snapshot():
@@ -212,6 +222,9 @@ def happy_path_events() -> tuple[EventEnvelope[Bar], ...]:
 
 def make_backtest(
     strategy: TwoSymbolRoundTripStrategy | None = None,
+    *,
+    risk: RiskLimits | None = None,
+    allocation_policy: AllocationPolicy | None = None,
 ) -> tuple[HistoricalPortfolioBacktest, TwoSymbolRoundTripStrategy]:
     selected = strategy or TwoSymbolRoundTripStrategy()
     config = TradingConfig(
@@ -229,19 +242,21 @@ def make_backtest(
         strategy=selected,
         config=config,
         opening_cash=(Money(D("100000"), "USD"),),
-        risk=RiskLimits(
-            per_trade_planned_loss=D("0.0025"),
-            max_symbol_cost_fraction=D("0.10"),
-            max_total_cost_fraction=D("0.20"),
-            max_open_positions=2,
-            require_monitoring=True,
-            mark_max_age=timedelta(minutes=2),
-        ),
+        risk=risk
+        or RiskLimits(
+                per_trade_planned_loss=D("0.0025"),
+                max_symbol_cost_fraction=D("0.10"),
+                max_total_cost_fraction=D("0.20"),
+                max_open_positions=2,
+                require_monitoring=True,
+                mark_max_age=timedelta(minutes=2),
+            ),
         fill_policy=BarFillPolicy(),
-        allocation_policy=AllocationPolicy(
-            max_symbol_fraction=D("0.10"),
-            max_currency_fraction=D("0.20"),
-        ),
+        allocation_policy=allocation_policy
+        or AllocationPolicy(
+                max_symbol_fraction=D("0.10"),
+                max_currency_fraction=D("0.20"),
+            ),
     )
     return runner, selected
 
@@ -562,3 +577,258 @@ def test_unresolved_final_inventory_invalidates_session() -> None:
 
     with pytest.raises(InvalidEvent, match="final inventory"):
         backtest.run(events)
+
+
+def test_multiple_buys_reobserve_after_state_change_and_share_total_cap() -> None:
+    strategy = TwoSymbolRoundTripStrategy(
+        target_fraction=D("0.15"),
+        max_gross_target_fraction=D("0.30"),
+    )
+    backtest, _ = make_backtest(
+        strategy,
+        risk=RiskLimits(
+            per_trade_planned_loss=D("0.0025"),
+            max_symbol_cost_fraction=D("0.20"),
+            max_total_cost_fraction=D("0.20"),
+            max_open_positions=2,
+            require_monitoring=True,
+            mark_max_age=timedelta(minutes=2),
+        ),
+        allocation_policy=AllocationPolicy(
+            max_symbol_fraction=D("0.15"),
+            max_currency_fraction=D("0.30"),
+        ),
+    )
+    expiry = FIRST_CHECKPOINT + timedelta(minutes=5)
+    events = (
+        bar_event(A, "trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(B, "trigger:b", FIRST_CHECKPOINT, 1, price="100"),
+        bar_event(A, "expiry:a", expiry, 2, price="100"),
+        bar_event(A, "flatten:a", FLATTEN, 3, price="100"),
+        bar_event(B, "flatten:b", FLATTEN, 4, price="100"),
+        bar_event(A, "session-end:a", SESSION_END, 5, price="100"),
+        bar_event(B, "session-end:b", SESSION_END, 6, price="100"),
+    )
+
+    report = backtest.run(events)
+
+    decision = next(
+        item
+        for item in report.universe_decisions
+        if item.as_of == FIRST_CHECKPOINT
+    )
+    assert tuple(row[1] for row in decision.decisions) == (
+        "APPROVED",
+        "REJECTED",
+    )
+    assert decision.decisions[1][2] == ("TOTAL_COST_LIMIT",)
+    assert "MARK_RECHECK_AFTER_STATE_CHANGE" not in decision.decisions[1][2]
+
+
+def test_rotation_cannot_spend_pending_sale_proceeds() -> None:
+    second_checkpoint = FIRST_CHECKPOINT + CHECKPOINT_INTERVAL
+    strategy = TwoSymbolRoundTripStrategy({1: (A.key,), 2: (B.key,)})
+    backtest, _ = make_backtest(
+        strategy,
+        risk=RiskLimits(
+            per_trade_planned_loss=D("0.0025"),
+            max_symbol_cost_fraction=D("0.10"),
+            max_total_cost_fraction=D("0.10"),
+            max_open_positions=2,
+            require_monitoring=True,
+            mark_max_age=timedelta(minutes=2),
+        ),
+    )
+    events = (
+        bar_event(A, "first-trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(B, "first-trigger:b", FIRST_CHECKPOINT, 1, price="100"),
+        bar_event(
+            A,
+            "first-entry-fill:a",
+            FIRST_CHECKPOINT + MINUTE,
+            2,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(A, "second-trigger:a", second_checkpoint, 3, price="100"),
+        bar_event(B, "second-trigger:b", second_checkpoint, 4, price="100"),
+        bar_event(B, "second-clock:b", second_checkpoint + MINUTE, 5, price="100"),
+        bar_event(
+            A,
+            "pending-exit-fill:a",
+            second_checkpoint + MINUTE,
+            6,
+            price="100",
+            low="99",
+            high="102",
+        ),
+        bar_event(A, "flatten:a", FLATTEN, 7, price="100"),
+        bar_event(B, "flatten:b", FLATTEN, 8, price="100"),
+        bar_event(A, "session-end:a", SESSION_END, 9, price="100"),
+        bar_event(B, "session-end:b", SESSION_END, 10, price="100"),
+    )
+
+    report = backtest.run(events)
+
+    rotation = next(
+        item
+        for item in report.universe_decisions
+        if item.as_of == second_checkpoint
+    )
+    assert tuple(row[1] for row in rotation.decisions) == (
+        "APPROVED",
+        "REJECTED",
+    )
+    assert rotation.decisions[1][2] == ("TOTAL_COST_LIMIT",)
+    assert all(execution.instrument == A for execution in report.executions)
+
+
+def test_stale_held_symbol_mark_blocks_new_exposure_without_zero_valuation() -> None:
+    second_checkpoint = FIRST_CHECKPOINT + CHECKPOINT_INTERVAL
+    strategy = TwoSymbolRoundTripStrategy({1: (A.key,), 2: (B.key,)})
+    backtest, _ = make_backtest(strategy)
+    events = (
+        bar_event(A, "first-trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(B, "first-trigger:b", FIRST_CHECKPOINT, 1, price="100"),
+        bar_event(
+            A,
+            "first-entry-fill:a",
+            FIRST_CHECKPOINT + MINUTE,
+            2,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(B, "incomplete-second:b", second_checkpoint, 3, price="100"),
+        bar_event(
+            B,
+            "second-clock:b",
+            second_checkpoint + MINUTE,
+            4,
+            price="100",
+        ),
+        bar_event(A, "flatten:a", FLATTEN, 5, price="105"),
+        bar_event(B, "flatten:b", FLATTEN, 6, price="105"),
+        bar_event(
+            A,
+            "exit-fill:a",
+            FLATTEN + MINUTE,
+            7,
+            price="105",
+            low="104",
+            high="107",
+        ),
+        bar_event(A, "session-end:a", SESSION_END, 8, price="105"),
+        bar_event(B, "session-end:b", SESSION_END, 9, price="105"),
+    )
+
+    report = backtest.run(events)
+
+    blocked = next(
+        item
+        for item in report.universe_decisions
+        if item.as_of == second_checkpoint
+    )
+    assert blocked.status is UniverseFrameStatus.DATA_UNAVAILABLE
+    assert blocked.missing_instrument_keys == (A.key,)
+    assert blocked.intent_ids == ()
+    stale_points = tuple(
+        point for point in report.account_report.equity if point.at == second_checkpoint
+    )
+    assert stale_points
+    assert all(not point.complete and point.by_currency == () for point in stale_points)
+
+
+def daily_loss_events() -> tuple[EventEnvelope[Bar], ...]:
+    second_checkpoint = FIRST_CHECKPOINT + CHECKPOINT_INTERVAL
+    third_checkpoint = second_checkpoint + CHECKPOINT_INTERVAL
+    return (
+        bar_event(A, "first-trigger:a", FIRST_CHECKPOINT, 0, price="100"),
+        bar_event(B, "first-trigger:b", FIRST_CHECKPOINT, 1, price="100"),
+        bar_event(
+            A,
+            "first-entry-fill:a",
+            FIRST_CHECKPOINT + MINUTE,
+            2,
+            price="100",
+            low="98",
+            high="101",
+        ),
+        bar_event(A, "loss-trigger:a", second_checkpoint, 3, price="90"),
+        bar_event(B, "loss-trigger:b", second_checkpoint, 4, price="100"),
+        bar_event(
+            A,
+            "loss-exit-fill:a",
+            second_checkpoint + MINUTE,
+            5,
+            price="90",
+            low="89",
+            high="92",
+        ),
+        bar_event(A, "rebound-trigger:a", third_checkpoint, 6, price="100"),
+        bar_event(B, "rebound-trigger:b", third_checkpoint, 7, price="100"),
+        bar_event(
+            A,
+            "rebound-clock:a",
+            third_checkpoint + MINUTE,
+            8,
+            price="100",
+            low="99",
+            high="102",
+        ),
+        bar_event(A, "flatten:a", FLATTEN, 9, price="100"),
+        bar_event(B, "flatten:b", FLATTEN, 10, price="100"),
+        bar_event(A, "session-end:a", SESSION_END, 11, price="100"),
+        bar_event(B, "session-end:b", SESSION_END, 12, price="100"),
+    )
+
+
+def daily_loss_backtest() -> HistoricalPortfolioBacktest:
+    strategy = TwoSymbolRoundTripStrategy(
+        {
+            1: (A.key,),
+            2: (A.key, B.key),
+            3: (B.key,),
+        }
+    )
+    backtest, _ = make_backtest(strategy)
+    return backtest
+
+
+def test_daily_loss_latch_replaces_longs_with_complete_exit_targets() -> None:
+    report = daily_loss_backtest().run(daily_loss_events())
+    second_checkpoint = FIRST_CHECKPOINT + CHECKPOINT_INTERVAL
+    loss_decision = next(
+        item
+        for item in report.universe_decisions
+        if item.as_of == second_checkpoint
+    )
+
+    assert set(loss_decision.selected_instrument_keys) == {A.key, B.key}
+    assert "DAILY_LOSS_LIMIT" in loss_decision.reason_codes
+    assert "DAILY_LOSS_EXIT_OVERRIDE" in loss_decision.reason_codes
+    assert tuple(row[1] for row in loss_decision.decisions) == ("APPROVED",)
+    loss_exit = next(
+        execution
+        for execution in report.executions
+        if execution.source_frame_id == loss_decision.frame_id
+    )
+    assert loss_exit.instrument == A
+    assert loss_exit.side.value == "SELL"
+    assert loss_exit.price == D("90")
+
+
+def test_daily_loss_latch_survives_later_rebound_within_session() -> None:
+    report = daily_loss_backtest().run(daily_loss_events())
+    third_checkpoint = FIRST_CHECKPOINT + 2 * CHECKPOINT_INTERVAL
+    rebound = next(
+        item
+        for item in report.universe_decisions
+        if item.as_of == third_checkpoint
+    )
+
+    assert rebound.selected_instrument_keys == (B.key,)
+    assert "DAILY_LOSS_EXIT_OVERRIDE" in rebound.reason_codes
+    assert rebound.intent_ids == ()
+    assert report.account_report.by_currency_end == (("USD", D("99000")),)
