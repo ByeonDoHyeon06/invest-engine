@@ -1,121 +1,109 @@
 # E6.7 — Unified Engine SDK (four-operation public design)
 
-**Status: PLANNED, NOT EXECUTABLE.** User-approved public-design consolidation, 2026-11-22. This replaces earlier **unimplemented** proposals to expose `engine.backtest()`, `engine.paper.start()`, or `engine.live.start()`. Tracking [#59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59), [ADR-0034](adr/0034-unified-sdk.md), [23 examples](E6_7_SDK_EXAMPLES.md), [old→new matrix](E6_7_API_CONTRACT_MATRIX.md), [simulation contract](E6_7_SIMULATION_CONTRACT.md) and [streaming contract](E6_7_STREAMING_CONTRACT.md). No E5/E6 gates, Paper deployment or broker-order authority granted by this design.
+**Status: PLANNED, NOT EXECUTABLE.** User-approved public-design consolidation and advanced-DX revision, 2026-11-22. This replaces earlier **unimplemented** proposals to expose `engine.backtest()`, `engine.paper.start()`, or `engine.live.start()`. Tracking [#59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59), [ADR-0034](adr/0034-unified-sdk.md), [23 examples](E6_7_SDK_EXAMPLES.md), [old→new matrix](E6_7_API_CONTRACT_MATRIX.md), [public DX grammar](E6_7_PUBLIC_DX_GRAMMAR.md), [simulation contract](E6_7_SIMULATION_CONTRACT.md) and [streaming contract](E6_7_STREAMING_CONTRACT.md). No E5/E6 gates, Paper deployment or broker-order authority granted by this design.
 
-## 1. Purpose and design rules
+## 1. One public grammar across basic and advanced use
 
-One **inert, mode-neutral** `Engine()` with exactly **four primary public operations**:
+The 2026-11-22 advanced-DX revision adds a **common typed market source** and removes the need to learn an unrelated public execution path for advanced options. The four primary operations remain unchanged: `simulation`, `research`, `evaluate`, `session`.
 
-| Operation | Responsibility | Runtime |
-|---|---|---|
-| `engine.simulation(...)` | configure simulated cash, strategy/risk/fees and choose **`.historical()`** (past finite replay) or **`.paper()`** (real-time simulated trading) | historical: E6.7b–e; paper: E7 |
-| `engine.research(...)` | registered candidate comparison, parameter search, walk-forward, evidence and review; may orchestrate multiple historical simulations | E6.7d |
-| `engine.evaluate(...)` | single causal decision based on externally supplied market/account snapshots; **proposals only** | signature E6.7a, implementation separately gated |
-| `engine.session(...)` | continuously ingest caller-owned market events and broker-authoritative account snapshots for **proposals only** | E7 |
+| Operation | Market input | Policy surface | Operation |
+|---|---|---|---|
+| `simulation(...).historical()` | `source=sources.local(...)` or `sources.dataset(...)` | `strategy`, synthetic `capital`, `risk`, `execution`, supported advanced options | finite backtest on the existing historical core |
+| `simulation(...).paper()` | `source=sources.alpaca(...)` or `sources.manual()` | **same** simulated portfolio/risk/execution option meanings | async managed or caller-fed Paper **synthetic** account, E7 |
+| `research(...)` | **same historical** `source=` | **same** `strategy/capital/risk/execution` plus `search/validation` | registered historical study |
+| `evaluate(...)` | supplied `market_data=` one-shot snapshot | `strategy`, verified external `portfolio`, `risk` if supported | proposal only |
+| `session(...)` | **same stream/manual** `source=` | `strategy`, `risk` if supported, account snapshot refresh | E7 continuous proposal only |
 
-No `Engine.offline()`, `mode="live"`, `engine.backtest()` convenience alias, `engine.paper` namespace or `engine.live` namespace in the *new unified SDK*. Implemented legacy E4/E5/E6 Python/CLI entry points remain supported and must not be deleted merely because the new facade is smaller. No magical trading switch or automatic broker setup.
+There are **four roots**, not five: Historical and Paper are terminal methods of Simulation. No `engine.backtest`, separate `engine.paper` or `engine.live` in the proposed unified facade. Legacy working E0–E6 low-level Python/CLI routes stay compatible.
 
-The same deterministic market-event/strategy/allocator/risk core serves the appropriate supported pathways. Historical and Paper both simulate cash/order/fill accounting; Evaluate and Session **do not** create simulated trading accounts or submit orders. A real broker's account remains authoritative in the **external application**; the engine observes verified snapshots, never duplicates a real asset database.
+`Engine()` is inert. Source factory creation and `engine.simulation(...)` are inert. Managed Paper and managed Session connect to permitted **market data only** on explicit async-context entry; `sources.manual()` is caller-fed `ingest(event)` for **both** kinds of sessions. `evaluate()` consumes a supplied *snapshot* and deliberately does not open a source/stream. No broker-order submission and no second authoritative live-asset ledger.
 
-## 2. Canonical developer experience
-
-### Historical simulation (formerly SDK backtest)
+## 2. Canonical everyday examples
 
 ```python
-from invest_engine import Engine, strategies
+from invest_engine import Engine, sources, strategies
 
 engine = Engine()
+strategy = strategies.orb()
+
+historical = sources.local("datasets/AAPL/manifest.json")
 result = engine.simulation(
-    data="datasets/AAPL/manifest.json",
-    strategy=strategies.orb(),
-    capital="100000 USD",
+    source=historical, strategy=strategy, capital="100000 USD",
 ).historical()
 
-print(result.status, result.summary)
-result.export("artifacts/aapl")
-```
-
-### Real-time Paper (simulated trading, E7 only)
-
-```python
-async with engine.simulation(
-    data_provider=market_data_provider,
-    strategy=strategies.orb(),
-    capital="100000 USD",
-).paper() as session:
-    async for event in session.events():
-        print(event.status)
-```
-
-### Research
-
-```python
-from invest_engine import research
-
 study = engine.research(
-    data=validated_dataset,
-    strategy=strategies.orb(),
-    capital="100000 USD",
-    search=research.Grid({"opening_range": ["5m", "15m", "30m"]}),
-    validation=research.WalkForward(train="12M", validation="3M", step="3M"),
+    source=historical, strategy=strategy, capital="100000 USD",
+    search=research.Grid({"opening_range": ["15m", "30m"]}),
 )
-print(study.review, study.best_candidate)
 ```
-
-### One-shot decision and continuous decision session
 
 ```python
-decision = engine.evaluate(
-    market_data=market_snapshot,
-    portfolio=broker_account_snapshot,
-    strategy=strategies.orb(),
-)
+from invest_engine import sources
 
-async with engine.session(symbols=["AAPL"], strategy=strategies.orb()) as s:
-    await s.warmup(validated_history)
-    await s.update_portfolio(broker_account_snapshot)
-    async for event in normalized_market_stream:
-        decision = await s.ingest(event)
-        print(decision.proposed_orders)  # never submitted
+stream = sources.alpaca(credentials="market-data-secret-ref")
+
+async with engine.simulation(
+    source=stream, strategy=my_strategy, capital="100000 USD",
+).paper() as paper:
+    async for event in paper.events():
+        print(event.status)
+
+async with engine.session(source=stream, strategy=my_strategy, symbols=["AAPL"]) as session:
+    await session.warmup(validated_history)
+    await session.update_portfolio(verified_broker_account_snapshot)
+    async for decision in session.decisions():
+        print(decision.proposed_orders)
 ```
 
-Only Historical's synchronous execution belongs to the initial offline SDK. The future streaming and Paper examples require E7 separately; no actual broker orders from any engine method.
+For caller-owned network transports use `source=sources.manual()` and `await session.ingest(event)`, or `await paper.ingest(event)`. A declared historical source cannot silently become Paper; a streaming source cannot silently run Historical without a separate explicit dataset acquisition/normalization step. Typed source capabilities, rights, availability timestamps, calendars and ordering must be checked and unsupported configurations blocked.
 
-## 3. Simulation execution semantics
+## 3. One set of settings, additive complexity
 
-`engine.simulation(...)` is an **inert configuration/builder** with shared typed inputs `strategy`, `capital`, `risk`, `execution` and optional supported policies. **The terminal method defines the time/data/ownership contract**:
+### Common option names
 
-- `.historical()`: synchronous finite replay, explicit validated `data=` and exchange calendar, versioned/evidence-hashed spec, simulated fills and cash; returns finite `SimulationResult`.
-- `.paper()`: **async context-manager factory** with explicit streaming `data_provider=`, simulated ledger, source freshness, warmup, incomplete bars, gap/duplicate/clock policies, recovery and safe closure; returns `PaperSession` on entry. Context entry is the first point provider I/O may occur. Do not introduce `await .paper()`, `.paper().start()` or a second paper namespace.
-- Missing/contradictory historical/live data sources are rejected; no inferring execution mode from input type, no silent download or wrong-mode fallback. See [simulation contract](E6_7_SIMULATION_CONTRACT.md) for exact invariants and typed planning.
+| Name | Meaning | Where valid |
+|---|---|---|
+| `source=` | a typed finite dataset/local manifest, stream provider or manual ingress source | Historical, Paper, Research, Session |
+| `strategy=` | same configured strategy/registered read-only Strategy contract | all four |
+| `capital=` | simulated initial money only | Simulation, Research |
+| `portfolio=` / `session.update_portfolio(...)` | broker-authoritative, timestamped and reconciled immutable snapshot | Evaluate / Session |
+| `risk=` | user-configurable limits, **never** weakening mandatory safety boundaries | supported simulation/research/proposal paths |
+| `execution=` | **simulation-only** fees, slippage and modeled fills | Simulation, Research |
+| `search` / `validation` | bounded strategy search and registered temporal folds | Research |
+| `allocation` | optional supported shared-synthetic-account strategy allocation | supported multi-strategy Simulation/Research only |
+| `calendar` / `reporting` / `artifact_store` | typed operation-level advanced options, no hidden Engine-global precedence | paths whose capability is actually implemented |
 
-`data_provider` always names a **market-data** adapter, not the brokerage execution API. `Engine(data_provider=...)` may optionally inject a source, but data fetching is explicit, rights/credentials are validated only at the declared I/O boundary, and an injected provider **never grants real order authority**. `engine.data.load/fetch/resample/inspect` remains a data service, not a fifth execution mode.
+`risk.Limits(...)`, `execution.Model(...)`, `allocation.Weights(...)` and `sources.local/dataset/alpaca/manual(...)` are **proposed public spelling targets** pending E6.7a signature and capability inventory. Preserve existing internal/legacy `risk.Policy`, `execution.Simulation` and historical provider contracts where implemented. The new facade must not publish both old and new names as redundant equivalent entry points.
 
-## 4. Advanced typed specs and full feature parity
-
-The public four-operation UX must not block supported advanced E5/E6 features. `HistoricalSimulationSpec` (planned) and `ResearchSpec` compile into immutable, versioned, audited prepared specs and use:
+### The advanced form still runs the same way
 
 ```python
-from invest_engine import HistoricalSimulationSpec, risk, execution
+from invest_engine import risk, execution
 
-spec = HistoricalSimulationSpec(
-    data=validated_dataset,
-    strategy=strategies.orb(),
+simulation = engine.simulation(
+    source=historical,
+    strategy=my_strategy,
     capital="100000 USD",
-    risk=risk.Policy(max_position="5%", max_daily_loss="2%"),
-    execution=execution.Simulation(commission_bps=10, spread_bps=5),
+    risk=risk.Limits(max_position="5%", max_daily_loss="2%"),
+    execution=execution.Model(commission_bps=10, spread_bps=5),
+    calendar=my_exchange_calendar,
+    reporting=my_reporting_policy,
 )
-prepared = engine.prepare(spec)
-result = engine.run(prepared)
+plan = simulation.inspect()     # optional preflight, not execution or guaranteed I/O-free
+result = simulation.historical() # same terminal as quickstart
 ```
 
-This is a **non-primary advanced operation path**, not a second mode/execution engine. `simulation(...).historical()` and `prepare/run` must produce identical canonical decisions, fills, synthetic ledger, fees, metrics/evidence for the same policy/spec/data/seed; CLI decodes the same normalized spec. E6.7a must inventory actual support and settle exact typed class/default names, not pretend this example works now.
+`inspect()` is an **optional read-only** diagnostic of effective config/static capability/blockers, possibly reading explicitly permitted local manifests. It does not execute a strategy, connect a streaming provider, reserve unauthorized holdout or place any order; final runtime validation always applies. E6.7a must settle the exact return and I/O allowances.
 
-- `strategies.orb(...)` and (only once supported) `strategies.ensemble(...)` are lowercase factories returning instances. Custom Strategy/PortfolioStrategy plugins use read-only contexts and canonical signals; risk/allocator alone may authorize synthetic orders.
-- `risk.Policy(...)` and `execution.Simulation(...)` are consistent policy namespaces, advanced fill/fee/corporate action/PIT/FX/calendar/reporting adapters remain typed. No unrestricted settings dict or risk bypass.
-- Versioned, explicit `profiles.research_v1()`; no hidden optimization, hard-coded fees assumed to be real, silent currency conversion or unlicensed data export.
-- `research(...)` and `ResearchSpec` use the same E6 pipeline/journal, registered candidates/budgets, purge/embargo, holdout controls and report evidence; a simulated gain never automatically promotes a strategy.
-- Features supported by the current core must map losslessly through the new facade or documented low-level access; missing combinations fail with typed reason codes, not fabricated results. In particular multi-symbol shared-account historical execution is not guaranteed merely because #66 proposes portfolio-decision contracts.
+Advanced historical/research `Spec` classes, validated immutable normalized plans, prepare/run orchestration, journals, run manifests and CLI interoperability **remain inside the core/compatibility interfaces**. The new fluent SDK **does not require** `engine.prepare(spec)/engine.run(prepared)` just to enable supported advanced settings. One engine, one risk/economic implementation, deterministic parity with existing E5/E6 and old commands; unsupported combinations are typed errors/blocked outcomes, not an alternate reduced-function engine.
+
+## 4. Independent modules and evidence safeguards
+
+`sources` describes where data comes from; independent `data.load/resample/inspect` helpers explicitly process it, while `sources.dataset(validated_dataset)` wraps already loaded normalized data. Do not create a second mandatory `engine.data` execution workflow or allow an injected Engine-global provider to silently override an operation's source. Provider adapters can advertise multiple capabilities but are never assumed licensed or supported without evidence.
+
+`strategies.orb()` and custom Strategy objects share `strategy=`. For **actually supported** multiple strategies use the same root `strategy=[...]` with operation-level `allocation=...` rather than a mandatory nested `strategies.ensemble(...)` run grammar. No promise of shared-account simulation from PR #66 alone. Preserve trusted plugin versioning, read-only causal context, PIT, corporate actions, FX segregation, fees, date windows and holdout restrictions.
+
+See [public grammar](E6_7_PUBLIC_DX_GRAMMAR.md) and [simulation contract](E6_7_SIMULATION_CONTRACT.md) for exact source capability and lifecycle requirements; [streaming contract](E6_7_STREAMING_CONTRACT.md) for managed/manual Session and Paper.
 
 ## 5. Result vocabulary and errors
 
@@ -129,10 +117,10 @@ Historical/Paper simulation is **not** real execution. The SDK neither hosts nor
 
 ## 7. Roadmap / acceptance
 
-1. **E6.7a:** document actual public/low-level API and capability inventory, signatures/overloads, invalid combinations, migration, source ownership, typed result contract, 23-example fixture matrix, golden parity and reference SDK documentation.
+1. **E6.7a:** inventory actual public/low-level API and capabilities; define typed `Source` descriptors, managed/manual source ownership, consistent policy names, signatures/overloads, optional `inspect()` preflight, invalid combinations, migration, 23-example phase fixtures, golden parity and reference docs.
 2. **E6.7b:** inert Engine facade, shared immutable spec/profiles, validated `simulation(...).historical()` and typed results, no core rewrite or networking.
 3. **E6.7c:** all implemented supported strategy, provider, data, risk, fill/fees, calendar, corporate action, FX and advanced custom protocols; retain direct core/CLI compatibility.
-4. **E6.7d:** `research(...)`, `ResearchSpec`, CLI parity, journal/evidence/review/report artifacts, batch audit.
+4. **E6.7d:** `research(...)` with common `source/strategy/capital/risk/execution` options, internal registered specs and CLI parity, journal/evidence/review/report artifacts, batch audit.
 5. **E6.7e:** wheel/import/type smoke on 3.12/3.13, API snapshots, economic golden tests, security/failure/blocked, deterministic replay, DX cookbook and measured overhead.
 6. **E7:** separately gated `session()` and `simulation(...).paper()` streaming, fault/recovery and forward Paper/Shadow evidence, **zero broker orders**.
 7. **E8:** only if separately decided: external execution integration validation in a separate application/adapter project, never an engine Live SDK method.
@@ -141,4 +129,4 @@ Completion of an SDK phase does **not** establish strategy profitability, broker
 
 ## 8. Change control
 
-Earlier `engine.backtest()`, `engine.paper.start()` and `engine.live.start()` examples are **historical unimplemented design proposals** superseded by this 2026-11-22 decision. [Migration matrix](E6_7_API_CONTRACT_MATRIX.md) and [ADR amendment](adr/0034-unified-sdk.md) preserve the trail. Do not delete actually implemented `HistoricalBacktest`, CLI commands or existing low-level imports. Future public API/authority changes require user approval and synchronized issue, ADR, examples, roadmap, status and contract tests before implementation.
+Earlier `engine.backtest()`, `engine.paper.start()`, `engine.live.start()` and `Engine(data_provider=...)` examples are **historical unimplemented design proposals** superseded by this 2026-11-22 decision. [Migration matrix](E6_7_API_CONTRACT_MATRIX.md) and [ADR amendment](adr/0034-unified-sdk.md) preserve the trail. Do not delete actually implemented `HistoricalBacktest`, CLI commands or existing low-level imports. Future public API/authority changes require user approval and synchronized issue, ADR, examples, roadmap, status and contract tests before implementation.
