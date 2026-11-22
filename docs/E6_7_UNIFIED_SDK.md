@@ -21,7 +21,7 @@ There are **four roots**, not five: Historical and Paper are terminal methods of
 ## 2. Canonical everyday examples
 
 ```python
-from invest_engine import Engine, sources, strategies
+from invest_engine import Engine, sources, strategies, research
 
 engine = Engine()
 strategy = strategies.orb()

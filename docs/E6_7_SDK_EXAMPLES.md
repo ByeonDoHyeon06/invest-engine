@@ -136,24 +136,22 @@ result = engine.simulation(
 
 Explicit profile overrides compose into the same immutable typed spec. Bps values are simulated costs, not certified broker fees. Mandatory risk checks cannot be disabled by a convenience constructor.
 
-### 08 — Explicit market-data provider (E6.7c; rights/adapter dependent)
+### 08 — Caller-fed Paper with a manual source (E7; future)
 
 ```python
 from invest_engine import sources
 
-stream = sources.alpaca(credentials="market-data-secret-ref")
-async with engine.session(
-    source=stream,
+async with engine.simulation(
+    source=sources.manual(),
     strategy=my_strategy,
-    symbols=["AAPL"],
-) as session:
-    await session.warmup(validated_history)
-    await session.update_portfolio(verified_account_snapshot)
-    async for decision in session.decisions():
-        print(decision.status)
+    capital="100000 USD",
+).paper() as paper:
+    async for event in my_normalized_market_stream:
+        outcome = await paper.ingest(event)
+        print(outcome.status)
 ```
 
-No `Engine(data_provider=...)` precedence. A source identifies read-only market data, not trading authority; the same streaming source can be passed to Simulation Paper. Licenses, event identities and calendars must be verified.
+The same `source=` contract supports a read-only managed stream (example 03) **or** explicit caller-owned ingress. The **Paper simulation engine remains identical**, and real broker orders are never submitted. Manual events require validated identity, provenance, causal ordering, completeness and data rights.
 
 ### 09 — Local load, resample and data-quality inspection (E6.7c)
 
