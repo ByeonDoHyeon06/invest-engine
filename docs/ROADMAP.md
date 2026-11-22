@@ -234,25 +234,25 @@
 
 ### E6.7 — Unified Engine SDK (PLANNED)
 
-**Tracking:** [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59) · [SDK spec](E6_7_UNIFIED_SDK.md) · [ADR-0034](adr/0034-unified-sdk.md) (accepted design; not implemented) · [23 reorganized normative DX examples](E6_7_SDK_EXAMPLES.md) · [API consistency matrix](E6_7_API_CONTRACT_MATRIX.md).
+**Tracking:** [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59) · [SDK spec](E6_7_UNIFIED_SDK.md) · [ADR-0034](adr/0034-unified-sdk.md) · [23 examples](E6_7_SDK_EXAMPLES.md) · [API matrix](E6_7_API_CONTRACT_MATRIX.md) · [Simulation contract](E6_7_SIMULATION_CONTRACT.md). Design only; implementation pending.
 
-**API contract (revised 2026-11-22):** neutral inert `Engine()`; direct `engine.backtest/research/evaluate(...)`; advanced `prepare/run` on the same immutable typed spec; caller-fed `engine.session(...)` E7; managed Paper `async with engine.paper.start(...)` E7; prospective Live `.start(...)` only after E8 authorization. `data_provider=` names source injection, `data=` supplied input; `strategies.orb()`, `risk.Policy`, `execution.Simulation` name consistently. Finite results share status/summary/metrics?/evidence/config/blockers/export. No offline()/online() constructor factories or mandatory mode. Any future naming/default/authority change requires user review and aligned ADR/examples/Issue/tests.
+**API contract — consolidated 2026-11-22:** inert `Engine()` with four primary operations `simulation/research/evaluate/session`. Simulation is configured once and ends with `.historical()` (finite historical replay and synthetic fills) or `.paper()` (E7 async context with real-time market data and **synthetic** cash/fills). `research()` runs registered historical studies; `evaluate()` produces a one-off proposal; `session()` consumes caller-fed streams and broker-authoritative account snapshots to produce proposals only. No NEW SDK `engine.backtest`, `engine.paper`, `engine.live`, `mode="live"` or broker-order methods. Advanced `HistoricalSimulationSpec/ResearchSpec → prepare/run` retains full core capability/CLI parity. Actual broker API/order execution belongs to external application/Adapter, not Engine.
 
 **Objective:** common offline use with a small typed public API, advanced access to every existing supported capability without copying internal wiring, no weakening of core restrictions. Plan can be drafted during execution of #57; implementation follows existing validation/research prerequisites and precedes E7. E5/E6 economic/release acceptance is separate.
 
-- [ ] E6.7a public API inventory, verified supported-combination matrix, exact typed signatures/defaults and fixture/API snapshots for [23 revised examples](E6_7_SDK_EXAMPLES.md) and [old→new map](E6_7_API_CONTRACT_MATRIX.md). Design [external caller-fed `engine.session()` and Paper `start()`](E6_7_STREAMING_CONTRACT.md) as future E7 lifecycles; retain actual legacy imports/CLI, no streaming implementation or gate change.
-- [ ] E6.7b unified facade, immutable validated spec, versioned profiles, local data, backtest, typed results/inspect.
+- [ ] E6.7a complete API/capability inventory and supported-combination matrix, exact typed signatures/defaults and fixtures for [23 examples](E6_7_SDK_EXAMPLES.md) and [old→new mapping](E6_7_API_CONTRACT_MATRIX.md); historical/Paper terminal return typing and source mismatch; [Simulation](E6_7_SIMULATION_CONTRACT.md) and [streaming](E6_7_STREAMING_CONTRACT.md) contracts. Keep actual E0–E6 Python/CLI paths intact, no streaming implementation or trading gate change.
+- [ ] E6.7b neutral facade + immutable validated spec, profiles and local data; **`simulation(...).historical()`** delegates to existing historical replay, typed results/inspect and exact core/CLI golden parity.
 - [ ] E6.7c custom strategies/providers/policies and supported E5 feature parity; explicit unsupported capability errors.
-- [ ] E6.7d direct-call `engine.research(...)`, `ResearchSpec/prepare/run` shared internals, search/walk-forward/journal/review/artifacts; common finite result fields; shared CLI/Python contract and migration without deleting implemented legacy paths.
+- [ ] E6.7d direct `engine.research(...)`, `ResearchSpec/prepare/run` parity, search/walk-forward/journal/review and report artifacts; common finite result contract, shared CLI/Python decoding and compatibility.
 - [ ] E6.7e wheel/import smoke, public-contract snapshot, end-to-end/golden parity, failure/security/deterministic replay and DX cookbook.
 
-**DoD:** common offline path ≤10 logical lines after dataset preparation; advanced typed paths; no lost supported options; same normalized config/event input produces equivalent decisions/fills/ledger/PnL and evidence; defaults visible and versioned; no network by import, hidden live mode or risk bypass; actual broker assets remain broker-authoritative. E7's Paper adapter and E8's Live authority remain separate. No production permission or profitability from SDK completion.
+**DoD:** common historical path ≤10 logical lines, all existing supported policies/data/fee/FX/strategy capabilities preserved, same spec/tape yields same economic events/fills/ledger/PnL/evidence, errors explicit, no import or constructor I/O, no live mode/order submission. Paper and Session require E7; external Host integration E8 is separately approved. Actual broker account remains authoritative outside Engine. No profitability or deployment approval from SDK completion.
 
 ### E7 — Real-time Paper & Shadow
 **의존성:** E5, E6 일부, E6.7 offline SDK API acceptance; 실시간 데이터 공급자 별도 계약.
 
 **작업:**
-- [ ] Streaming Data Provider + reconnect/heartbeat/staleness detect; **caller-fed `engine.session(...)`** decision-only sessions, bounded canonical event ingress, warmup/finalization, source cursor recovery, snapshot freshness/reconciliation; **`engine.paper.start(...)`** simulated managed lifecycle, no broker submit. See [streaming contract](E6_7_STREAMING_CONTRACT.md).
+- [ ] Streaming Market Data Provider + reconnect/heartbeat/staleness detection; caller-fed **`engine.session(...)`** decision-only sessions and managed **`engine.simulation(...).paper()`** real-time synthetic trading. Bounded canonical ingestion, causal warmup/finalization, cursor recovery, broker snapshot freshness and simulated fills; actual broker submit calls must remain zero. See [streaming contract](E6_7_STREAMING_CONTRACT.md).
 - [ ] Paper Broker, 실제 시세↔모의 체결, 종목별 data-quality dashboard(CLI/로그)
 - [ ] active 전략 vs shadow 후보 독립 비교, 미체결 주문/portfolio 재시작 복구
 - [ ] 양국 정규장·조기폐장·DST·휴장 및 네트워크 장애 처리
@@ -261,18 +261,17 @@
 
 **DoD:** 리플레이·실시간 처리 의미 일치, 장애/재시작 후 state reconcile, 증권사 실제 주문 0건, 누락·비정상 데이터 거래 중단 증거.
 
-### E8 — Controlled Live (별도 GO 승인 필수)
-**의존성:** E7 + API/이용약관 검토 + 보안 감사.
+### E8 — Optional External Execution Integration Verification (별도 프로젝트·GO 승인)
+**의존성:** E7의 충분한 Forward Paper/Shadow 관찰 + 증권사 API/약관/법무 검토 + 별도 보안·운영 감사. **엔진 코어/SDK에 실주문 기능 추가하지 않는다.**
 
-**작업:**
-- [ ] Toss Adapter 별도 패키지(요청 스키마·토큰·허용 IP·rate-limit·WebSocket)
-- [ ] 계좌별 single active executor, durable outbox, broker order reconciliation
-- [ ] API 키 비공개 저장, egress 고정 IP, 권한 최소화, 백업·복구
-- [ ] LIVE 기본 비활성화; 환경변수 한 개만으로 켜지지 않도록 2중 안전장치
-- [ ] 처음은 소액·정규장·종목 제한·무레버리지·당일 청산 시도
-- [ ] kill switch, 원격 알림, 주문/계좌/환율/세션 모니터링
+**외부 Execution Host/Adapter의 작업 (Invest Engine 패키지 외부):**
+- [ ] Toss 등 증권사별 REST/WebSocket, 토큰·고정 송신 IP·rate limit·주문 식별자 변환을 별도 패키지/프로세스로 구현.
+- [ ] 명시적 사용자 승인, 계좌별 single active executor, 주문 상태·영속 outbox·멱등성·UNKNOWN 주문 복구·브로커 주문/잔고 대조.
+- [ ] 실계좌 자산/미체결 주문의 권위 있는 원본은 증권사이며, Engine에는 검증된 read-only account snapshot만 전달.
+- [ ] 독립적인 비밀키 관리, 권한 최소화, kill switch, 알림, 외부 주문/계좌/환율/세션 모니터링과 운영 Runbook.
+- [ ] 소액·정규장·무레버리지 등의 초기 실제 주문 시험은 **별도 외부 Host 승인 후에만** 검토. Simulation/Paper 결과로 자동 승인 금지.
 
-**DoD:** 운영자 별도 승인·소액 주문 테스트·주문 체결 일치·장애복구 시연·runbook·자동 중지 검증. **수익률만으로 승인 불가.**
+**DoD:** 외부 Host의 주문·계좌 정합성/복구·수동중단 검증 및 독립 승인. Invest Engine의 신규 SDK 진입점은 네 개를 유지하며 `engine.live` 또는 실주문 송신 기능이 존재하지 않는다. 수익률·SDK 테스트 통과만으로 실거래 승인 불가.
 
 ### E9 — Optional Extensions (착수 전 별도 ADR)
 - [ ] OpenDART/SEC 시점정합 재무·공시 Feature
@@ -286,7 +285,7 @@
 - **R2 — Adaptive Research:** E6. 과적합 통제 하에 후보 제안·검증.
 - **R2-SDK — Unified SDK:** E6.7. 검증된 오프라인 SDK 사용성·기능 동등성; 독립적인 수익성/실거래 승인 아님.
 - **R3 — Observable Paper:** E7. 여러 주 동안 실시간 모의 검증.
-- **R4 — Restricted Live:** E8. 별도 승인 후 제한된 주문.
+- **R4 — External Execution Integration:** E8. Separate application/Adapter authorization and safety verification; no Engine Live API.
 - **R5 — Optional Product:** E9. 범위·라이선스 재검토.
 
 ## 4. 기술 부채·리스크 및 불확실성
