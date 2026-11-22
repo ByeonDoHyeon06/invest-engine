@@ -1,6 +1,6 @@
 # E6 multi-symbol shared-account historical replay
 
-**Status:** PR-2 local implementation candidate. Synthetic contract verification only; stacked PR and CI are pending.
+**Status:** PR-2 candidate in stacked [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69). Synthetic contract verification only; CI is pending and PR #66 must merge first.
 
 **Tracking:** Issue #65 · E5 #6 · E6 #7 · [design](superpowers/specs/2026-11-20-multisymbol-intraday-slot-momentum-design.md) · [ADR-0035](adr/0035-multisymbol-portfolio-decision-boundary.md)
 

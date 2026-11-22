@@ -1,7 +1,7 @@
 # ADR-0035: Explicit-watermark multi-symbol portfolio decision boundary
 
 - Date: 2026-11-21
-- Status: Accepted for offline implementation; PR #66 open at `52ce1da`, CI 44894840967 passed; stacked PR-2 local candidate through `289980e`, PR/CI pending
+- Status: Accepted for offline implementation; PR #66 open at `52ce1da`, CI 44894840967 passed; PR-2 candidate [#69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `289980e`, stacked CI pending
 
 ## Context
 
