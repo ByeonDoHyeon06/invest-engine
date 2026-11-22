@@ -1,10 +1,16 @@
+# Historical README snapshot — superseded
+
+This file preserves the earlier long-form root README. Its previous release/API status is historical; consult [current project README](../../README.md) and [document index](../README.md) for active contracts.
+
+---
+
 # invest-engine
 
 **Engine first. Evidence before trading.**
 
 국내·미국 주식 대상으로 시장 데이터, 전략, 위험관리, 주문·체결, 포트폴리오, 연구·자기개선을 분리한 독립형 적응형 트레이딩 엔진.
 
-**현재 상태:** E0~E4 합성 엔진 검증, E5.1~E5.4 오프라인 백테스트·실험 감사 구현. E5 실데이터/PIT 기업행동·수수료/FX 검증 게이트는 미완료. **실거래 기능 없음.** 자세한 진행 현황은 [STATUS](docs/STATUS.md) 참고.
+**현재 상태:** E0~E4 합성 엔진 검증, E5.1~E5.4 오프라인 백테스트·실험 감사 구현. E5 실데이터/PIT 기업행동·수수료/FX 검증 게이트는 미완료. **실거래 기능 없음.** 자세한 진행 현황은 [STATUS](../STATUS.md) 참고.
 
 ## 설계 원칙
 - 해상도 비종속: Tick/Quote/OrderBook/Bar/재무·공시 이벤트를 각각 정확한 타입으로 처리한다. 1분봉은 전략 설정이지 엔진 제한이 아니다.
@@ -16,33 +22,33 @@
 - 엔진 우선: UI/SaaS/고객 계좌 관리는 엔진 검증 이후로 미룬다.
 
 ## 프로젝트 문서 (진실 공급원)
-- [현재 상태·다음 작업](docs/STATUS.md)
-- [단계별 로드맵 및 완료 조건](docs/ROADMAP.md)
-- [전체 아키텍처](docs/ARCHITECTURE.md)
-- **[Engine 입출력 계약](docs/ENGINE_IO.md)**
-- [E6.7 통합 SDK 계획 (미구현)](docs/E6_7_UNIFIED_SDK.md) · [사용자 합의 API 예제 18개](docs/E6_7_SDK_EXAMPLES.md) — 기본 진입점 `Engine()`, 실행 목적은 메서드에서 구분
-- **[AI·ML 연구 목표 및 평가 계약 (E6 설계안)](docs/ML_RESEARCH.md)**
-- [E2 이벤트 런타임과 복구 규칙](docs/EVENT_RUNTIME.md)
-- **[E5.1 과거 데이터 재생 및 체결 모델](docs/E5_BACKTEST.md)**
-- **[E5.2 오프라인 RunRequest/실험 CLI](docs/E5_EXPERIMENT.md)**
-- **[E3 모의매매 주문·위험·포트폴리오 구현](docs/E3_SIMULATION.md)**
-- **[E3.3 시세 평가·일일 손실·계좌 대조](docs/E3_MONITORING.md)**
-- **[E3.4 합성 세금·매도 미결제금·정산 확인·Gate](docs/E3_SETTLEMENT.md)**
-- [기술 스택/선택 근거](docs/TECH_STACK.md)
-- [도메인·이벤트·시간 계약](docs/DOMAIN.md)
-- [E1 데이터 수집·품질 계약](docs/DATA_INGESTION.md)
-- [E1.2 거래 세션·시간봉 집계](docs/RESAMPLING.md)
-- [E1.3 데이터셋·무결성·출처](docs/DATASETS.md)
-- [전략·지능·연구](docs/STRATEGIES.md)
-- [E4 Strategy SDK 및 ORB 가설 구현](docs/E4_STRATEGY.md)
-- [위험·주문·포트폴리오](docs/RISK_EXECUTION.md)
-- [백테스트·Forward·검증 게이트](docs/VALIDATION.md)
-- [E5 보수적 손절·익절 체결 연구 정책](docs/E5_PROTECTION.md)
-- **[E5.4 데이터 공백/무결성 감사·비용 스트레스 검증](docs/E5_ROBUSTNESS.md)**
-- [외부 데이터·증권사 연동](docs/INTEGRATIONS.md)
-- [개발·리뷰 규칙](docs/CONTRIBUTING.md)
-- [ADR 인덱스](docs/adr/README.md)
-- [작업 에이전트 가이드](AGENTS.md)
+- [현재 상태·다음 작업](../STATUS.md)
+- [단계별 로드맵 및 완료 조건](../ROADMAP.md)
+- [전체 아키텍처](../ARCHITECTURE.md)
+- **[Engine 입출력 계약](../ENGINE_IO.md)**
+- [E6.7 통합 SDK 계획 (미구현)](../E6_7_UNIFIED_SDK.md) · [사용자 합의 API 예제 18개](../E6_7_SDK_EXAMPLES.md) — 기본 진입점 `Engine()`, 실행 목적은 메서드에서 구분
+- **[AI·ML 연구 목표 및 평가 계약 (E6 설계안)](../ML_RESEARCH.md)**
+- [E2 이벤트 런타임과 복구 규칙](../EVENT_RUNTIME.md)
+- **[E5.1 과거 데이터 재생 및 체결 모델](../E5_BACKTEST.md)**
+- **[E5.2 오프라인 RunRequest/실험 CLI](../E5_EXPERIMENT.md)**
+- **[E3 모의매매 주문·위험·포트폴리오 구현](../E3_SIMULATION.md)**
+- **[E3.3 시세 평가·일일 손실·계좌 대조](../E3_MONITORING.md)**
+- **[E3.4 합성 세금·매도 미결제금·정산 확인·Gate](../E3_SETTLEMENT.md)**
+- [기술 스택/선택 근거](../TECH_STACK.md)
+- [도메인·이벤트·시간 계약](../DOMAIN.md)
+- [E1 데이터 수집·품질 계약](../DATA_INGESTION.md)
+- [E1.2 거래 세션·시간봉 집계](../RESAMPLING.md)
+- [E1.3 데이터셋·무결성·출처](../DATASETS.md)
+- [전략·지능·연구](../STRATEGIES.md)
+- [E4 Strategy SDK 및 ORB 가설 구현](../E4_STRATEGY.md)
+- [위험·주문·포트폴리오](../RISK_EXECUTION.md)
+- [백테스트·Forward·검증 게이트](../VALIDATION.md)
+- [E5 보수적 손절·익절 체결 연구 정책](../E5_PROTECTION.md)
+- **[E5.4 데이터 공백/무결성 감사·비용 스트레스 검증](../E5_ROBUSTNESS.md)**
+- [외부 데이터·증권사 연동](../INTEGRATIONS.md)
+- [개발·리뷰 규칙](../CONTRIBUTING.md)
+- [ADR 인덱스](../adr/README.md)
+- [작업 에이전트 가이드](../../AGENTS.md)
 
 Roadmap은 순서와 완료 기준을, Status는 진행 상태를, ADR은 결정 근거를 기록한다. 실제 완료 여부는 테스트와 코드로 검증한다.
 
@@ -89,7 +95,7 @@ python -m pytest -q
 
 ## E3 착수 전 I/O 설계 검토
 
-전략/모델은 직접 주문하지 않는다. [ENGINE_IO.md](docs/ENGINE_IO.md)에 RunRequest/RunResult·DomainEvent/Command·RiskDecision·NoAction·결과 추적을, [ML_RESEARCH.md](docs/ML_RESEARCH.md)에 예측 대상·baseline·no-leakage 평가를 정리했다. **두 문서의 JSON은 아직 실행되는 API가 아닌 설계 초안**이며, E3 주문/회계 코드를 병합하기 전 버전·스키마·코어 호환성 테스트로 확정한다.
+전략/모델은 직접 주문하지 않는다. [ENGINE_IO.md](../ENGINE_IO.md)에 RunRequest/RunResult·DomainEvent/Command·RiskDecision·NoAction·결과 추적을, [ML_RESEARCH.md](../ML_RESEARCH.md)에 예측 대상·baseline·no-leakage 평가를 정리했다. **두 문서의 JSON은 아직 실행되는 API가 아닌 설계 초안**이며, E3 주문/회계 코드를 병합하기 전 버전·스키마·코어 호환성 테스트로 확정한다.
 
 ## E3 — Synthetic order / risk / ledger (PR #17)
 
@@ -103,7 +109,7 @@ python -m pytest -q
 
 기대 합성 출력: 10주 × 7,000 KRW 주문 70,070 KRW 예약 → 4주 체결 및 나머지 취소 후 **971,972 KRW 현금·4주 포지션·예약 0**. 수수료율 0.1%, KRW 반올림은 테스트 설정이지 실제 증권사 조건이 아니다.
 
-[E3 상세 구현·남은 과제](docs/E3_SIMULATION.md) · [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) · [E3.2 운영 안전 PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)
+[E3 상세 구현·남은 과제](../E3_SIMULATION.md) · [PR #17](https://github.com/ByeonDoHyeon06/invest-engine/pull/17) · [E3.2 운영 안전 PR #18](https://github.com/ByeonDoHyeon06/invest-engine/pull/18)
 
 ## E4 — Strategy SDK (검증 완료)
 
@@ -114,7 +120,7 @@ PYTHONPATH=src python examples/e4_strategy_signals.py
 python -m pytest -q tests/test_strategy_e4.py tests/test_orb_e4.py tests/test_allocation_e4.py tests/test_features_e4.py
 ```
 
-[PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) · [PR #22 가상 Fill 귀속](https://github.com/ByeonDoHyeon06/invest-engine/pull/22) · [E4 사양](docs/E4_STRATEGY.md)
+[PR #21](https://github.com/ByeonDoHyeon06/invest-engine/pull/21) · [PR #22 가상 Fill 귀속](https://github.com/ByeonDoHyeon06/invest-engine/pull/22) · [E4 사양](../E4_STRATEGY.md)
 
 ### E4.3 전략별 가상 손익 귀속
 
@@ -122,13 +128,13 @@ E3의 합성 Fill을 여러 전략의 가상 포지션·취득원가·실현손�
 
 ## E5 offline research CLI (PR #23 + #24)
 
-입력은 API 키가 아닌 자체 데이터/명시적인 거래세션/전략·위험 설정이다. `invest-engine backtest --config <run.json>`으로 `report.json`, `manifest.json`, `equity.jsonl`, `decisions.jsonl`, `fills.jsonl`을 만들 수 있다. [E5_EXPERIMENT.md](docs/E5_EXPERIMENT.md) 참조. **실행 가능한 stop/target/gap model 및 실거래는 지원하지 않는다.**
+입력은 API 키가 아닌 자체 데이터/명시적인 거래세션/전략·위험 설정이다. `invest-engine backtest --config <run.json>`으로 `report.json`, `manifest.json`, `equity.jsonl`, `decisions.jsonl`, `fills.jsonl`을 만들 수 있다. [E5_EXPERIMENT.md](../E5_EXPERIMENT.md) 참조. **실행 가능한 stop/target/gap model 및 실거래는 지원하지 않는다.**
 
 ### E5.5 연구용 환율 보고
-[Point-in-Time FX 연구 보고](docs/E5_FX_REPORTING.md)는 선택적 기준 통화 환산 기능입니다. 실제 환전·거래 수수료·시장별 기업행동 데이터가 검증되었다는 뜻이 아닙니다.
+[Point-in-Time FX 연구 보고](../E5_FX_REPORTING.md)는 선택적 기준 통화 환산 기능입니다. 실제 환전·거래 수수료·시장별 기업행동 데이터가 검증되었다는 뜻이 아닙니다.
 
 ## 실데이터 백테스트 시험 / E5.7
 
-- [CSV OHLCV 오프라인 가져오기](docs/E5_REAL_MARKET_SMOKE.md): `invest-engine import-csv`로 CSV→canonical market event JSONL 변환. 거래량이 TICK_COUNT이면 NoTrade 데이터 경로 시험만 허용; ORB 성과 평가 금지.
-- [합성 기업행동 장부](docs/E5_CORPORATE_ACTIONS.md): Split/Dividend/Delisting을 E3 이벤트 저널로 재생. **E5 PIT 검증은 기업행동 있는 실제 기간을 여전히 차단**하므로 전 구간 기업행동 처리된 실데이터 백테스트는 미완성.
-- [ADR-0015](docs/adr/0015-synthetic-corporate-action-ledger.md): 적용 가능한 범위/데이터 출처 검증 경계. 실제 증권사 주문 불가; 포워드 페이퍼는 E7의 별도 단계.
+- [CSV OHLCV 오프라인 가져오기](../E5_REAL_MARKET_SMOKE.md): `invest-engine import-csv`로 CSV→canonical market event JSONL 변환. 거래량이 TICK_COUNT이면 NoTrade 데이터 경로 시험만 허용; ORB 성과 평가 금지.
+- [합성 기업행동 장부](../E5_CORPORATE_ACTIONS.md): Split/Dividend/Delisting을 E3 이벤트 저널로 재생. **E5 PIT 검증은 기업행동 있는 실제 기간을 여전히 차단**하므로 전 구간 기업행동 처리된 실데이터 백테스트는 미완성.
+- [ADR-0015](../adr/0015-synthetic-corporate-action-ledger.md): 적용 가능한 범위/데이터 출처 검증 경계. 실제 증권사 주문 불가; 포워드 페이퍼는 E7의 별도 단계.

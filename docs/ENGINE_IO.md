@@ -1,6 +1,6 @@
 # Engine I/O Contract — 외부·내부 입출력 명세
 
-**Status:** E3 simulation input Python SDK + `e3-sim-v1` strict OrderIntent JSON parser implemented in PR #17. **Run API, Prediction API, trade performance report and broker/live transport remain design only.**  
+**Status (2026-11-22):** E3 simulation OrderIntent parser and **E5 offline `run_experiment`/BacktestReport/CLI are implemented**; E6 development pipeline partly implemented. **Unified E6.7 SDK, prediction and broker/Live transport remain unimplemented.** Historical wire sketches below are not executable E5 configs.  
 **Owner:** Issue #4 + #64 · **Scope:** 실제 E1/E5/E6 계약과 과거 wire 스케치를 구분. 실제 증권사 주문 실행은 엔진 외부.
 
 **Extension plan:** [E6.7 Unified SDK](E6_7_UNIFIED_SDK.md) / [ADR-0034](adr/0034-unified-sdk.md) defines the user-approved, neutral and inert `Engine()` constructor with operation-level capabilities and a proposed shared normalized Python/CLI orchestration contract. See [normative API examples](E6_7_SDK_EXAMPLES.md); changes require explicit user approval. Existing E5 `run_experiment` and CLI are implemented offline; newer unified API examples remain illustrative. No change to wire contracts or execution permissions in planning phase.
@@ -44,7 +44,7 @@ E5 `run_experiment()`는 `report.json`, `decisions/fills/equity.jsonl`, `audit.j
 
 ---
 
-## 0. 빠른 결론
+## 0. 이전 E3 wire 초안의 맥락 (역사적 설계, 현재 E5 구현을 대체하지 않음)
 
 엔진은 "무조건 매수/매도 추천" API가 아니다. 외부에 노출할 세 개의 경계를 구분한다.
 
@@ -59,7 +59,7 @@ E5 `run_experiment()`는 `report.json`, `decisions/fills/equity.jsonl`, `audit.j
 
 코어에는 DB, 네트워크, Toss SDK, 벽시계, 학습모델 호출이 없다. 외부 I/O shell이 Command를 처리하고 그 결과를 다음 DomainEvent로 환류한다.
 
-**현재 실제 코드:** E0/E1 market EventEnvelope, E2 observation runtime/journal, E3 **별도 버전 네임스페이스의 simulated TradingEvent / RiskDecision / Portfolio ledger**와 `decode_order_intent`. 아직 미구현: Run API, 전략/시장 기반 통합 실행, Prediction API, 수익률 보고/실거래. **아래 RunRequest/RunResult JSON과 RiskDecision JSON은 목표 wire contract 초안**이고 현재 CLI에서 실행되지 않는다.
+**당시 E3 단계의 구현 상태 (역사적 기록):** E0/E1 market EventEnvelope, E2 observation runtime/journal, E3 simulated TradingEvent / RiskDecision / Portfolio ledger 및 `decode_order_intent`. **그 이후 E5 `run_experiment`와 실제 보고서/CLI가 구현되었으며** 아래 E3시점 `RunRequest/RunResult` 및 `RiskDecision` JSON 초안과 **동일한 wire API가 아닙니다**. 유효한 실행 계약은 상단 CURRENT 표와 [E5 experiment](E5_EXPERIMENT.md)를 확인하세요.
 
 ## 1. 공통 직렬화·버전 규칙 (제안)
 
