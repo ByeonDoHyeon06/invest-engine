@@ -1,6 +1,6 @@
 # ADR-0034 — Unified typed SDK and shared orchestration
 
-Status: Accepted design direction by user (planning only; #59); SDK implementation and acceptance tests pending. 2026-11-20.
+Status: Accepted **design direction** by user (#59), originally 2026-11-20 and **revised 2026-11-22**; SDK implementation and acceptance tests pending. The last amendment is the current normative public naming decision.
 
 Context: core is modular but public Python root is version-only; E4 strategy, E5 experiment and E6 research require separate wiring. Users need a simple entry point without losing existing capabilities.
 
@@ -12,6 +12,19 @@ Consequences: requires API inventory, explicit supported combinations, profile e
 
 Revisit: parity gaps, measurable orchestration overhead, incompatible external adapter lifecycle, or required security boundary changes. [Normative examples](../E6_7_SDK_EXAMPLES.md) define target DX. Changes to constructor, method/namespace names in frozen examples, defaults, safety and compatibility need explicit user approval and an ADR amendment/replacement with synchronized spec/issue/roadmap/examples/tests before implementation. Final acceptance requires E6.7 implementation evidence and review, not this planning PR.
 
-## 2026-11-20 amendment — streaming-compatible facade (user-approved direction)
+## 2026-11-20 amendment — streaming-compatible facade (historical; superseded naming)
 
 Keep `engine.evaluate(...)` callable with its existing single-decision semantics; a callable service may also expose `engine.evaluate.session(...)`. Caller-fed sessions own bounded observation/feature/strategy state, never authoritative live holdings or order authority. `engine.paper.start(...)` is an explicit async lifecycle operation for simulated execution with managed market data. Provider and caller transports converge at canonical EventEnvelope ingress; replay, paper and future live share deterministic decisions/risk where supported but execution policies remain separate. See [streaming contract](../E6_7_STREAMING_CONTRACT.md) and examples 19–23. E6.7a defines exact types, compatibility and test matrix; E7 implementation separate, E8 live explicitly unauthorized. All previously approved examples unchanged except expanded reference count. This does not grant provider access or alter research gates.
+
+## 2026-11-22 amendment — predictable public API (current approved design)
+
+The user reviewed the 23 examples and found the public surface unnecessarily complex and inconsistent. **Decision:** keep inert `Engine()`, separate authority and existing core, but normalize developer-visible syntax:
+
+- Direct finite operations: `engine.backtest(...)`, `engine.research(...)` and `engine.evaluate(...)`. `engine.research.create(...).run()` is replaced at the **planned SDK** layer by direct research; advanced research uses `ResearchSpec` → `engine.prepare(...)` → `engine.run(...)` with exactly the same registered pipeline/journal and validation gates.
+- Explicitly selected by user: **`engine.session(...)`** is the canonical external event-fed, decision-only, async-context session factory. It replaces the *unimplemented* `engine.evaluate.session(...)`; never require a callable evaluate service, `evaluation_session()` or constructor mode.
+- Long-running managed-capability lifecycle uses `async with engine.paper.start(...) as session:` (E7) and only after E8 approval a potential `engine.live.start(...)`. Both are conceptually context-manager factories; network on context entry rather than factory construction, no duplicate `paper.run()` or await-start syntax. No Live method is shipped yet.
+- One namespace per concept: `data_provider=` for injected source (not overloaded `Engine(data=...)`), operation `data=` for supplied market/dataset input, `engine.data.load/fetch/resample/inspect` for data actions, `strategies.orb()` lowercase configured instance everywhere, `risk.Policy(...)` and `execution.Simulation(...)` as policy constructors. The future multi-strategy convenience factory is `strategies.ensemble(...)` only if shared-account semantics are implemented.
+- Finite run results share `status/summary/metrics?/evidence/config/blockers/export` with stable meanings and typed specializations, not fabricated PnL for blocked/decision-only results. Advanced capabilities remain accessible through typed specs, original modules and explicit supported-combination checks; no simplified fork of the engine.
+- [Examples reorganized into Quickstart/Core/Advanced/Runtime](../E6_7_SDK_EXAMPLES.md) and [old→new matrix](../E6_7_API_CONTRACT_MATRIX.md) record 23 examples, implementation phases, migration boundaries and acceptance fixtures.
+
+**Scope:** approved *planned-name replacement*, not a declaration that the old proposed surface shipped. Existing working E0–E6/CLI interfaces must be inventoried and preserved or migrated with test parity. E6.7a locks exact typed signatures/fixtures after inventory; no code, broker account authority, new data rights, Paper or Live GO in this docs PR. Subsequent public API change requires a new explicit decision and synchronized docs/issue/roadmap/tests. Prior amendment is retained above for historical traceability but is superseded where names disagree.

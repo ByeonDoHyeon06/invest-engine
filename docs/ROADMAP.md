@@ -234,16 +234,16 @@
 
 ### E6.7 — Unified Engine SDK (PLANNED)
 
-**Tracking:** [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59) · [SDK spec](E6_7_UNIFIED_SDK.md) · [ADR-0034](adr/0034-unified-sdk.md) (accepted design; not implemented) · [18 normative DX examples](E6_7_SDK_EXAMPLES.md).
+**Tracking:** [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59) · [SDK spec](E6_7_UNIFIED_SDK.md) · [ADR-0034](adr/0034-unified-sdk.md) (accepted design; not implemented) · [23 reorganized normative DX examples](E6_7_SDK_EXAMPLES.md) · [API consistency matrix](E6_7_API_CONTRACT_MATRIX.md).
 
-**API contract:** user-approved neutral, inert `Engine()`; no offline()/online()/research() class factory or mandatory mode. Explicit calls determine capabilities; network data access independent of trade authority. Changes to the agreed constructor/names/defaults/safety/compatibility require explicit user approval and updated ADR/examples/Issue/tests before implementation.
+**API contract (revised 2026-11-22):** neutral inert `Engine()`; direct `engine.backtest/research/evaluate(...)`; advanced `prepare/run` on the same immutable typed spec; caller-fed `engine.session(...)` E7; managed Paper `async with engine.paper.start(...)` E7; prospective Live `.start(...)` only after E8 authorization. `data_provider=` names source injection, `data=` supplied input; `strategies.orb()`, `risk.Policy`, `execution.Simulation` name consistently. Finite results share status/summary/metrics?/evidence/config/blockers/export. No offline()/online() constructor factories or mandatory mode. Any future naming/default/authority change requires user review and aligned ADR/examples/Issue/tests.
 
 **Objective:** common offline use with a small typed public API, advanced access to every existing supported capability without copying internal wiring, no weakening of core restrictions. Plan can be drafted during execution of #57; implementation follows existing validation/research prerequisites and precedes E7. E5/E6 economic/release acceptance is separate.
 
-- [ ] E6.7a public API inventory, namespaces, supported-combination matrix, compatibility, API examples, per-example contract/signature fixture mapping, and finalize remaining ADR details without changing approved DX; design [continuous event ingress, evaluation sessions and managed Paper lifecycle](E6_7_STREAMING_CONTRACT.md) with replay parity and failure fixtures (no streaming implementation).
+- [ ] E6.7a public API inventory, verified supported-combination matrix, exact typed signatures/defaults and fixture/API snapshots for [23 revised examples](E6_7_SDK_EXAMPLES.md) and [old→new map](E6_7_API_CONTRACT_MATRIX.md). Design [external caller-fed `engine.session()` and Paper `start()`](E6_7_STREAMING_CONTRACT.md) as future E7 lifecycles; retain actual legacy imports/CLI, no streaming implementation or gate change.
 - [ ] E6.7b unified facade, immutable validated spec, versioned profiles, local data, backtest, typed results/inspect.
 - [ ] E6.7c custom strategies/providers/policies and supported E5 feature parity; explicit unsupported capability errors.
-- [ ] E6.7d research search/walk-forward/journal/review and report artifacts, shared CLI/Python contract, migration without deleting old paths.
+- [ ] E6.7d direct-call `engine.research(...)`, `ResearchSpec/prepare/run` shared internals, search/walk-forward/journal/review/artifacts; common finite result fields; shared CLI/Python contract and migration without deleting implemented legacy paths.
 - [ ] E6.7e wheel/import smoke, public-contract snapshot, end-to-end/golden parity, failure/security/deterministic replay and DX cookbook.
 
 **DoD:** common offline path ≤10 logical lines after dataset preparation; advanced typed paths; no lost supported options; same normalized config/event input produces equivalent decisions/fills/ledger/PnL and evidence; defaults visible and versioned; no network by import, hidden live mode or risk bypass; actual broker assets remain broker-authoritative. E7's Paper adapter and E8's Live authority remain separate. No production permission or profitability from SDK completion.
@@ -252,7 +252,7 @@
 **의존성:** E5, E6 일부, E6.7 offline SDK API acceptance; 실시간 데이터 공급자 별도 계약.
 
 **작업:**
-- [ ] Streaming Data Provider + reconnect/heartbeat/staleness detect; caller-fed decision sessions, bounded canonical event ingress, warmup/finalization, source cursor recovery, snapshot freshness/reconciliation, no broker submit. See [streaming contract](E6_7_STREAMING_CONTRACT.md).
+- [ ] Streaming Data Provider + reconnect/heartbeat/staleness detect; **caller-fed `engine.session(...)`** decision-only sessions, bounded canonical event ingress, warmup/finalization, source cursor recovery, snapshot freshness/reconciliation; **`engine.paper.start(...)`** simulated managed lifecycle, no broker submit. See [streaming contract](E6_7_STREAMING_CONTRACT.md).
 - [ ] Paper Broker, 실제 시세↔모의 체결, 종목별 data-quality dashboard(CLI/로그)
 - [ ] active 전략 vs shadow 후보 독립 비교, 미체결 주문/portfolio 재시작 복구
 - [ ] 양국 정규장·조기폐장·DST·휴장 및 네트워크 장애 처리

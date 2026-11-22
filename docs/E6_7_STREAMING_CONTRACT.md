@@ -1,6 +1,6 @@
 # E6.7a / E7 — Continuous event ingress and session contract
 
-Status: user-approved design direction, 2026-11-20. Not executable SDK or approved live/paper deployment. Tracks #59; existing [SDK examples](E6_7_SDK_EXAMPLES.md) 15–16 remain compatible and 19–23 extend the design. Existing #62 historical run retains its frozen research gate. No implementation prerequisite waived.
+Status: revised user-approved design, 2026-11-22, not executable or an E7/E8 deployment approval. Tracks #59; [23 SDK examples](E6_7_SDK_EXAMPLES.md), [API matrix](E6_7_API_CONTRACT_MATRIX.md) and ADR-0034 define the current public names. Prior `engine.evaluate.session(...)` and `engine.paper.run(...)` were unimplemented proposals and are superseded. The frozen #62 historical evidence remains unchanged. No implementation prerequisite waived.
 
 ## 1. Architecture and scope
 
@@ -14,16 +14,16 @@ Target: input transport → bounded ingestion/normalization → canonical ordere
 |---|---|---|
 | Engine() | Inert; no credentials, I/O, tasks or account | E6.7b |
 | engine.evaluate(market_data=..., portfolio=..., strategy=...) | Existing planned one-shot proposal; fresh valid context or explicit blocker | E6.7a signature, future implementation |
-| engine.evaluate.session(...) | Callable evaluation service with synchronous factory returning async context-manageable decision-only session; no implicit network | E6.7a design / E7 implementation |
+| engine.session(symbols=..., strategy=...) | Standalone factory returning async context-manageable caller-fed decision-only session; no implicit network | E6.7a design / E7 implementation |
 | session.warmup(history) | Causal history validation, observation only; explicit no-trade warmup | E7 |
 | session.ingest(event, *, portfolio=None) | Await serialized acceptance; typed outcome, optional snapshot binding; no real submit | E7 |
 | session.update_portfolio(snapshot) | Await serialized snapshot refresh; never mutate original account | E7 |
-| engine.paper.start(...) | Explicit async managed provider lifecycle, local simulated cash | E7 |
+| engine.paper.start(...) | Factory returning async context manager; provider I/O on context entry, local simulated cash | E7 |
 | session.events() | Async iterator of typed outcome/status events; bounded, cancellation-aware | E7 |
 | session.status / context exit | Inspect state; close/join tasks, preserve stop reason and audit | E7 |
-| engine.live | No callable order route until separately authorized | E8 |
+| engine.live.start(...) | Reserved async-context lifecycle spelling; no callable real-order route shipped before approval | E8 |
 
-Single-call evaluate remains callable (service __call__ or equivalent typed interface) with the prior names and semantics, not an incompatible namespace replacement. Existing user-approved Engine() and examples unchanged. Factory config is validated and inert; no background task starts on import. Injected caller owns transport unless explicitly transferred. Managed Paper start connects only after data rights, scope, account simulation, policy validation and warmup resolution. If a source cannot supply required evidence, block rather than auto-fallback. Session states: created → warming → ready → paused/halted → explicitly reviewed resume or closed. No implicit resume after a fault; close is idempotent; pending work is either durably settled or explicitly cancelled. Exact typed signature/defaults, exceptions/outcome schema and lifecycle ownership finalized at E6.7a, before code and contract freeze tests.
+`engine.evaluate(...)` stays a direct one-shot method. `engine.session(...)` is a separate top-level method and must **not** be implemented through a callable evaluate service with a `.session()` attribute. `Engine()` remains mode-neutral. Both session and paper.start are async context-manager factories: construction does not open a transport, managed Paper network I/O is allowed only on `__aenter__` after rights, source, policy and simulated-account validation. No competing `await engine.paper.start(...)` then `async with session` form, or `paper.run(...)` public spelling. Injected external transport remains caller-owned unless explicitly transferred. If a source cannot supply required evidence, block rather than auto-fallback. Session states: created → warming → ready → paused/halted → explicitly reviewed resume or closed. No implicit resume after a fault; close is idempotent; pending work is either durably settled or explicitly cancelled. Exact typed signature/defaults, exceptions/outcome schema and lifecycle ownership finalized at E6.7a, before code and contract freeze tests.
 
 ## 3. Event and time contract
 
@@ -51,7 +51,7 @@ Heartbeats, data staleness and transport health per source, bounded queues and o
 
 | Fixture | Required evidence |
 |---|---|
-| API signatures and import | old evaluate call still callable; 19–23 typed future design; zero import/factory I/O, no live route |
+| API signatures and import | direct evaluate(...) remains; standalone engine.session(...) and paper.start(...) factory; 18–23 future lifecycle examples; zero import/factory I/O, no live route |
 | Canonical event tape parity | exact same ordered available/received input, state, deterministic strategy/sizing/risk policies and identical simulated execution policy → equivalent decisions, fills, ledger and PnL where supported; explain version hashes |
 | Chunking / external input | different transport batch boundaries, same canonical events = same decisions; no full history access or future leakage |
 | Warmup + stream handoff | missing history blocks; valid gap-free handoff; cross-session, DST, early close, finalized bars, late arrivals |
@@ -67,3 +67,7 @@ E6.7a inventories all current runtime, journal, provider, strategy and backtest 
 ## 8. Non-goals
 
 No new strategy tuning, #62 gate modification, provider credential access, live adapter, production execution, implicit capital, universal exchange feed or promise of performance. The synchronous offline SDK remains supported, with async lifecycle at explicit I/O/continuous boundaries.
+
+## 9. 2026-11-22 naming revision / session context-manager contract
+
+The canonical decision-only streaming entry point is `engine.session(...)` (selected by the user), **not** `engine.evaluate.session(...)` and **not** `engine.evaluation_session(...)`. It returns an async context manager; `async with engine.session(...) as session:` owns the bounded per-session strategy state. `engine.evaluate(...)` remains a separate synchronous single-snapshot proposal operation. `engine.paper.start(...)` also returns an async context manager; for provider-managed Paper, transport I/O starts on context entry and is stopped/joined at exit. There is no second public start/run/await spelling. `engine.live.start(...)` is only a proposed name for E8 and is unavailable before approval. The caller may feed normalized EventEnvelope or validated convenience market types, with identical authoritative snapshot freshness and no actual order submission. [API naming matrix](E6_7_API_CONTRACT_MATRIX.md) is binding for E6.7a design work.
