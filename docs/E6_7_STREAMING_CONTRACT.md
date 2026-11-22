@@ -6,10 +6,10 @@
 
 | Public API | Input and state | Result | Actual broker orders |
 |---|---|---|---|
-| `engine.session(...)` | caller owns real-time market stream; verified externally authoritative broker account snapshots; persistent observation/strategy state only | decision proposals with `submitted=False` | **never** |
-| `engine.simulation(data_provider=..., strategy=..., capital=...).paper()` | permitted external market-data source; SDK manages **synthetic** account, orders, fills and fee/risk models | Paper simulated events, synthetic ledger and terminal status | **never** |
+| `engine.session(source=...)` | managed read-only market stream OR caller-fed `sources.manual()`; externally authoritative broker snapshots, observation/strategy state only | proposals with `submitted=False` | **never** |
+| `engine.simulation(source=..., strategy=..., capital=...).paper()` | same managed streaming source OR `sources.manual()` caller-fed ingress; SDK manages **synthetic** orders/fills/account | Paper synthetic events and terminal status | **never** |
 
-Both return **async context-manager factories**. Examples: `async with engine.session(...) as s:` and `async with engine.simulation(...).paper() as s:`. Creating either factory is inert; entering the Paper context is the first moment permitted market-data connection may occur. No competing `engine.paper.start()`, `engine.evaluate.session()`, `await simulation.paper()`, `engine.live` or `simulation(...).live()` public spellings. `engine.evaluate(...)` remains a distinct one-shot decision proposal.
+Both return **async context-manager factories**. Examples: `async with engine.session(...) as s:` and `async with engine.simulation(...).paper() as s:`. Creating either factory is inert; entering **either managed-provider context** is the first moment permitted market-data connection may occur. A `sources.manual()` context never connects a provider and uses caller-fed `ingest(event)`. No competing `engine.paper.start()`, `engine.evaluate.session()`, `await simulation.paper()`, `engine.live` or `simulation(...).live()` public spellings. `engine.evaluate(...)` remains a distinct one-shot decision proposal.
 
 E5 HistoricalBacktest currently drives finite EventEnvelope replay and simulated order accounting through multiple existing core services; EventRuntime is only a reducer, not the entire trading engine. E6.7a must inventory actual event, StrategyRunner, fee/fill/order, journal and provider capabilities before designing streaming composition. Existing TradeTick/QuoteTick/Bar/OrderBook domain types do not imply production support for all execution combinations.
 
@@ -50,3 +50,7 @@ Record heartbeat, data staleness, latency, queue pressure, replay/source cursors
 | external E8 boundary | engine exposes proposal values and no `engine.live`; external host owns broker credentials/order lifecycle |
 
 E6.7a designs exact signatures and fixture ownership; E6.7b–e implements the offline simulation/research facade; E7 separately implements the two continuous operations with forward Paper/Shadow gates. **E8 is a separately authorized external execution-host/adapter integration validation**, not an SDK Live entry point. No profitability, trading permission or actual fill guarantee is inferred.
+
+## 7. 2026-11-22 unified source and advanced-DX clarification (CURRENT)
+
+The [public grammar](E6_7_PUBLIC_DX_GRAMMAR.md) makes source ownership independent of the operation: both `engine.session(source=sources.alpaca(...))` and `engine.simulation(source=sources.alpaca(...), ...).paper()` may manage an explicitly permitted **read-only market stream** at context entry. Both also accept `source=sources.manual()` and caller-fed `session.ingest(event)` / `paper.ingest(event)`. Provider/manual paths share causal event normalization, bounded ingress, source rights and fail-closed behavior; they differ in their **output authority** (proposals only vs synthetic fills). The same `risk=` option meaning can apply wherever supported and cannot bypass hard limits; `execution=` remains simulated fee/fill modeling only. `evaluate(market_data=...)` stays a one-shot snapshot, never an implicit provider fetch. Exact type signatures and supported combinations require E6.7a verification; this adds no real broker trading capability.
