@@ -36,7 +36,7 @@
 
 ## 문서·실험 증거 관리 (2026-11-22)
 
-- 신규 설계 문서가 필요하기 전에 [docs/README](README.md)에서 **현재 정식 문서**를 찾고 기존 문서에 통합합니다. SDK 관련 문서는 [E6.7 통합 스펙](E6_7_UNIFIED_SDK.md)과 [예제집](E6_7_SDK_EXAMPLES.md)으로 관리합니다.
+- 신규 설계 문서가 필요하기 전에 [docs/README](README.md)에서 **현재 정식 문서**를 찾고 기존 문서에 통합합니다. SDK 관련 문서는 [E6.7 통합 스펙](milestones/e6.7/E6_7_UNIFIED_SDK.md)과 [예제집](milestones/e6.7/E6_7_SDK_EXAMPLES.md)으로 관리합니다.
 - 실험 프로토콜·실제 실행·기각·부적격 데이터의 근거는 **[evidence/](../evidence/README.md)** 로 이동합니다. `docs/`의 Archived 안내 파일은 병렬 PR의 과거 링크를 보존하기 위한 임시 호환성 안내입니다.
 - 공유 가능한 집계 결과는 기계 판독형 `evidence/records/` 에 추가하고 `python scripts/check_evidence_records.py`로 검증합니다. 원시 시세·거래 로그·개인 계좌·자격 증명은 공개 Git에 두지 않습니다.
 - E5의 `manifest.json`과 산출물 해시는 기존 실행기의 계약입니다. 상세 파일 장기 보존이 허용된다면 **명시적으로** `scripts/preserve_run_evidence.py --include-traces`를 사용하여 승인된 비공개 저장소에 보존합니다. 테스트용 수익률을 실제·미관측 근거로 승격하지 않습니다.
