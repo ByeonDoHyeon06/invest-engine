@@ -18,7 +18,7 @@ mypy src
 invest-engine replay-synthetic --count 500 --market KR
 ```
 
-E5 실행은 `invest-engine backtest --config <E5 JSON config>`로 수행합니다. 입력은 **검증된 로컬 정규화 이벤트 JSONL과 명시적인 비용/전략/데이터 해시**를 요구합니다. 현재 실행 계약은 [E5 experiment](docs/E5_EXPERIMENT.md)를 참고하세요. 이 명령은 증권사에 주문하지 않습니다.
+E5 실행은 `invest-engine backtest --config <E5 JSON config>`로 수행합니다. 입력은 **검증된 로컬 정규화 이벤트 JSONL과 명시적인 비용/전략/데이터 해시**를 요구합니다. 현재 실행 계약은 [E5 experiment](docs/milestones/e5/E5_EXPERIMENT.md)를 참고하세요. 이 명령은 증권사에 주문하지 않습니다.
 
 ## 문서 위치
 
@@ -28,7 +28,7 @@ E5 실행은 `invest-engine backtest --config <E5 JSON config>`로 수행합니�
 | 현재 개발 상태 / 승인 게이트 | [STATUS](docs/STATUS.md) |
 | 단계별 향후 작업 | [ROADMAP](docs/ROADMAP.md) |
 | **내부 계약 / 현재 E1·E5·E6 정규화 경계** | [ENGINE_IO](docs/ENGINE_IO.md) |
-| **E6.7 통합 SDK 설계 (미구현)** | [통합 설계](docs/E6_7_UNIFIED_SDK.md) · [23개 사용 예제](docs/E6_7_SDK_EXAMPLES.md) |
+| **E6.7 통합 SDK 설계 (미구현)** | [통합 설계](docs/milestones/e6.7/E6_7_UNIFIED_SDK.md) · [23개 사용 예제](docs/milestones/e6.7/E6_7_SDK_EXAMPLES.md) |
 | **백테스트 결과·데이터 검증 기록·실험 보존 정책** | [Research evidence](evidence/README.md) |
 | 아키텍처·트레이딩 책임 경계 | [ARCHITECTURE](docs/ARCHITECTURE.md) · [VALIDATION](docs/VALIDATION.md) |
 | 변경 결정 이력 | [ADR index](docs/adr/README.md) |

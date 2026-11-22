@@ -1,4 +1,4 @@
-"""Navigation and compatibility-link invariants for the curated documentation entry points."""
+"""Validate root navigation, milestone docs and archived evidence references."""
 from __future__ import annotations
 
 import re
@@ -18,20 +18,23 @@ def _local_links(path: Path) -> list[Path]:
     return links
 
 
-def test_main_document_navigation_links_resolve() -> None:
-    for path in (ROOT / "README.md", ROOT / "docs/README.md", ROOT / "evidence/README.md"):
+def test_root_documentation_links_resolve() -> None:
+    for path in (ROOT / "README.md", ROOT / "docs/README.md",
+                 ROOT / "docs/milestones/README.md", ROOT / "evidence/README.md"):
         for link in _local_links(path):
             assert link.exists(), f"broken reference in {path.relative_to(ROOT)}: {link}"
 
 
-def test_archived_report_aliases_resolve_to_canonical_evidence() -> None:
-    aliases = [p for p in (ROOT / "docs").glob("*.md")
-               if p.read_text(encoding="utf-8").startswith("# Archived:")]
-    assert aliases, "expected historic PR compatibility pointers"
-    for alias in aliases:
-        targets = _local_links(alias)
-        assert len(targets) == 1
-        target = targets[0]
-        assert target.is_file(), f"missing archived report: {target}"
-        assert (ROOT / "evidence") in target.parents
-        assert target.read_text(encoding="utf-8").startswith("# ")
+def test_all_milestone_markdown_links_resolve() -> None:
+    for path in (ROOT / "docs/milestones").rglob("*.md"):
+        for link in _local_links(path):
+            assert link.exists(), f"broken milestone link in {path.relative_to(ROOT)}: {link}"
+
+
+def test_legacy_reports_are_not_duplicated_in_docs() -> None:
+    assert not list((ROOT / "docs").glob("ALPACA_*.md"))
+    assert not list((ROOT / "docs").glob("E[56]_*.md"))
+    for name in ("E6_PROFITABILITY_AUDIT.md", "E6_6_REDUCED_TURNOVER.md"):
+        assert (ROOT / "evidence/reports" / name).is_file()
+    for name in ("KRUS_80_DATASET.md", "ALPACA_AUTHORIZED_DATA_AUDIT.md"):
+        assert (ROOT / "evidence/data" / name).is_file()
