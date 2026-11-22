@@ -1,10 +1,10 @@
 # ADR-0034 — Unified typed SDK and shared orchestration
 
-Status: Accepted **design direction** by user (#59), originally 2026-11-20 and **revised 2026-11-22**; SDK implementation and acceptance tests pending. The last amendment is the current normative public naming decision.
+Status: Accepted **design direction** by user (#59), originally 2026-11-20, with further 2026-11-22 amendments; SDK implementation and acceptance tests pending. **Final amendment below is current; earlier proposed spellings are historical.**
 
 Context: core is modular but public Python root is version-only; E4 strategy, E5 experiment and E6 research require separate wiring. Users need a simple entry point without losing existing capabilities.
 
-Decision: one thin, mode-neutral SDK facade with a versioned normalized spec shared with CLI, explicit immutable research profiles and typed advanced settings. SDK delegates to the existing core/research runtime; preserve existing import paths and strict decode; expose stable namespaces and documented extension protocols. Canonical `Engine()` constructor is inert and mode-neutral (no offline()/online()/research() class factory or mandatory mode); explicit operations determine capability. `engine.backtest`, `engine.research`, `engine.evaluate`, future `engine.paper` / `engine.live` are the intended entry points. Data-provider connectivity does not grant trading permission. No hidden I/O, no default live mode, no risk bypass, no duplicate real-asset ledger. Capability parity and deterministic output reconciliation are mandatory before release. See [E6.7](../E6_7_UNIFIED_SDK.md).
+Decision (current): one inert mode-neutral `Engine()` facade over existing deterministic core, with exactly **four primary public operations** `simulation`, `research`, `evaluate`, and `session`. Simulation supports distinct `.historical()` and `.paper()` terminal methods. Preserve immutable typed specs, existing E4/E5/E6 imports and CLI, complete capability parity and broker account authority isolation; do not introduce an engine Live order route. See the final amendment and [E6.7](../E6_7_UNIFIED_SDK.md).
 
 Alternatives: flatten all internal classes into root (poor discoverability/contract churn); replace core with new high-level engine (duplicates state and risk); CLI-only wrappers (insufficient programmatic flexibility). Reject these in favor of shared facade composition.
 
@@ -16,7 +16,7 @@ Revisit: parity gaps, measurable orchestration overhead, incompatible external a
 
 Keep `engine.evaluate(...)` callable with its existing single-decision semantics; a callable service may also expose `engine.evaluate.session(...)`. Caller-fed sessions own bounded observation/feature/strategy state, never authoritative live holdings or order authority. `engine.paper.start(...)` is an explicit async lifecycle operation for simulated execution with managed market data. Provider and caller transports converge at canonical EventEnvelope ingress; replay, paper and future live share deterministic decisions/risk where supported but execution policies remain separate. See [streaming contract](../E6_7_STREAMING_CONTRACT.md) and examples 19–23. E6.7a defines exact types, compatibility and test matrix; E7 implementation separate, E8 live explicitly unauthorized. All previously approved examples unchanged except expanded reference count. This does not grant provider access or alter research gates.
 
-## 2026-11-22 amendment — predictable public API (current approved design)
+## 2026-11-22 amendment 1 — predictable public API (historical; superseded where names conflict)
 
 The user reviewed the 23 examples and found the public surface unnecessarily complex and inconsistent. **Decision:** keep inert `Engine()`, separate authority and existing core, but normalize developer-visible syntax:
 
@@ -28,3 +28,20 @@ The user reviewed the 23 examples and found the public surface unnecessarily com
 - [Examples reorganized into Quickstart/Core/Advanced/Runtime](../E6_7_SDK_EXAMPLES.md) and [old→new matrix](../E6_7_API_CONTRACT_MATRIX.md) record 23 examples, implementation phases, migration boundaries and acceptance fixtures.
 
 **Scope:** approved *planned-name replacement*, not a declaration that the old proposed surface shipped. Existing working E0–E6/CLI interfaces must be inventoried and preserved or migrated with test parity. E6.7a locks exact typed signatures/fixtures after inventory; no code, broker account authority, new data rights, Paper or Live GO in this docs PR. Subsequent public API change requires a new explicit decision and synchronized docs/issue/roadmap/tests. Prior amendment is retained above for historical traceability but is superseded where names disagree.
+
+## 2026-11-22 amendment 2 — unified simulation and external execution (CURRENT)
+
+The user explicitly selected a **single Simulation entry** instead of separate proposed `engine.backtest()` and `engine.paper.start()`, and rejected direct engine broker API ownership. The **only four primary public operations** are:
+
+1. `engine.simulation(...)` — inert shared config; `.historical()` does finite synchronous historical simulation from validated `data=`, `.paper()` returns an async context manager for continuously observed, **simulated** execution using explicit `data_provider=`. Both maintain synthetic portfolios/fills, never real orders.
+2. `engine.research(...)` — direct registered historical study with E6 candidate/budget/fold/journal/evidence gates.
+3. `engine.evaluate(...)` — one-shot market/account snapshot decision **proposal**, no simulated ledger or broker submission.
+4. `engine.session(...)` — caller-fed continuous decision **proposal** session with broker-authoritative read-only snapshots and explicit warmup/recovery.
+
+`Engine()`, `engine.simulation(...)`, and both continuous context-manager factories are inert until declared execution/lifecycle boundaries. `historical()` returns a finite `SimulationResult`; `paper()` is used as `async with engine.simulation(...).paper() as session:`, **not** via a `mode="historical" / "paper"` string or `await .paper().start()`. The terminal methods permit precise return typing and reject contradictory data/provider inputs instead of implicit mode detection or silent fallback. Advanced `HistoricalSimulationSpec` and `ResearchSpec` use `engine.prepare(spec)/engine.run(prepared)` on the **same existing** validation and orchestration path. All supported low-level capabilities remain accessible, and currently implemented legacy `HistoricalBacktest`, imports and CLI commands must not be removed without explicit, parity-tested migration.
+
+**Real execution boundary:** there is **no** `engine.live`, `engine.live.start()`, `engine.simulation(...).live()`, engine order submission, broker credentials, or authoritative live account ledger in the **unified SDK**. Actual order authorization/submission, broker API calls, durable outbox, idempotency, order status, account reconciliation and emergency controls are an **external application/Execution Host** responsibility through separately packaged broker adapters. Engine emits typed `Decision/OrderIntent` *proposal values* with `submitted=False`; a host must independently authorize and reconcile them. The existing low-level BrokerProtocol remains an interoperability/legacy boundary, not permission to implement an SDK Live transport. E8 becomes an **optional external execution integration verification** milestone after separate GO, not an engine Live method.
+
+Research and streaming retain the same causal normalized event/strategy/risk semantics only for supported combinations. Paper's synthetic fills need not match real-broker outcomes. No strategy auto-promotion, independent holdout bypass, real-money trading authorization, data licensing, E5/G1 or E6/G2 signoff is granted.
+
+The [current specification](../E6_7_UNIFIED_SDK.md), [23 examples](../E6_7_SDK_EXAMPLES.md), [old→new matrix](../E6_7_API_CONTRACT_MATRIX.md), [simulation contract](../E6_7_SIMULATION_CONTRACT.md) and [streaming contract](../E6_7_STREAMING_CONTRACT.md) are normative. Earlier amendments are deliberately preserved as **historical decisions** but are superseded wherever their API names disagree. Changing these names, core risk invariants, authority or implemented compatibility requires explicit user review and coordinated ADR, Issue #59, docs, roadmap and executable tests.
