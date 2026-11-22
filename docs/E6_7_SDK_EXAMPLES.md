@@ -51,6 +51,15 @@ result.export("artifacts/aapl-orb")
 - Toy fixture `toy_no_trade_v1` (NOT an AAPL run): `status=NO_TRADE`, `summary.starting_cash=100000.00 USD`, `summary.ending_cash=100000.00 USD`
 - `fills=()`, `blockers=()`, `metrics=None`; `export()` explicitly writes permitted artifacts.
 
+**Illustrative toy-fixture output (not observed):**
+
+```text
+# Proposed toy_no_trade_v1 output — NOT the AAPL dataset result
+NO_TRADE
+starting_cash=100000.00 USD, ending_cash=100000.00 USD
+fills=0, metrics=None, blockers=()
+```
+
 
 `.historical()` executes a finite, verified local historical replay and returns `SimulationResult`; it does not automatically fetch a ticker's data. Historical Backtest is a *kind of simulation*, not an additional public `engine.backtest()` method.
 
@@ -74,6 +83,15 @@ async with engine.simulation(
 - Upon context entry: `paper.status=WARMING → READY` when warmup/source checks pass
 - Toy `toy_manual_paper_v1` PaperEvent: `synthetic_fills=[{id:sim:fill:001, quantity:1, price:100.00 USD}]`; **real broker orders=0**
 - After safe close: `paper.status=CLOSED`; terminal `paper.result` is an audited synthetic result (E7 only).
+
+**Illustrative toy-fixture output (not observed):**
+
+```text
+# Proposed toy_manual_paper_v1 event shape — E7 future
+PaperSession.status: WARMING -> READY -> CLOSED
+PaperEvent.synthetic_fills: [sim:fill:001]  # virtual only
+real_broker_orders: 0
+```
 
 
 The source is read-only market data. Paper owns synthetic cash, orders and fills, never broker trading credentials. E7 only; design target, not runnable.
@@ -103,6 +121,15 @@ print(result.review, result.best_candidate)
 - Toy `toy_research_rejected_v1`: `status=COMPLETED`, `review.evaluated_candidates=2`, `review.eligible_candidates=0`, `best_candidate=None`
 - This is **not** an observed strategy-performance result or holdout approval. The example's actual 6-candidate search has no claimed numerical output.
 
+**Illustrative toy-fixture output (not observed):**
+
+```text
+# Proposed toy_research_rejected_v1 — NOT a strategy result
+ResearchResult.status: COMPLETED
+review: evaluated=2, eligible=0
+best_candidate: None
+```
+
 
 This invokes a bounded *registered historical* study under E6 journal/search/holdout restrictions. No strategy auto-promotion; `best_candidate` is `None` when no admissible candidate exists.
 
@@ -122,6 +149,15 @@ print(decision.status, decision.proposed_orders)
 
 - Toy valid no-action snapshot: `status=NO_ACTION`, `proposed_orders=()`, `submitted=False`
 - Toy stale snapshot: `status=BLOCKED`, `reason_codes=(SNAPSHOT_STALE,)`; never a real order.
+
+**Illustrative toy-fixture output (not observed):**
+
+```text
+# Proposed toy_decision_no_action_v1
+DecisionResult.status: NO_ACTION
+proposed_orders: ()
+submitted: False
+```
 
 
 The broker account snapshot is provided and owned by the caller, timestamped and checked for identity/freshness/positions/open orders. A proposed order has `submitted=False`. The engine **does not send it**.
@@ -146,6 +182,15 @@ async with engine.session(
 
 - After eligible warmup and broker snapshot: `session.status=READY`; toy decision `status=NO_ACTION`, `proposed_orders=()`
 - Stale/missing account snapshot yields `BLOCKED/SNAPSHOT_STALE`, no proposed exposure. No synthetic fills or actual orders.
+
+**Illustrative toy-fixture output (not observed):**
+
+```text
+# Proposed toy_manual_session_v1
+DecisionSession.status: READY
+DecisionResult.status: NO_ACTION
+proposed_orders: (), submitted: False
+```
 
 
 Session supports a managed market-data source just like Paper, but emits proposals only. Use `source=sources.manual()` and `session.ingest()` when the application owns the feed. E7 only.
@@ -427,6 +472,15 @@ result = simulation.historical()
 - Proposed preflight on toy eligible source: `plan.blockers=()`, `plan.effective_config.risk.max_position=5%`
 - An empty preview blocker set is **not** a guaranteed success; `historical()` revalidates runtime inputs and can return `BLOCKED`.
 
+**Illustrative toy-fixture output (not observed):**
+
+```text
+# Proposed read-only preflight on eligible toy source
+PlanPreview.blockers: ()
+PlanPreview.effective_config.risk.max_position: 5%
+# Runtime historical() still performs full validation
+```
+
 
 Optional `inspect()` is read-only preflight (possibly reading explicitly permitted local manifests), never a new mandatory lifecycle or provider/trading connection. Internal typed specs and existing low-level prepare/run paths remain available for compatibility; advanced SDK callers use the same Simulation terminal.
 
@@ -529,6 +583,15 @@ else:
 
 - Bad source/config: `ConfigurationError.reason_codes=(SOURCE_MODE_MISMATCH,)` (proposed)
 - Already-started run with discovered data gap: `result.status=BLOCKED`, `result.blockers=(DATA_GAP,)`, `result.metrics=None`; valid zero trades are instead `NO_TRADE`.
+
+**Illustrative toy-fixture output (not observed):**
+
+```text
+# Proposed blocked-gap toy fixture
+SimulationResult.status: BLOCKED
+blockers: (DATA_GAP,), metrics: None
+# Unlike valid NO_TRADE, this is not a successful run
+```
 
 
 Invalid construction/configuration raises typed errors. Started runs may yield explicit BLOCKED/FAILED evidence. Valid NO_TRADE is a distinct outcome from broken or missing data.
