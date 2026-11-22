@@ -10,8 +10,8 @@
 | 지금 무엇을 작업하나? | [ROADMAP](ROADMAP.md) | 작업 단계, 의존성, 승인 조건 |
 | 엔진은 어떻게 나뉘나? | [ARCHITECTURE](ARCHITECTURE.md) | 설계 및 외부 주문 경계 |
 | **현재 데이터/실행/결과 내부 타입 경계** | [ENGINE_IO](ENGINE_IO.md) | E1→E5→E6를 연결하는 단일 참조 |
-| 통합 SDK의 향후 모양 | [E6.7 spec](E6_7_UNIFIED_SDK.md) · [23 examples](E6_7_SDK_EXAMPLES.md) | **제안**, 아직 실행 코드 아님 |
-| 전략 코드와 검증 기준 | [E4 Strategy](E4_STRATEGY.md) · [E5 Backtest](E5_BACKTEST.md) · [Validation](VALIDATION.md) | 현재 기능과 검증 |
+| 통합 SDK의 향후 모양 | [E6.7 spec](milestones/e6.7/E6_7_UNIFIED_SDK.md) · [23 examples](milestones/e6.7/E6_7_SDK_EXAMPLES.md) | **제안**, 아직 실행 코드 아님 |
+| 전략 코드와 검증 기준 | [E4 Strategy](milestones/e4/E4_STRATEGY.md) · [E5 Backtest](milestones/e5/E5_BACKTEST.md) · [Validation](VALIDATION.md) | 현재 기능과 검증 |
 | 과거 성과와 실패 실험 | [Evidence index](../evidence/README.md) | 버전된 실험 기록, 데이터 감사와 원문 |
 | 설계 결정 근거 | [ADR directory](adr/README.md) | 결정 이력. 최신 스펙으로 재검토 |
 
