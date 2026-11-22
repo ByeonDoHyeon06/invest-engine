@@ -1,9 +1,48 @@
 # Engine I/O Contract — 외부·내부 입출력 명세
 
 **Status:** E3 simulation input Python SDK + `e3-sim-v1` strict OrderIntent JSON parser implemented in PR #17. **Run API, Prediction API, trade performance report and broker/live transport remain design only.**  
-**Owner:** Issue #4 · **Scope:** Backtest/Paper/Live 공통 계약. Live는 별도 승인 전 사용 불가.
+**Owner:** Issue #4 + #64 · **Scope:** 실제 E1/E5/E6 계약과 과거 wire 스케치를 구분. 실제 증권사 주문 실행은 엔진 외부.
 
 **Extension plan:** [E6.7 Unified SDK](E6_7_UNIFIED_SDK.md) / [ADR-0034](adr/0034-unified-sdk.md) defines the user-approved, neutral and inert `Engine()` constructor with operation-level capabilities and a proposed shared normalized Python/CLI orchestration contract. See [normative API examples](E6_7_SDK_EXAMPLES.md); changes require explicit user approval. Existing E5 `run_experiment` and CLI are implemented offline; newer unified API examples remain illustrative. No change to wire contracts or execution permissions in planning phase.
+
+## CURRENT contract kernel — E1 ↔ E5 ↔ E6 (2026-11-22)
+
+**우선 이 절을 기준으로 구현 상태를 판단합니다.** 아래의 오래된 `RunRequest/RunResult` 예제·`Live` wire 구상은 설계 이력이며 현재 실행 API가 아닙니다. E6.7 통합 [공개 SDK 문법](E6_7_UNIFIED_SDK.md)과 실제 [E5 CLI](E5_EXPERIMENT.md)는 구분해야 합니다.
+
+### 실제 구현된 경계 (AS-IS)
+
+| 계층 | 현재 타입·함수 | 보증/한계 |
+|---|---|---|
+| E1 불변 데이터셋 | `data.datasets.DatasetSpec`, `DatasetManifest`, `write_dataset/read_dataset` | DatasetManifest와 raw/normalized Parquet 해시·라이선스·수정 정책을 검증. **Normalized Parquet**는 E5 JSONL이 아님 |
+| E2 이벤트 | `domain.events.EventEnvelope`, `core.runtime.EventRuntime` | UTC 이벤트/가용/수신 시점, 실행 전 최종화, **전역 연속 ordinal은 single writer가 부여해야 함** |
+| E3 주문/계좌 | `trading.models.OrderIntent`, `trading.ledger.TradingState`, `trading.runtime.TradingRuntime` | **가상** 주문/체결/잔고, 실제 브로커 권한 없음 |
+| E4 전략 | `strategies.contracts.StrategyManifest/Strategy`, `strategies.runtime.StrategyRunner` | 고유 ID/버전/요구 데이터·상태 스냅샷, 반복 실행마다 새 전략 인스턴스 |
+| E5 과거 연구 | `research.experiment.run_experiment`(`e5-research-v1` JSON), `HistoricalBacktest.run(events)` | 별도 **canonical event JSONL**의 SHA-256을 검증하고 E5 모델/보고서로 실행. `BacktestReport`/manifest는 구현됨 |
+| E6 연구 계획 | `research.pipeline.PipelineSpec`, `prepare_pipeline`, `run_development`, `PipelineReview` | 통제된 개발 후보/등록/저널·fold·holdout 규칙. 외부 실행/자동 승격 없음 |
+
+### 이번 정리에서 추가한 최초의 공통 값 계약 (IMPLEMENTED helper only)
+
+`invest_engine.contracts.source.HistoricalSourceIdentity`는 **인터넷·계좌·실행·파일 I/O 없는** 불변 식별 타입입니다. `from_e1_manifest(manifest)`는 E1 normalized Parquet의 정체성과 해시를, `from_e5_dataset(config["dataset"])`는 E5 canonical JSONL의 정체성과 해시를 **서로 다른 `format` 값으로** 보존하고, 공통 버전/공급자/라이선스/원본 해시/거래량 단위로 안정적인 `digest`를 계산합니다.
+
+- **해시 종류가 다릅니다:** E1 `normalized_sha256`는 normalized Parquet 바이트 해시, E5 `dataset.sha256`은 JSONL 파일 바이트 해시입니다. 둘을 내용/시점상 동일한 데이터라고 간주하지 않습니다. 새로운 source digest가 기존 E5 run/config/artifact 해시를 대체하지도 않습니다.
+- 단순 값 계약은 **참조 확인용**이지 E1 Parquet→E5 JSONL 변환기, SDK `sources.local()`, 시장 데이터 다운로드, 실시간 Session, 실제 주문 API가 **아닙니다**. 두 데이터를 실제로 연결하려면 별도 검증된 변환·정규화 어댑터와 golden parity가 필요합니다.
+- `volume_unit`, `adjustment`, `completeness`, `calendar_version` 등 누락된 실증 근거를 생성하지 않습니다. 알려지지 않은 경우 `UNKNOWN/UNDECLARED`로 남기며, 경제적 사용 가능 여부는 기존 E5 차단 조건과 이후 구현할 capability gate가 결정합니다.
+- JSON/CLI에 저장 가능한 값과 Python 전략/캘린더/플러그인 런타임 객체를 나눕니다. 영속 스펙에는 버전된 참조만, 실제 Python 객체는 별도 바인딩/팩토리로 해결해야 하며 전략 재사용 상태 누출은 금지합니다.
+
+### 통일을 완료하기 위한 후속 수락 기준 (NOT YET IMPLEMENTED)
+
+1. E1 `DatasetManifest`의 실제 raw/normalized 파일을 검증하여 canonical E5 events로 변환하고 원본 event identity, provenance, license, PIT/시점, volume 단위, 초과·부족 이벤트를 감사하는 typed adapter. **서로 다른 포맷/해시를 묵시적으로 동일시 금지**.
+2. Python과 CLI가 같은 immutable `RunSpecV1` 값·defaults·economics digest를 생성하되, stateful `StrategyFactory`, calendar, artifact storage 등은 버전된 `RuntimeBindings`로 분리하고 미등록 항목을 명시적으로 거부.
+3. 새 진입점 `Engine().simulation(...).historical()`은 **기존 E5 HistoricalBacktest** 경로를 그대로 호출하며 결정/체결/원장·비용/PnL/원본 증거를 fixture 단위로 대조. 기존 Python/CLI는 변경 없이 작동해야 함.
+4. 결과 대수: `configuration syntax error → exception`; 지원 불가/데이터 부재 → `Blocked`; 시작된 실행 → `Completed/Blocked/Failed`; 정상 무거래는 `NO_TRADE`. 코드와 상태 우선순위를 단일 결과 모델로 정한 뒤 승인.
+5. E7는 관측 이벤트의 공급자별 원본 순번과 엔진 전역 `ingest_ordinal` 부여 책임을 **하나의 ingress owner**에 집중. duplicate retry/충돌/gap/warmup cursor를 분리 검증. provider가 제공하지 않은 과거 `available_at`을 합성하지 않음.
+6. 위 다섯 가지를 E6.7a의 테스트 가능 목록으로 관리하며 [Issue #64](https://github.com/ByeonDoHyeon06/invest-engine/issues/64) 및 [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59)와 연결. SDK의 편리한 문법이 **근거 없는 내부 기능 통합**을 의미하지 않게 함.
+
+### 실험 산출물 경계
+
+E5 `run_experiment()`는 `report.json`, `decisions/fills/equity.jsonl`, `audit.json`, `manifest.json`와 artifact SHA-256을 제공합니다. 공개·재배포 가능한 **집계 기록**은 [evidence](../evidence/README.md)와 `records/`, 개인/라이선스/민감한 상세 추적은 비공개 보존 도구 `scripts/preserve_run_evidence.py`로 분리합니다. 전체 연구 데이터를 공개 저장소에 커밋하지 않습니다.
+
+---
 
 ## 0. 빠른 결론
 
