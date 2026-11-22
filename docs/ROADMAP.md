@@ -1,4 +1,4 @@
-## Current project state — 2026-11-20 (authoritative; supersedes historical entries below)
+## Current project state — 2026-11-22 (authoritative; supersedes historical entries below)
 
 - E0–E4: verified simulation/core implementation. E5 [#6](https://github.com/ByeonDoHyeon06/invest-engine/issues/6) and E6 [#7](https://github.com/ByeonDoHyeon06/invest-engine/issues/7) remain **OPEN**; G1/G2 acceptance not met. E7/E8 not authorized; no actual trading.
 - [#52](https://github.com/ByeonDoHyeon06/invest-engine/pull/52) merged `914439f`: E6.6a integrated offline research pipeline. Core [44513340667](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44513340667) 392 tests each (3.12/3.13), 74 source files; [44513340928](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44513340928) 20/20 jobs, 42 common result rows identical to #50 excluding elapsed/version hashes. Synthetic integration and durable review; no independent holdout.
@@ -8,8 +8,8 @@
 - [#56](https://github.com/ByeonDoHyeon06/invest-engine/pull/56) merged `3e1d1c5`: [44692687102](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44692687102) five annual jobs passed, 2,674/2,800 intended arms, 191/200 symbol-year windows, 9 blocked, zero execution errors; 115 windows matched to entered hold in both costs. All five active strategies negative mean and negative matched excess both costs. Adjusted retrospective prices, simulated costs, no executable-price/PIT certification. Core CI and public audit green.
 - [#57](https://github.com/ByeonDoHyeon06/invest-engine/pull/57) MERGED `f4f1038`: [v4 run 44700445084](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44700445084) 12/12 jobs, 190,800 complete window-bars incl overlapping warmups, six provisional symbol-month windows/60 arms; five dividend overlap blocks and one unsupported merger. No execution errors. Aggregate base/stress net PnL (USD independent accounts): ORB15 -888.69/-1978.37, ORB30 -589.62/-1493.91, volume2 -269.13/-1249.70, hold -1459.11/-1458.12, cash zero. [Core CI 44700443964](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44700443964) 402 tests each 3.12/3.13, mypy 74 files. Research-only, no PIT/real execution certification. [Pilot details](ALPACA_RAW_MINUTE_PILOT.md).
 - [#61](https://github.com/ByeonDoHyeon06/invest-engine/pull/61) MERGED `d75727d`: 72 arms / six provisional windows; 36 common controls matched #57, 405 tests each, mypy 75. USD PnL base/stress volume -269.13/-1249.70, weekly -118.55/-552.38, range +93.63/-252.08, combined +64.63/-162.80. All negative vs stronger hold/cash baseline; no strategy promoted. [Results](E6_6_REDUCED_TURNOVER.md).
-- [#62](https://github.com/ByeonDoHyeon06/invest-engine/pull/62) temporal replication evidence complete (code `a3ab56b`, [run 44713239696](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239696)): 24/24 jobs, 14 eligible windows, 168/288 intended arms; 10 corporate-action blocks (8 warmup dividend overlaps, 2 unresolved cash merger), no replay errors; 375,660 observed/expected window-bars including warmups. All 14 hold pairs entered, 112 active arms end flat, no active arm exceeds max(cash, entered hold). Aggregate base/stress USD PnL volume -739.12/-1770.15, weekly -641.24/-1228.40, range -140.00/-249.32, combined -282.63/-361.69; hold +2323.67/+2024.59. No strategy promoted; not independent holdout. Core [44713239712](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239712) 412 passed/2 skipped each, mypy 75; legacy fee replay [44713239638](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239638) 20 jobs, 42 matched prior numeric/result rows (elapsed and three hashes excluded). This closes the frozen experiment, not E5/E6 gates. Final docs-only CI/review/merge pending.
-- Next: finalize #62 review/merge and reconcile parallel SDK design #63 (design only); E6.7a API inventory/contracts may proceed in parallel, implementation follows existing evidence prerequisites. Separately predeclare corporate-action coverage follow-up (warmup-only domestic cash dividends with complete dates/no entitlement, raw-price discontinuity and feature checks; investigate unresolved merger identity with provider evidence; never relax evaluation-window action gates or invent data). No new parameter tuning on this panel, no independent holdout access, provider/PIT/actual cost/KR evidence still open.
+- [#62](https://github.com/ByeonDoHyeon06/invest-engine/pull/62) 2023 frozen research merged (`41bbb23`): 24/24 jobs successful, 14 eligible symbol-months/168 arms, 10 corporate-action blocks, all candidate strategies fail both costs and stronger benchmark. [#63](https://github.com/ByeonDoHyeon06/invest-engine/pull/63) E6.7 streaming design merged (`791789f`), with user-approved 2026-11-22 public naming revision now in [PR #67](https://github.com/ByeonDoHyeon06/invest-engine/pull/67). Neither merge accepts E5/G1 or E6/G2, nor authorizes E7/E8.
+- Next: review #67 consistent SDK docs and E6.7a actual API/capability inventory. Separately [#66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66) multi-symbol foundation remains OPEN and must reconcile overlapping docs before merge; #65 follow-up shared-account historical integration requires its own tests. Corporate-action coverage and provider rights/PIT/actual fees/KR data/independent holdout remain separate blocked evidence work; no strategy retuning or live access.
 - Authoritative docs: [KRUS-80](KRUS_80_DATASET.md), [Alpaca acquisition](ALPACA_AUTHORIZED_DATA_AUDIT.md), [daily research](ALPACA_DAILY_STRATEGY_PANEL.md), [pipeline](E6_6A_RESEARCH_PIPELINE.md), [sensitivity](E6_PROFITABILITY_AUDIT.md). Older dated notes are historical snapshots, not outstanding work instructions.
 
 **E6.6a candidate (2026-11-19):** [Integrated research pipeline](E6_6A_RESEARCH_PIPELINE.md), [ADR-0033](adr/0033-offline-research-pipeline.md). #50 merged `8ef3b7a` (382 tests each; 20 historical jobs and 42 matched fee-aware rows), #51 merged `2d5c8a5` (388 tests each; Ruff B008 fixed). Compile deterministic plan and validation grid, execute E5+E6 journal, reconstruct canonical development review, explicit complete-matrix close only; four synthetic tests pending. No holdout execution or verified evidence upgrade. Caller retains prepared manifest; local journal is not external data isolation. E5 #6 OPEN, E6/G2 NOT ACCEPTED, LIVE NOT AUTHORIZED. Next E6.6b independent evidence and final evaluation boundary.
@@ -228,31 +228,31 @@
 
 **DoD:** 기준선 대비 성능을 미관측 구간과 여러 비용 시나리오로 보고; 실패 전략 기각 기록; 최종 test set 재사용·과적합 경고; 자율 적용은 Shadow까지만.
 
-**E6.6 temporal replication evidence complete:** [#62](https://github.com/ByeonDoHyeon06/invest-engine/pull/62) temporal replication evidence complete (code `a3ab56b`, [run 44713239696](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239696)): 24/24 jobs, 14 eligible windows, 168/288 intended arms; 10 corporate-action blocks (8 warmup dividend overlaps, 2 unresolved cash merger), no replay errors; 375,660 observed/expected window-bars including warmups. All 14 hold pairs entered, 112 active arms end flat, no active arm exceeds max(cash, entered hold). Aggregate base/stress USD PnL volume -739.12/-1770.15, weekly -641.24/-1228.40, range -140.00/-249.32, combined -282.63/-361.69; hold +2323.67/+2024.59. No strategy promoted; not independent holdout. Core [44713239712](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239712) 412 passed/2 skipped each, mypy 75; legacy fee replay [44713239638](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44713239638) 20 jobs, 42 matched prior numeric/result rows (elapsed and three hashes excluded). This closes the frozen experiment, not E5/E6 gates. Final docs-only CI/review/merge pending.
+**E6.6 temporal replication completed and merged:** [#62](https://github.com/ByeonDoHyeon06/invest-engine/pull/62) 2023 frozen research merged (`41bbb23`): 24/24 jobs successful, 14 eligible symbol-months/168 arms, 10 corporate-action blocks, all candidate strategies fail both costs and stronger benchmark. [#63](https://github.com/ByeonDoHyeon06/invest-engine/pull/63) E6.7 streaming design merged (`791789f`), with user-approved 2026-11-22 public naming revision now in [PR #67](https://github.com/ByeonDoHyeon06/invest-engine/pull/67). Neither merge accepts E5/G1 or E6/G2, nor authorizes E7/E8.
 
 **E6.6 reduced-turnover verified:** [study](E6_6_REDUCED_TURNOVER.md); #61 merged, all three new screens improve stress PnL but none pass both costs and stronger benchmarks. Prespecified 2023 temporal replication complete, strategy acceptance rejected; E5/E6 acceptance remains open.
 
 ### E6.7 — Unified Engine SDK (PLANNED)
 
-**Tracking:** [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59) · [SDK spec](E6_7_UNIFIED_SDK.md) · [ADR-0034](adr/0034-unified-sdk.md) (accepted design; not implemented) · [18 normative DX examples](E6_7_SDK_EXAMPLES.md).
+**Tracking:** [Issue #59](https://github.com/ByeonDoHyeon06/invest-engine/issues/59) · [SDK spec](E6_7_UNIFIED_SDK.md) · [ADR-0034](adr/0034-unified-sdk.md) · [23 examples](E6_7_SDK_EXAMPLES.md) · [API matrix](E6_7_API_CONTRACT_MATRIX.md) · [Simulation contract](E6_7_SIMULATION_CONTRACT.md). Design only; implementation pending.
 
-**API contract:** user-approved neutral, inert `Engine()`; no offline()/online()/research() class factory or mandatory mode. Explicit calls determine capabilities; network data access independent of trade authority. Changes to the agreed constructor/names/defaults/safety/compatibility require explicit user approval and updated ADR/examples/Issue/tests before implementation.
+**API contract — consolidated 2026-11-22:** inert `Engine()` with four primary operations `simulation/research/evaluate/session`. Simulation is configured once and ends with `.historical()` (finite historical replay and synthetic fills) or `.paper()` (E7 async context with real-time market data and **synthetic** cash/fills). `research()` runs registered historical studies; `evaluate()` produces a one-off proposal; `session()` consumes caller-fed streams and broker-authoritative account snapshots to produce proposals only. No NEW SDK `engine.backtest`, `engine.paper`, `engine.live`, `mode="live"` or broker-order methods. Advanced `HistoricalSimulationSpec/ResearchSpec → prepare/run` retains full core capability/CLI parity. Actual broker API/order execution belongs to external application/Adapter, not Engine.
 
 **Objective:** common offline use with a small typed public API, advanced access to every existing supported capability without copying internal wiring, no weakening of core restrictions. Plan can be drafted during execution of #57; implementation follows existing validation/research prerequisites and precedes E7. E5/E6 economic/release acceptance is separate.
 
-- [ ] E6.7a public API inventory, namespaces, supported-combination matrix, compatibility, API examples, per-example contract/signature fixture mapping, and finalize remaining ADR details without changing approved DX; design [continuous event ingress, evaluation sessions and managed Paper lifecycle](E6_7_STREAMING_CONTRACT.md) with replay parity and failure fixtures (no streaming implementation).
-- [ ] E6.7b unified facade, immutable validated spec, versioned profiles, local data, backtest, typed results/inspect.
+- [ ] E6.7a complete API/capability inventory and supported-combination matrix, exact typed signatures/defaults and fixtures for [23 examples](E6_7_SDK_EXAMPLES.md) and [old→new mapping](E6_7_API_CONTRACT_MATRIX.md); historical/Paper terminal return typing and source mismatch; [Simulation](E6_7_SIMULATION_CONTRACT.md) and [streaming](E6_7_STREAMING_CONTRACT.md) contracts. Keep actual E0–E6 Python/CLI paths intact, no streaming implementation or trading gate change.
+- [ ] E6.7b neutral facade + immutable validated spec, profiles and local data; **`simulation(...).historical()`** delegates to existing historical replay, typed results/inspect and exact core/CLI golden parity.
 - [ ] E6.7c custom strategies/providers/policies and supported E5 feature parity; explicit unsupported capability errors.
-- [ ] E6.7d research search/walk-forward/journal/review and report artifacts, shared CLI/Python contract, migration without deleting old paths.
+- [ ] E6.7d direct `engine.research(...)`, `ResearchSpec/prepare/run` parity, search/walk-forward/journal/review and report artifacts; common finite result contract, shared CLI/Python decoding and compatibility.
 - [ ] E6.7e wheel/import smoke, public-contract snapshot, end-to-end/golden parity, failure/security/deterministic replay and DX cookbook.
 
-**DoD:** common offline path ≤10 logical lines after dataset preparation; advanced typed paths; no lost supported options; same normalized config/event input produces equivalent decisions/fills/ledger/PnL and evidence; defaults visible and versioned; no network by import, hidden live mode or risk bypass; actual broker assets remain broker-authoritative. E7's Paper adapter and E8's Live authority remain separate. No production permission or profitability from SDK completion.
+**DoD:** common historical path ≤10 logical lines, all existing supported policies/data/fee/FX/strategy capabilities preserved, same spec/tape yields same economic events/fills/ledger/PnL/evidence, errors explicit, no import or constructor I/O, no live mode/order submission. Paper and Session require E7; external Host integration E8 is separately approved. Actual broker account remains authoritative outside Engine. No profitability or deployment approval from SDK completion.
 
 ### E7 — Real-time Paper & Shadow
 **의존성:** E5, E6 일부, E6.7 offline SDK API acceptance; 실시간 데이터 공급자 별도 계약.
 
 **작업:**
-- [ ] Streaming Data Provider + reconnect/heartbeat/staleness detect; caller-fed decision sessions, bounded canonical event ingress, warmup/finalization, source cursor recovery, snapshot freshness/reconciliation, no broker submit. See [streaming contract](E6_7_STREAMING_CONTRACT.md).
+- [ ] Streaming Market Data Provider + reconnect/heartbeat/staleness detection; caller-fed **`engine.session(...)`** decision-only sessions and managed **`engine.simulation(...).paper()`** real-time synthetic trading. Bounded canonical ingestion, causal warmup/finalization, cursor recovery, broker snapshot freshness and simulated fills; actual broker submit calls must remain zero. See [streaming contract](E6_7_STREAMING_CONTRACT.md).
 - [ ] Paper Broker, 실제 시세↔모의 체결, 종목별 data-quality dashboard(CLI/로그)
 - [ ] active 전략 vs shadow 후보 독립 비교, 미체결 주문/portfolio 재시작 복구
 - [ ] 양국 정규장·조기폐장·DST·휴장 및 네트워크 장애 처리
@@ -261,18 +261,17 @@
 
 **DoD:** 리플레이·실시간 처리 의미 일치, 장애/재시작 후 state reconcile, 증권사 실제 주문 0건, 누락·비정상 데이터 거래 중단 증거.
 
-### E8 — Controlled Live (별도 GO 승인 필수)
-**의존성:** E7 + API/이용약관 검토 + 보안 감사.
+### E8 — Optional External Execution Integration Verification (별도 프로젝트·GO 승인)
+**의존성:** E7의 충분한 Forward Paper/Shadow 관찰 + 증권사 API/약관/법무 검토 + 별도 보안·운영 감사. **엔진 코어/SDK에 실주문 기능 추가하지 않는다.**
 
-**작업:**
-- [ ] Toss Adapter 별도 패키지(요청 스키마·토큰·허용 IP·rate-limit·WebSocket)
-- [ ] 계좌별 single active executor, durable outbox, broker order reconciliation
-- [ ] API 키 비공개 저장, egress 고정 IP, 권한 최소화, 백업·복구
-- [ ] LIVE 기본 비활성화; 환경변수 한 개만으로 켜지지 않도록 2중 안전장치
-- [ ] 처음은 소액·정규장·종목 제한·무레버리지·당일 청산 시도
-- [ ] kill switch, 원격 알림, 주문/계좌/환율/세션 모니터링
+**외부 Execution Host/Adapter의 작업 (Invest Engine 패키지 외부):**
+- [ ] Toss 등 증권사별 REST/WebSocket, 토큰·고정 송신 IP·rate limit·주문 식별자 변환을 별도 패키지/프로세스로 구현.
+- [ ] 명시적 사용자 승인, 계좌별 single active executor, 주문 상태·영속 outbox·멱등성·UNKNOWN 주문 복구·브로커 주문/잔고 대조.
+- [ ] 실계좌 자산/미체결 주문의 권위 있는 원본은 증권사이며, Engine에는 검증된 read-only account snapshot만 전달.
+- [ ] 독립적인 비밀키 관리, 권한 최소화, kill switch, 알림, 외부 주문/계좌/환율/세션 모니터링과 운영 Runbook.
+- [ ] 소액·정규장·무레버리지 등의 초기 실제 주문 시험은 **별도 외부 Host 승인 후에만** 검토. Simulation/Paper 결과로 자동 승인 금지.
 
-**DoD:** 운영자 별도 승인·소액 주문 테스트·주문 체결 일치·장애복구 시연·runbook·자동 중지 검증. **수익률만으로 승인 불가.**
+**DoD:** 외부 Host의 주문·계좌 정합성/복구·수동중단 검증 및 독립 승인. Invest Engine의 신규 SDK 진입점은 네 개를 유지하며 `engine.live` 또는 실주문 송신 기능이 존재하지 않는다. 수익률·SDK 테스트 통과만으로 실거래 승인 불가.
 
 ### E9 — Optional Extensions (착수 전 별도 ADR)
 - [ ] OpenDART/SEC 시점정합 재무·공시 Feature
@@ -286,7 +285,7 @@
 - **R2 — Adaptive Research:** E6. 과적합 통제 하에 후보 제안·검증.
 - **R2-SDK — Unified SDK:** E6.7. 검증된 오프라인 SDK 사용성·기능 동등성; 독립적인 수익성/실거래 승인 아님.
 - **R3 — Observable Paper:** E7. 여러 주 동안 실시간 모의 검증.
-- **R4 — Restricted Live:** E8. 별도 승인 후 제한된 주문.
+- **R4 — External Execution Integration:** E8. Separate application/Adapter authorization and safety verification; no Engine Live API.
 - **R5 — Optional Product:** E9. 범위·라이선스 재검토.
 
 ## 4. 기술 부채·리스크 및 불확실성
