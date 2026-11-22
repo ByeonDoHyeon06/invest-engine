@@ -85,7 +85,9 @@ result = simulation.historical()
 
 **Internal/compatibility:** a normalized immutable typed spec, simulation/research plans, canonical journal/outbox/snapshot contract, historical E5 runner and CLI still exist *under the facade* and may remain available as versioned low-level imports. Their signatures/economic outputs must be parity-tested against the fluent API. Advanced behavior cannot lose any actually supported E5/E6 capability. Future types/policies requiring a genuinely different lifecycle must be justified by an ADR rather than hidden coercion or arbitrary kwargs.
 
-## E. Consistent results and explicit safety
+## E. Consistent results, illustrative outputs and explicit safety
+
+**The public contract is not complete without observable results.** [Expected SDK returns and toy fixtures](E6_7_SDK_OUTPUT_CONTRACTS.md) now defines return types for Engine/Source/PlanPreview/Simulation/Paper/Research/Evaluate/Session, proposes distinct run/decision/session status enums and illustrates NO_TRADE, BLOCKED gap, no eligible research candidate, stale broker snapshot and virtual Paper fills. All 23 usage examples include per-example expected types, and seven major flows have adjacent **toy** output projections. These are planning values, **never reported real results**; exact names and serialized snapshots require E6.7a fixture implementation and contract tests.
 
 Finite `SimulationResult` / `ResearchResult` share `status`, `summary`, `metrics` (possibly None), `evidence`, `config`, `blockers` and explicit `export(path)`; specialized fills/equity/research review stay in typed fields. Decision-only results contain `status`, `reason_codes`, `blockers`, authoritative input identity and `proposed_orders` with `submitted=False` — **not** invented simulated PnL. Configuration/source incompatibility gets a typed error; missing data, invalid PIT or stale snapshots block/halt instead of returning a successful zero trade.
 
@@ -97,10 +99,11 @@ Organize examples by **use case** rather than a sudden Core/Advanced grammar swi
 
 E6.7a acceptance tests before implementation:
 1. An explicit typed `Source` protocol and capability matrix, owner/lifecycle contract, market-data license/provenance and invalid source/mode/ingress fixtures; no import/factory I/O.
-2. SDK signature snapshot showing common `source/strategy/risk/capital/execution` option semantics, E7 session-managed/manual source variants, risk enforcement and finite/streaming return overloads.
+2. SDK signature/return snapshot showing common `source/strategy/risk/capital/execution` option semantics, E7 session-managed/manual variants, run/decision/session status and nullable field semantics, risk enforcement and finite/streaming return overloads.
 3. Basic vs advanced *same fluent method* regression and economic parity against actual E5 HistoricalBacktest (decisions, fills, ledger, fees, PnL, evidence); E6 research journal, validation and holdout parity.
 4. Optional `inspect()` only reads explicitly allowed local config/metadata and never starts a strategy, provider or broker; deterministic fail-closed runtime checks still apply.
 5. Existing Python low-level APIs and CLI unchanged or explicitly migrated/tested; unsupported FX/corporate action/quote, multi-symbol and external plugins blocked honestly.
-6. No engine Live order route, account-ledger duplication or credentials; Paper/Session cannot leak order permissions. E7/E8 remain separate approvals.
+6. Named deterministic toy fixtures and exact output snapshots for NO_TRADE, BLOCKED, no eligible candidate, stale broker snapshot, Paper virtual fill and Session no-action; distinguish designed sample values from actually observed test results.
+7. No engine Live order route, account-ledger duplication or credentials; Paper/Session cannot leak order permissions. E7/E8 remain separate approvals.
 
 This is **only a design revision**, not a guarantee of SDK implementations or market-data availability, strategy quality, real fills, legal entitlement or live trading authorization.

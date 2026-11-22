@@ -105,9 +105,27 @@ Advanced historical/research `Spec` classes, validated immutable normalized plan
 
 See [public grammar](E6_7_PUBLIC_DX_GRAMMAR.md) and [simulation contract](E6_7_SIMULATION_CONTRACT.md) for exact source capability and lifecycle requirements; [streaming contract](E6_7_STREAMING_CONTRACT.md) for managed/manual Session and Paper.
 
-## 5. Result vocabulary and errors
+## 5. Observable return values, statuses and errors (proposed contract)
 
-Finite `SimulationResult` and `ResearchResult` expose stable `status`, `summary`, optional `metrics`, `evidence`, `config`, `blockers`, `export(path)`; run-specific `fills`, `equity`, `portfolio`, `review`, `best_candidate` stay typed specializations. `DecisionResult` / streaming outcomes expose `status`, `reason_codes`, `blockers`, source/snapshot identity, `proposed_orders` with `submitted=False`; they **do not invent investment returns** or simulate positions. Distinguish valid no-trade, warming/incomplete context, blocked, halt and failed from success. Configuration errors raise typed exceptions; partially executed studies retain explicitly attributable evidence. Export only licensed and redacted artifacts, never credentials or a full broker account dump.
+**The SDK must specify outputs before implementation, not just usage syntax.** Every one of the [23 examples](E6_7_SDK_EXAMPLES.md) now includes an **Expected contract** note (return type and meaningful observable fields); seven high-value flows have adjacent fictional toy-fixture output panels. [Output contract and proposed golden fixtures](E6_7_SDK_OUTPUT_CONTRACTS.md) describes status distinctions, typed field shapes, illustrative JSON-like projections, and what becomes testable.
+
+| Expression | Intended return | Observable semantics |
+|---|---|---|
+| `Engine()` | inert `Engine` | no provider/account/network/action |
+| `engine.simulation(...)` | `SimulationPlan` | not yet executed, optional `inspect()` |
+| `simulation.inspect()` | read-only `PlanPreview` | `effective_config`, `blockers`, checked capabilities, no strategy execution |
+| `simulation.historical()` | `SimulationResult` | finite `status/summary/metrics?/evidence/config/blockers` plus synthetic fills/portfolio, `export()` |
+| `simulation.paper()` | async context manager of `PaperSession` | `PaperEvent` stream or `ingest()` outcomes; state `WARMING/READY/HALTED/CLOSED`; terminal synthetic report |
+| `engine.research(...)` | `ResearchResult` | finite shared metadata plus `review` and optional `best_candidate`, eligibility/journal evidence |
+| `engine.evaluate(...)` | `DecisionResult` | one proposal/no-action/blocked outcome with `submitted=False` |
+| `engine.session(...)` | async context manager of `DecisionSession` | managed `decisions()` or manual `ingest()` yielding proposals only |
+| `data.inspect(dataset)` | `DataQualityReport` | typed `blockers` and data provenance |
+
+**Separate statuses:** proposed finite `RunStatus` = `COMPLETED` / `NO_TRADE` / `BLOCKED` / `FAILED`; ongoing `SessionState` = `CREATED` / `WARMING` / `READY` / `PAUSED` / `HALTED` / `CLOSED`; decision `DecisionStatus` = `PROPOSED` / `NO_ACTION` / `BLOCKED` / `WARMING`. Names and serialization require E6.7a type validation and approval. A valid zero-order backtest is **NO_TRADE**, not BLOCKED or an invented successful PnL; research `best_candidate=None` is possible after an eligible study finishes; stale real account blocks new exposure.
+
+Finite `SimulationResult` and `ResearchResult` share `status`, `summary`, optional `metrics`, `evidence`, `config`, `blockers`, `export(path)`; run-specific `fills`, `equity`, `portfolio`, `review`, `best_candidate` stay typed. `DecisionResult` / streaming outcomes expose input/snapshot identity and `proposed_orders` with `submitted=False`, not simulated profits. Configuration errors are typed with stable reason codes; partially executed runs retain attributable evidence, never fabricated successful metrics. Exports redact secrets and respect market-data licensing.
+
+**Example values are never evidence:** the sample `100000.00 USD`, fill ID `sim:fill:001`, and example reason codes in the output guide are proposed **toy-fixture illustrations**, **not observed data, verified PnL or existing runtime stdout**. Only executable, deterministic, reviewed fixture snapshot tests may freeze exact values. Typed Python return contracts, JSON exports and printed `repr` are distinct, and must not be mixed.
 
 ## 6. External execution boundary (not a fifth SDK mode)
 
@@ -117,7 +135,7 @@ Historical/Paper simulation is **not** real execution. The SDK neither hosts nor
 
 ## 7. Roadmap / acceptance
 
-1. **E6.7a:** inventory actual public/low-level API and capabilities; define typed `Source` descriptors, managed/manual source ownership, consistent policy names, signatures/overloads, optional `inspect()` preflight, invalid combinations, migration, 23-example phase fixtures, golden parity and reference docs.
+1. **E6.7a:** inventory actual public/low-level API and capabilities; define typed `Source` descriptors, managed/manual ownership, policy names, signatures/overloads, optional `inspect()` preflight, **typed return and status/error contracts for each of 23 examples**, deterministic named toy fixtures/expected snapshots, nullable metric/terminal session semantics, migrations and golden parity ([output guide](E6_7_SDK_OUTPUT_CONTRACTS.md)).
 2. **E6.7b:** inert Engine facade, shared immutable spec/profiles, validated `simulation(...).historical()` and typed results, no core rewrite or networking.
 3. **E6.7c:** all implemented supported strategy, provider, data, risk, fill/fees, calendar, corporate action, FX and advanced custom protocols; retain direct core/CLI compatibility.
 4. **E6.7d:** `research(...)` with common `source/strategy/capital/risk/execution` options, internal registered specs and CLI parity, journal/evidence/review/report artifacts, batch audit.

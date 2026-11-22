@@ -1,6 +1,6 @@
 # E6.7 — SDK consistency, capability and migration matrix
 
-**Status: current DX design direction, not yet executable (2026-11-22).** [Spec](E6_7_UNIFIED_SDK.md) · [DX grammar](E6_7_PUBLIC_DX_GRAMMAR.md) · [23 examples](E6_7_SDK_EXAMPLES.md) · [Simulation contract](E6_7_SIMULATION_CONTRACT.md) · [Streaming](E6_7_STREAMING_CONTRACT.md) · [ADR-0034](adr/0034-unified-sdk.md).
+**Status: current DX design direction, not yet executable (2026-11-22).** [Spec](E6_7_UNIFIED_SDK.md) · [DX grammar](E6_7_PUBLIC_DX_GRAMMAR.md) · [23 examples](E6_7_SDK_EXAMPLES.md) · [expected output contracts](E6_7_SDK_OUTPUT_CONTRACTS.md) · [Simulation contract](E6_7_SIMULATION_CONTRACT.md) · [Streaming](E6_7_STREAMING_CONTRACT.md) · [ADR-0034](adr/0034-unified-sdk.md).
 
 ## 1. Four roots, consistent parameters
 
@@ -65,12 +65,13 @@ A future provider may explicitly implement both historical and streaming capabil
 
 ## 5. Golden tests and DoD
 
-1. Python 3.12/3.13 public signature snapshots, source capability typing, no I/O from Engine/source/builder factories, explicit read-only local inspect behavior; managed/unmanaged context exit tests.
+1. Python 3.12/3.13 public signature/**return-type/status snapshots for each of 23 examples**, typed source capabilities, no I/O from Engine/source/builder factories, explicit read-only local inspect behavior; managed/manual context exit tests.
 2. Same default and advanced parameters in `simulation(...).historical()` compile to immutable validated specs and match existing E5 historical decisions, synthetic fills, ledger/PnL, fees, timestamp evidence and blocked statuses.
 3. `research(...)` uses the same input/policies where valid and preserves E6 journal, fold, candidate, budget, purge/embargo, holdout non-access and result evidence.
 4. `session(source=stream)` and `session(source=manual)` share causal strategy/risk/portfolio-contract semantics; Paper uses same source capabilities but synthetic account and no real orders. Instrument identity/late/gap/overflow/source rights fail closed.
 5. Optional `simulation.inspect()` does not place simulated or actual orders, reserve unauthorized holdout, or connect remote provider. Final execution revalidates.
 6. All actual supported fee/fill/FX/PIT/corporate action/multi-symbol/advanced adapters remain available under the facade or explicit versioned low-level escape hatch. Unsupported combinations reject explicitly; real broker account remains authoritative externally.
-7. Existing actual low-level Python imports and CLI commands unchanged unless an explicitly reviewed migration has parity tests. No actual Live SDK, broker secrets or execution adapter; E7/E8 independent approvals.
+7. Name and implement deterministic output fixtures (`toy_no_trade_v1`, `toy_blocked_gap_v1`, `toy_research_rejected_v1`, `toy_snapshot_stale_v1`, `toy_manual_paper_v1`, `toy_manual_session_v1`) and lock expected status/reason/evidence/optional fields in separate executable golden tests; **do not treat proposed output panels as test evidence**.
+8. Existing actual low-level Python imports and CLI commands unchanged unless an explicitly reviewed migration has parity tests. No actual Live SDK, broker secrets or execution adapter; E7/E8 independent approvals.
 
 **No new execution code in this design PR.** E5/G1, E6/G2, provider rights, real fees and investment profitability remain separate unresolved gates.
