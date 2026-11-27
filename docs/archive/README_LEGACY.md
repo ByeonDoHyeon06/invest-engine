@@ -72,7 +72,7 @@ invest-engine replay-synthetic --count 500 --market KR
 invest-engine replay-synthetic --count 1000 --market US
 ```
 
-정상적인 실행에서는 거래 0건, API 호출 0건이며 JSON에 count, events_by_type, state_hash가 출력된다. 해시의 같음은 **입력 이벤트의 정합/재현성**을 의미하지 매매 수익성을 의미하지 않는다. 
+정상적인 실행에서는 거래 0건, API 호출 0건이며 JSON에 count, events_by_type, state_hash가 출력된다. 해시의 같음은 **입력 이벤트의 정합/재현성**을 의미하지 매매 수익성을 의미하지 않는다.
 
 [구현 PR #11](https://github.com/ByeonDoHyeon06/invest-engine/pull/11) · [E0 Epic #1](https://github.com/ByeonDoHyeon06/invest-engine/issues/1)
 

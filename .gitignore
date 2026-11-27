@@ -29,6 +29,9 @@ build/
 *.egg-info/
 .coverage
 htmlcov/
+# Local agent workspaces
+.worktrees/
+.superpowers/
 # Editors and OS
 .DS_Store
 .idea/

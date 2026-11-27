@@ -1,6 +1,6 @@
 # Engine I/O Contract — 외부·내부 입출력 명세
 
-**Status (2026-11-22):** E3 simulation OrderIntent parser and **E5 offline `run_experiment`/BacktestReport/CLI are implemented**; E6 development pipeline partly implemented. **Unified E6.7 SDK, prediction and broker/Live transport remain unimplemented.** Historical wire sketches below are not executable E5 configs.  
+**Status (2026-11-22):** E3 simulation OrderIntent parser and **E5 offline `run_experiment`/BacktestReport/CLI are implemented**; E6 development pipeline partly implemented. **Unified E6.7 SDK, prediction and broker/Live transport remain unimplemented.** Historical wire sketches below are not executable E5 configs.
 **Owner:** Issue #4 + #64 · **Scope:** 실제 E1/E5/E6 계약과 과거 wire 스케치를 구분. 실제 증권사 주문 실행은 엔진 외부.
 
 **Extension plan:** [E6.7 Unified SDK](milestones/e6.7/E6_7_UNIFIED_SDK.md) / [ADR-0034](adr/0034-unified-sdk.md) defines the user-approved, neutral and inert `Engine()` constructor with operation-level capabilities and a proposed shared normalized Python/CLI orchestration contract. See [normative API examples](milestones/e6.7/E6_7_SDK_EXAMPLES.md); changes require explicit user approval. Existing E5 `run_experiment` and CLI are implemented offline; newer unified API examples remain illustrative. No change to wire contracts or execution permissions in planning phase.
