@@ -5,6 +5,7 @@ from decimal import Decimal as D
 
 import pytest
 
+import invest_engine.research.portfolio_backtest as portfolio_backtest_module
 from invest_engine.data.calendar import StaticSessionCalendar, TradingSession
 from invest_engine.domain.errors import InvalidEvent
 from invest_engine.domain.events import Bar, EventEnvelope
@@ -359,6 +360,62 @@ def test_flatten_checkpoint_is_scheduled_outside_rebalance_grid() -> None:
     assert report.account_report.by_currency_end == (("USD", D("101000")),)
 
 
+def test_fill_evaluation_visits_only_active_orders_for_event_instrument(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[tuple[str, str]] = []
+    original = portfolio_backtest_module.eligible_fill
+
+    def counted_eligible_fill(*args, **kwargs):
+        order, event = args[:2]
+        observed.append((order.intent.instrument.key, event.event_id))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(
+        portfolio_backtest_module,
+        "eligible_fill",
+        counted_eligible_fill,
+    )
+    backtest, _ = make_backtest()
+
+    backtest.run(happy_path_events())
+
+    assert observed == [
+        (A.key, "entry-fill:a"),
+        (B.key, "entry-fill:b"),
+        (A.key, "exit-fill:a"),
+        (B.key, "exit-fill:b"),
+    ]
+
+
+def test_complete_frame_records_sub_lot_plans_as_no_action() -> None:
+    backtest, _ = make_backtest()
+    events = (
+        bar_event(A, "trigger:a", FIRST_CHECKPOINT, 0, price="20000"),
+        bar_event(B, "trigger:b", FIRST_CHECKPOINT, 1, price="20000"),
+        bar_event(A, "flatten:a", FLATTEN, 2, price="20000"),
+        bar_event(B, "flatten:b", FLATTEN, 3, price="20000"),
+        bar_event(A, "session-end:a", SESSION_END, 4, price="20000"),
+        bar_event(B, "session-end:b", SESSION_END, 5, price="20000"),
+    )
+
+    report = backtest.run(events)
+
+    decision = next(
+        item
+        for item in report.universe_decisions
+        if item.as_of == FIRST_CHECKPOINT
+    )
+    assert decision.status is UniverseFrameStatus.COMPLETE
+    assert decision.intent_ids == ()
+    assert len(decision.decisions) == 2
+    assert {row[1] for row in decision.decisions} == {"NO_ACTION"}
+    assert {row[2] for row in decision.decisions} == {
+        ("NO_ACTION_TARGET_BELOW_LOT",)
+    }
+    assert decision.reason_codes == ("NO_ACTION_TARGET_BELOW_LOT",)
+
+
 def test_portfolio_replay_is_deterministic_and_single_use() -> None:
     first, _ = make_backtest()
     second, _ = make_backtest()
@@ -517,7 +574,11 @@ def test_later_checkpoint_cancels_replaceable_buy_before_new_targets() -> None:
     assert first.canceled_intent_ids == first.intent_ids
     assert "REPLACED_ENTRY_CANCELED" in first.reason_codes
     assert second.intent_ids
-    assert second.decisions[0][1] == "APPROVED"
+    assert tuple(row[1] for row in second.decisions) == (
+        "NO_ACTION",
+        "APPROVED",
+    )
+    assert second.decisions[0][2] == ("NO_ACTION_TARGET_BELOW_LOT",)
     assert {execution.instrument for execution in report.executions} == {B}
 
 
@@ -869,7 +930,11 @@ def test_daily_loss_latch_replaces_longs_with_complete_exit_targets() -> None:
     assert set(loss_decision.selected_instrument_keys) == {A.key, B.key}
     assert "DAILY_LOSS_LIMIT" in loss_decision.reason_codes
     assert "DAILY_LOSS_EXIT_OVERRIDE" in loss_decision.reason_codes
-    assert tuple(row[1] for row in loss_decision.decisions) == ("APPROVED",)
+    assert tuple(row[1] for row in loss_decision.decisions) == (
+        "APPROVED",
+        "NO_ACTION",
+    )
+    assert loss_decision.decisions[1][2] == ("NO_ACTION_TARGET_BELOW_LOT",)
     loss_exit = next(
         execution
         for execution in report.executions

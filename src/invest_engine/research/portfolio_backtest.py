@@ -36,7 +36,7 @@ from invest_engine.strategies.allocation import (
     AllocationPlan,
     AllocationPolicy,
     allocate_targets,
-    propose_simulated_intents,
+    propose_simulated_intent_results,
 )
 from invest_engine.strategies.attribution import (
     AttributionTicket,
@@ -52,6 +52,7 @@ from invest_engine.strategies.portfolio_contracts import (
 )
 from invest_engine.strategies.portfolio_runtime import PortfolioStrategyRunner
 from invest_engine.strategies.universe import UniverseFrameCoordinator
+from invest_engine.trading.ledger import OrderRecord
 from invest_engine.trading.models import (
     DecisionStatus,
     OrderStatus,
@@ -255,6 +256,8 @@ class _PortfolioReplay:
         self.tickets: dict[str, AttributionTicket] = {}
         self.intent_source: dict[str, _DecisionBuilder] = {}
         self.intent_expiry: dict[str, datetime] = {}
+        self.active_orders: dict[str, OrderRecord] = {}
+        self.active_intents_by_instrument: dict[str, set[str]] = {}
         self.executions: list[PortfolioExecutionRecord] = []
         self.fill_traces: list[FillTrace] = []
         self.equity: list[EquityPoint] = []
@@ -328,10 +331,8 @@ class _PortfolioReplay:
             for position in self.trader.state.positions
         ):
             raise InvalidEvent("new portfolio session requires a flat account")
-        if any(
-            order.status not in _TERMINAL_ORDER_STATUSES
-            for order in self.trader.state.orders
-        ):
+        self._assert_active_index_consistent()
+        if self.active_orders:
             raise InvalidEvent("new portfolio session has unresolved orders")
         interval = self.owner.strategy.manifest.checkpoint_interval
         checkpoints: list[datetime] = []
@@ -419,13 +420,73 @@ class _PortfolioReplay:
         )
         return row.equity if row is not None else None
 
+    def _current_order(self, intent_id: str) -> OrderRecord | None:
+        """Look up one record in the ledger's intent-ID-sorted order tuple."""
+        orders = self.trader.state.orders
+        lower = 0
+        upper = len(orders)
+        while lower < upper:
+            middle = (lower + upper) // 2
+            current_id = orders[middle].intent.intent_id
+            if current_id < intent_id:
+                lower = middle + 1
+            else:
+                upper = middle
+        if lower < len(orders) and orders[lower].intent.intent_id == intent_id:
+            return orders[lower]
+        return None
+
+    def _sync_active_order(self, intent_id: str) -> None:
+        order = self._current_order(intent_id)
+        if order is None:
+            raise InvalidEvent("active order is missing from the trading ledger")
+        key = order.intent.instrument.key
+        if order.status in {OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED}:
+            self.active_orders[intent_id] = order
+            self.active_intents_by_instrument.setdefault(key, set()).add(intent_id)
+            return
+        previous = self.active_orders.pop(intent_id, None)
+        previous_key = previous.intent.instrument.key if previous is not None else key
+        instrument_ids = self.active_intents_by_instrument.get(previous_key)
+        if instrument_ids is not None:
+            instrument_ids.discard(intent_id)
+            if not instrument_ids:
+                del self.active_intents_by_instrument[previous_key]
+        if order.status not in _TERMINAL_ORDER_STATUSES:
+            raise InvalidEvent("portfolio replay has an unsupported active order status")
+
+    def _active_for_instrument(
+        self,
+        instrument: InstrumentId,
+    ) -> tuple[OrderRecord, ...]:
+        intent_ids = self.active_intents_by_instrument.get(instrument.key, set())
+        return tuple(self.active_orders[intent_id] for intent_id in sorted(intent_ids))
+
+    def _all_active_orders(self) -> tuple[OrderRecord, ...]:
+        return tuple(self.active_orders[key] for key in sorted(self.active_orders))
+
+    def _assert_active_index_consistent(self) -> None:
+        expected = {
+            order.intent.intent_id: order
+            for order in self.trader.state.orders
+            if order.status not in _TERMINAL_ORDER_STATUSES
+        }
+        if expected != self.active_orders:
+            raise InvalidEvent("portfolio active-order index differs from trading ledger")
+        expected_by_instrument: dict[str, set[str]] = {}
+        for intent_id, order in expected.items():
+            expected_by_instrument.setdefault(order.intent.instrument.key, set()).add(
+                intent_id
+            )
+        if expected_by_instrument != self.active_intents_by_instrument:
+            raise InvalidEvent("portfolio active instrument index is inconsistent")
+
     def _evaluate_checkpoint(self, checkpoint: datetime) -> None:
         session = self._session_for_checkpoint(checkpoint)
         unresolved_exits = tuple(
             order
-            for order in self.trader.state.orders
+            for order in self._all_active_orders()
             if order.intent.side is Side.SELL
-            and order.status not in _TERMINAL_ORDER_STATUSES
             and self.intent_source[order.intent.intent_id].as_of < checkpoint
         )
         if unresolved_exits:
@@ -502,7 +563,7 @@ class _PortfolioReplay:
         )
         builder.reason_codes.update(allocated.reason_codes)
         target_equity = self._usd_equity(monitor) or session.baseline.equity
-        proposed = propose_simulated_intents(
+        proposal_results = propose_simulated_intent_results(
             allocated.plans,
             state=self.trader.state,
             config=self.owner.config,
@@ -514,7 +575,18 @@ class _PortfolioReplay:
         plans_by_key: dict[str, AllocationPlan] = {
             plan.instrument.key: plan for plan in allocated.plans
         }
-        for intent in proposed:
+        for proposal in proposal_results:
+            intent = proposal.intent
+            if intent is None:
+                builder.decisions.append(
+                    (
+                        proposal.proposal_id,
+                        DecisionStatus.NO_ACTION.value,
+                        proposal.reason_codes,
+                    )
+                )
+                builder.reason_codes.update(proposal.reason_codes)
+                continue
             if intent.side is Side.BUY:
                 self._observe(session, checkpoint)
             result = self.trader.submit(intent)
@@ -534,9 +606,10 @@ class _PortfolioReplay:
             if intent.side is Side.BUY:
                 self.intent_expiry[intent.intent_id] = plan.expires_at
             self.trader.accept_simulated(intent.intent_id, checkpoint)
+            self._sync_active_order(intent.intent_id)
 
     def _cancel_entry(self, intent_id: str, at: datetime, reason: str) -> None:
-        order = self.trader.state.order(intent_id)
+        order = self.active_orders.get(intent_id)
         if order is None or order.status not in {
             OrderStatus.ACCEPTED,
             OrderStatus.PARTIALLY_FILLED,
@@ -546,6 +619,8 @@ class _PortfolioReplay:
             raise InvalidEvent("only a replaceable BUY may use entry cancellation")
         self.trader.request_cancel(intent_id, at)
         self.trader.confirm_cancel(intent_id, at)
+        self._sync_active_order(intent_id)
+        self.intent_expiry.pop(intent_id, None)
         source = self.intent_source.get(intent_id)
         if source is None:
             raise InvalidEvent("entry cancellation has no source decision")
@@ -556,10 +631,8 @@ class _PortfolioReplay:
         replaceable = sorted(
             (
                 order
-                for order in self.trader.state.orders
+                for order in self._all_active_orders()
                 if order.intent.side is Side.BUY
-                and order.status
-                in {OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED}
                 and self.intent_source[order.intent.intent_id].as_of < checkpoint
             ),
             key=lambda item: item.intent.intent_id,
@@ -578,7 +651,7 @@ class _PortfolioReplay:
     ) -> None:
         if not isinstance(event.payload, Bar) or event.instrument_id is None:
             return
-        for order in tuple(self.trader.state.orders):
+        for order in self._active_for_instrument(event.instrument_id):
             expiry = self.intent_expiry.get(order.intent.intent_id)
             if (
                 expiry is not None
@@ -608,7 +681,7 @@ class _PortfolioReplay:
     ) -> None:
         if not isinstance(event.payload, Bar) or event.instrument_id is None:
             return
-        for order in tuple(self.trader.state.orders):
+        for order in self._active_for_instrument(event.instrument_id):
             expiry = self.intent_expiry.get(order.intent.intent_id)
             if (
                 expiry is not None
@@ -622,8 +695,10 @@ class _PortfolioReplay:
         event: EventEnvelope[MarketPayload],
         session: TradingSession,
     ) -> None:
+        if event.instrument_id is None:
+            return
         used_volume = Decimal(0)
-        for order in tuple(self.trader.state.orders):
+        for order in self._active_for_instrument(event.instrument_id):
             candidate = eligible_fill(
                 order,
                 event,
@@ -644,6 +719,9 @@ class _PortfolioReplay:
                 execution_id=fill_id,
                 at=candidate.observed_at,
             )
+            self._sync_active_order(candidate.intent_id)
+            if candidate.intent_id not in self.active_orders:
+                self.intent_expiry.pop(candidate.intent_id, None)
             actual = self.trader.state.fills[-1]
             charge = self.trader.state.charges[-1]
             ticket = self.tickets.get(actual.intent_id)
@@ -741,12 +819,10 @@ class _PortfolioReplay:
             key=lambda item: item.start,
         )
         for session in due:
+            self._assert_active_index_consistent()
             if set(session.checkpoints) != session.finalized_checkpoints:
                 raise InvalidEvent("session closed before all checkpoints were finalized")
-            if any(
-                order.status not in _TERMINAL_ORDER_STATUSES
-                for order in self.trader.state.orders
-            ):
+            if self.active_orders:
                 raise InvalidEvent("portfolio session ended with unresolved orders")
             if any(
                 position.quantity > 0 or position.reserved_sell > 0

@@ -7,7 +7,8 @@ import pytest
 
 from invest_engine.domain.primitives import InstrumentId, Market, Money
 from invest_engine.strategies.allocation import (
-    AllocationPolicy, allocate_targets, propose_simulated_intents,
+    AllocationPolicy, allocate_targets, propose_simulated_intent_results,
+    propose_simulated_intents,
 )
 from invest_engine.strategies.contracts import SignalDirection, StrategySignal
 from invest_engine.trading.models import DecisionStatus, TradingConfig
@@ -169,3 +170,28 @@ def test_omitted_marked_equity_preserves_legacy_proposal():
         target_equity_by_currency=None,
         **kwargs,
     )
+
+
+def test_proposal_results_explain_sub_lot_no_action_without_changing_legacy_api():
+    allocations = allocate_targets(
+        (signal("portfolio", "usd-1", symbol=US, target="0.10"),),
+        as_of=T,
+    )
+    engine, config = sim()
+    marks = (MarketMark(US, D("20000"), T, "fixture"),)
+    kwargs = {
+        "state": engine.state,
+        "config": config,
+        "marks": marks,
+        "as_of": T,
+        "target_equity_by_currency": (("USD", D("100000")),),
+    }
+
+    results = propose_simulated_intent_results(allocations.plans, **kwargs)
+
+    assert len(results) == 1
+    assert results[0].proposal_id.startswith("allocation:")
+    assert results[0].instrument == US
+    assert results[0].intent is None
+    assert results[0].reason_codes == ("NO_ACTION_TARGET_BELOW_LOT",)
+    assert propose_simulated_intents(allocations.plans, **kwargs) == ()
