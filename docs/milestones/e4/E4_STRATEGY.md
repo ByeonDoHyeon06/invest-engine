@@ -49,14 +49,14 @@ E3 RiskDecision → virtual outbox (no broker)
 
 ### 3.1 Additive multi-symbol portfolio boundary (local candidate)
 
-[ADR-0035](adr/0035-multisymbol-portfolio-decision-boundary.md) adds a separate offline-only path without changing `StrategyRunner`:
+[ADR-0035](../../adr/0035-multisymbol-portfolio-decision-boundary.md) adds a separate offline-only path without changing `StrategyRunner`:
 
 - immutable `UniverseDecisionFrame`/`UniverseFrameOutcome` contracts distinguish `COMPLETE`, `DATA_UNAVAILABLE` and `NO_ACTION`;
 - `UniverseFrameCoordinator` consumes contiguous causal bar events, finalizes only at explicit watermarks, rejects late/duplicate/mixed-session input and never ranks a partial universe;
 - `PortfolioStrategyRunner` supplies an immutable causal history to a trusted `PortfolioStrategy`, then validates the complete ordered signal batch, trigger lineage, manifest identity and LONG/gross exposure envelope; and
 - pre-split history invalidation removes only the affected instrument's observations without rewinding stream audit state or resetting strategy state.
 
-This implementation is in-memory and proposed in [PR #66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66); [PR CI 44894640980](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44894640980) passed Python 3.12/3.13 with 433 tests each and all static/secret checks, while latest PR checks remain the merge gate. It does **not** implement the shared-account historical coordinator, target allocation/order lifecycle, portfolio report, `xs-slot-momentum@1.0.0`, controls, real-data workflow or profitability study. Those remain staged PR 2/PR 3 work under [Issue #65](https://github.com/ByeonDoHyeon06/invest-engine/issues/65). No path submits an order or changes Paper/Live authority.
+This implementation is in-memory and proposed in [PR #66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66); post-`main` local verification passed and fresh PR CI remains the merge gate. Dependent [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) implements the shared-account historical coordinator, target allocation/order lifecycle and portfolio report, but requires #66 merge plus retarget/revalidation. Neither PR implements `xs-slot-momentum@1.0.0`, controls, real-data workflow or profitability study; those remain PR 3 work under [Issue #65](https://github.com/ByeonDoHyeon06/invest-engine/issues/65). No path submits an order or changes Paper/Live authority.
 
 ## 4. Verification
 

@@ -23,7 +23,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
-PLAN_FILE = ROOT / "research/market_panel_v1.json"
+PLAN_FILE = ROOT / "evidence/plans/market_panel_v1.json"
 D = Decimal
 US_TZ = ZoneInfo("America/New_York")
 YEARS = tuple(range(2020, 2026))

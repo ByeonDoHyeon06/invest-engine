@@ -1,0 +1,55 @@
+{
+  "schema_version": "evidence-summary-v1",
+  "study_id": "e6-2022-orb-pr53",
+  "kind": "historical_research_summary",
+  "source_report": "evidence/reports/E6_PROFITABILITY_AUDIT.md",
+  "source_report_original_git_blob_sha": "3d70e71605aec52c5b49dba37833129f065674ec",
+  "workflow_url": "https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44513901581",
+  "pr_url": "https://github.com/ByeonDoHyeon06/invest-engine/pull/53",
+  "reported_at": "2026-11-20",
+  "data_basis": "retrospective, not independently held-out",
+  "data_retained_in_repository": false,
+  "data_rights_certified": false,
+  "historical_pit_certified": false,
+  "executable_prices_certified": false,
+  "real_broker_fees_verified": false,
+  "accounts_are_independent": true,
+  "compounded_portfolio_returns": false,
+  "currency": "USD",
+  "modeled_costs": [
+    "base",
+    "stress"
+  ],
+  "windows": {
+    "planned": 20,
+    "eligible": 6
+  },
+  "arms": {
+    "completed": 72
+  },
+  "net_pnl_by_model": {
+    "orb_default": {
+      "base": "-947.48",
+      "stress": "-1962.80"
+    },
+    "orb_fast": {
+      "base": "-862.47",
+      "stress": "-2105.95"
+    },
+    "orb_patient": {
+      "base": "-584.51",
+      "stress": "-1119.87"
+    },
+    "orb_volume": {
+      "base": "-596.53",
+      "stress": "-1234.39"
+    }
+  },
+  "conclusion": "All tested active candidates lost money in both modeled cost scenarios; not independently validated.",
+  "release_gates": {
+    "e5_g1": false,
+    "e6_g2": false,
+    "paper": false,
+    "real_orders": false
+  }
+}

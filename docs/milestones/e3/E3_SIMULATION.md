@@ -98,6 +98,6 @@ Still missing: production-grade market mark-to-market and FX/settlement risk, da
 
 ## E3.4 — Optional synthetic tax and confirmed sale settlement
 
-[Full technical contract and Gate audit](E3_SETTLEMENT.md) · [ADR-0008](adr/0008-synthetic-settlement.md).
+[Full technical contract and Gate audit](E3_SETTLEMENT.md) · [ADR-0008](../../adr/0008-synthetic-settlement.md).
 
 Existing immediate sale-credit behavior is retained as the default for previously saved E3 journals. A new opt-in `SellSettlementMode.EXPLICIT_CONFIRMATION` records net synthetic sell proceeds as `unsettled`, excluding them from buying power until `confirm_cash_settlement(execution_id, at)` records a durable confirmation. `sell_tax_rate` is explicitly synthetic and part of the journal identity; each fill carries derived fee/tax audit values. Internal ledger reservations and position quantities are audited after every event. Actual broker settlement calendars, withholding schedules, FX conversion and exchange rules remain outside E3.

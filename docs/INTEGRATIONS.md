@@ -1,15 +1,15 @@
 # 외부 API · 데이터 소스 연동 계획
 
-**상태:** 후보·통합 계약 정의. 실제 토스증권 연동은 E8에서 시행한다. E0~E5는 외부 인증키 없이 개발·테스트 가능해야 한다.
+**상태:** 후보·통합 경계 정의. 실제 토스증권 주문 API는 **별도 외부 Execution Host/Adapter 프로젝트**에서만 구현 대상이다. E8은 그 외부 연동을 별도로 승인·검증할 수 있는 단계이고, Engine SDK는 실주문을 지원하지 않는다. 엔진 개발/Simulation/Research/Evaluate/Session은 증권사 **주문용** 인증키 없이 사용 가능해야 한다.
 
-## 1. BrokerAdapter Protocol
-핵심 엔진의 BrokerProtocol 인터페이스:
+## 1. External BrokerAdapter Protocol (optional integration)
+기존 저수준 BrokerProtocol 타입의 계약은 외부 Host의 통합 경계/호환을 위한 것으로, Engine SDK의 실제 주문 실행 권한을 뜻하지 않는다:
 - submit_order(intent), cancel_order(broker_order_id), get_order, list_open_orders
 - get_account/positions/balances, stream_order_events
 - capabilities() → 지원 주문 유형/시간대/소수점/정정/조회/멱등성 범위
 - health() → 인증/네트워크/시장 상태
 
-SimBroker / PaperBroker / TossLiveAdapter가 구현. SDK별 인증/예외/식별자 변환은 Adapter에서 끝난다. 코어에서 토스 SDK 직접 import 금지.
+SimBroker/PaperBroker는 **합성/가상** 체결 도구이며 TossLiveAdapter 같은 실주문 어댑터는 외부 패키지/프로세스에서만 구현한다. 증권사별 인증·요청·예외·계좌/주문 식별자 변환 및 실주문 조회/대조는 외부 Host 책임. Engine SDK의 네 기본 공개 실행 API에는 실제 `submit_order` 또는 `cancel_order` 효과를 추가하지 않는다.
 
 ## 2. Toss Securities Open API (검증 대상)
 공식 문서:
@@ -32,7 +32,7 @@ SimBroker / PaperBroker / TossLiveAdapter가 구현. SDK별 인증/예외/식별
 - 주문 timeout은 주문 미접수의 증거가 아니며, 주문 조회/계좌 대조·idempotency policy 필수.
 - KR/US session/calendar, 시장별 TIF, 주문 정정, 현금 결제/달러 보유/수수료/세금 적용 가능성 검증.
 
-**실거래 준비 체크리스트:** 사용자 본인 명시적 승인, 비밀키 로컬/서버 secrets에 저장, key rotation, outgoing IP 고정, 외부 주문/잔고 조회 consistency tests, paper→live 차이 로그, 비상정지 Runbook.
+**외부 Host 실거래 준비 체크리스트 (Engine SDK 범위 외):** 사용자 본인 명시적 승인, 비밀키 독립 보관/회전, 고정 egress IP, 외부 주문/잔고 정합성, 영속 outbox/idempotency/UNKNOWN 상태 복구, Paper↔외부 실행 결과 비교, 킬스위치 Runbook. SDK가 제공하는 결정/OrderIntent는 승인되거나 전송된 주문이 아니다.
 
 ## 3. 시장 데이터 공급자
 - Toss는 개발/실시간 데이터 후보지만 수년치 체결·분봉의 완전한 공급원으로 전제하지 않음.
@@ -53,3 +53,10 @@ US: SEC EDGAR APIs — https://www.sec.gov/search-filings/edgar-application-prog
 - .env 같은 secret 파일, raw proprietary market data, 실험 산출물에 계좌식별정보가 포함되면 제외.
 - 라이선스/계약/법률 검토 없이 3자 자동매매 SaaS/시세재배포 금지.
 - SEC/DART의 이용 정책 및 Toss Open API 최신 약관을 검증 항목으로 유지; 문서 링크만으로 상용 이용허락을 추정하지 않음.
+
+## 4. SDK와 외부 실행 서비스 분리 (2026-11-22)
+
+- **Engine:** `simulation(...).historical()`, `simulation(...).paper()`, `research(...)`, `evaluate(...)`, `session(...)`를 통해 분석/가상 계좌 시뮬레이션/판단 제안을 제공한다. `engine.live`, `simulation(...).live()`와 실제 주문·증권사 인증 I/O를 제공하지 않는다.
+- **외부 Execution Host:** 별도 브로커 API 어댑터, 실주문 승인, 주문 outbox/재시도·대조, 계좌 원본, 권한·비밀키·감사·킬스위치를 담당한다. 엔진의 제안만으로 주문이 실행되지 않는다.
+- **연동 계약:** 외부 앱이 공급하는 검증된 계좌/주문 관측 이벤트는 엔진 입력으로 사용할 수 있으나 실계좌의 권위 있는 원본은 브로커다.
+- **E8:** 선택적 외부 연동 검증 단계. 기존 저수준 BrokerProtocol 타입을 일괄 제거하거나 실주문 실행기를 코어 안에 이식한다는 뜻이 아니다.

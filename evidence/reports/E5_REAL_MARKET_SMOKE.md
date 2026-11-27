@@ -23,7 +23,7 @@ invest-engine import-csv \
 
 This writes `aapl_events.jsonl` and `aapl_events.import.json`, with the original CSV hash, canonical JSONL hash, row count and `execution_eligible_by_volume_unit=false` for tick counts. The `source` label is user-declared, not an authenticity certificate.
 
-Set `dataset.events_jsonl` in the existing [E5_EXPERIMENT.md](E5_EXPERIMENT.md) backtest request to the new JSONL and pin its SHA-256. For tick count data use the **NoTradeStrategy** and set `dataset.volume_unit` to `"TICK_COUNT"` in the JSON config. Explicit historical trading sessions (UTC, market-appropriate) are still required. Use:
+Set `dataset.events_jsonl` in the existing [E5_EXPERIMENT.md](../../docs/milestones/e5/E5_EXPERIMENT.md) backtest request to the new JSONL and pin its SHA-256. For tick count data use the **NoTradeStrategy** and set `dataset.volume_unit` to `"TICK_COUNT"` in the JSON config. Explicit historical trading sessions (UTC, market-appropriate) are still required. Use:
 
 ```bash
 invest-engine backtest --config ./local/no_trade_aapl.json

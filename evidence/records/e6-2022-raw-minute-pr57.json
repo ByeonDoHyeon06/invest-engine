@@ -1,0 +1,55 @@
+{
+  "schema_version": "evidence-summary-v1",
+  "study_id": "e6-2022-raw-minute-pr57",
+  "kind": "historical_research_summary",
+  "source_report": "evidence/reports/ALPACA_RAW_MINUTE_PILOT.md",
+  "source_report_original_git_blob_sha": "0e595955ca36225aa02b9a75368ed5a843699a88",
+  "workflow_url": "https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44700445084",
+  "pr_url": "https://github.com/ByeonDoHyeon06/invest-engine/pull/57",
+  "reported_at": "2026-11-20",
+  "data_basis": "retrospective raw SIP minute pilot, provisional action-date screens",
+  "data_retained_in_repository": false,
+  "data_rights_certified": false,
+  "historical_pit_certified": false,
+  "executable_prices_certified": false,
+  "real_broker_fees_verified": false,
+  "accounts_are_independent": true,
+  "compounded_portfolio_returns": false,
+  "currency": "USD",
+  "modeled_costs": [
+    "base",
+    "stress"
+  ],
+  "windows": {
+    "planned": 12,
+    "eligible": 6
+  },
+  "arms": {
+    "completed": 60
+  },
+  "net_pnl_by_model": {
+    "orb15": {
+      "base": "-888.69",
+      "stress": "-1978.37"
+    },
+    "orb30": {
+      "base": "-589.62",
+      "stress": "-1493.91"
+    },
+    "volume2": {
+      "base": "-269.13",
+      "stress": "-1249.70"
+    },
+    "entered_hold": {
+      "base": "-1459.11",
+      "stress": "-1458.12"
+    }
+  },
+  "conclusion": "Six provisional windows; all active variants had negative aggregate net PnL under both modeled cost cases; five dividend-overlap blocks and one unsupported merger.",
+  "release_gates": {
+    "e5_g1": false,
+    "e6_g2": false,
+    "paper": false,
+    "real_orders": false
+  }
+}
