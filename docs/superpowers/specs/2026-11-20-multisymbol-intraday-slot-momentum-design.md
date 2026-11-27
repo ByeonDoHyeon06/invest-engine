@@ -1,6 +1,6 @@
 # Multi-Symbol Intraday Slot-Momentum Research Design
 
-**Status:** Accepted for staged offline implementation. PR 1 contracts are proposed in [PR #66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66); CI 44894640980 passed and latest checks/merge review remain required. PR 2 shared-account execution and PR 3 strategy/research remain pending.
+**Status:** Accepted for staged offline implementation. PR 1 [#66](https://github.com/ByeonDoHyeon06/invest-engine/pull/66) is open at `52ce1da`; CI 44894840967 passed and latest merge review remains required. PR 2 shared-account execution/reporting is candidate [#69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `6241e51`; CI 45970347660 passed 467 tests per Python version plus static/secret checks at `d583d53`. PR 3 strategy/controls/data research remains pending.
 
 **Date:** 2026-11-20
 
@@ -146,7 +146,7 @@ Only prior-session returns enter the score. No bar from the slot being predicted
 
 ### Shared account and order lifecycle
 
-`HistoricalPortfolioBacktest` is a single-use coordinator with one `TradingRuntime`, one virtual attribution ledger, one mark map and one deterministic event journal for the full universe.
+`HistoricalPortfolioBacktest` is a single-use coordinator with one `TradingRuntime`, one virtual attribution ledger, one mark map and one deterministic E2 observation digest for the full universe. PR 2 is in-memory; it does not claim durable atomic order handoff or recovery.
 
 At a decision checkpoint it:
 
@@ -163,26 +163,26 @@ Fills remain eligible only on a later one-minute bar. Existing strict limit pene
 
 The final 15:30 target is all EXIT. Any position not liquidated by the modeled end-of-session policy makes that session/arm invalid; it is never marked as a successful flat day using an invented close.
 
-### Corporate actions and identity
+### Corporate actions and identity (PR 3 preflight; not implemented by PR 2)
 
-Multi-symbol windows cannot simply pretend dividend-paying names do not exist. Every action remains manifest-bound and caller-evidenced, but v1 distinguishes actions that affect an overnight holding from those observed while the account is already flat:
+The PR-2 coordinator accepts market bars only and does not integrate a corporate-action schedule. Before a PR-3 market-data arm can run, multi-symbol windows cannot simply pretend dividend-paying names do not exist. The required preflight remains manifest-bound and caller-evidenced, and must distinguish actions that affect an overnight holding from those observed while the account is already flat:
 
 - A cash-dividend ex-date may continue only when the account, virtual attribution and open-order state for that instrument are all zero at the session open. Record an explicit non-entitlement audit decision; create no receivable or cash. Raw unadjusted bars remain required.
 - A witnessed session-open split uses the existing split contract. Because there is no overnight inventory, it creates no fill or cash, but it resets that instrument's slot-history cache and therefore makes the full universe warmup-incomplete until 40 new scheduled sessions exist.
 - A dividend with pre-open holdings/orders, an intraday or incompletely specified split, merger, delisting, symbol change, ambiguous identity or missing action coverage blocks the whole arm.
 
-This narrow no-overnight dividend observation is part of the new ADR. It is not blanket corporate-action support and does not weaken the existing E5 PIT/provenance flags.
+This proposed narrow no-overnight dividend observation is not blanket corporate-action support and does not weaken the existing E5 PIT/provenance flags. It requires implementation and synthetic tests in PR 3 before any provider arm; absent that work, block the arm.
 
 ### Reporting and audit
 
 Keep `BacktestReport` intact for compatibility and wrap it in a portfolio-specific report containing:
 
-- `UniverseDecisionRecord` per attempted checkpoint: frame ID, completeness, score/rank for every member, selected keys, child signal IDs, intent/risk decisions, fills and reason codes;
+- `UniverseDecisionRecord` per attempted checkpoint: PR 2 records frame ID, completeness, selected keys, child signal IDs, intent/risk decisions, cancellations, fills and reason codes; PR 3 must add the frozen strategy's score/rank evidence for every member;
 - completed position cycles, defined as an instrument transitioning from zero quantity to positive quantity and later back to zero; partial fills within one lifecycle are one cycle;
 - per-session completed-cycle count, entries, exits, gross turnover, fees/taxes, gross and net PnL, and time in market;
 - cross-sectional concentration: PnL and turnover by symbol, plus largest-symbol share;
 - sessions/checkpoints blocked by missing data or unresolved inventory; and
-- separate base/stress results using identical signals and input events.
+- separate base/stress results using identical signals and input events; PR 3 owns the paired-arm orchestration.
 
 The report must continue to label entry/exit fill counts as fills. It must not rename them “trades.” Currency remains separated; v1 accepts only USD.
 
@@ -249,8 +249,8 @@ Even a passing bar-based candidate cannot advance to Paper. QuoteTick/TradeTick 
 
 This is planned as three reviewable PRs under one dedicated issue:
 
-1. **PR #66 open; CI 44894640980 passed, latest checks/merge review required:** universe-frame and portfolio-strategy contracts with synthetic causal/barrier tests;
-2. **Pending:** shared-account historical coordinator, position-cycle reporting and old-hash compatibility tests;
+1. **PR #66 open at `52ce1da`; CI 44894840967 passed, latest merge review required:** universe-frame and portfolio-strategy contracts with synthetic causal/barrier tests;
+2. **Candidate [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `6241e51`; CI 45970347660 passed 467 tests per Python version at `d583d53`:** shared-account historical coordinator, explicit proposal `NO_ACTION`, active-order indexing, monitored risk/order lifecycle, off-grid flatten, position-cycle reporting and old-hash compatibility tests. [Implementation boundary](../../E6_MULTISYMBOL_SHARED_ACCOUNT.md);
 3. **Pending:** frozen strategy, controls, the exact `US20-SLOT-V1` October/November 2022 provisional workflow and result reconciliation.
 
 The first implementation PR must add an ADR for the new portfolio decision boundary. `docs/STATUS.md`, `docs/ROADMAP.md`, E5 #6 and E6 #7 are updated with evidence at each merge. No PR checks an E5/E6 acceptance box merely because code tests pass.
@@ -259,9 +259,8 @@ E6.7 remains a separate SDK milestone. A later facade may expose portfolio evalu
 
 ## Decisions left to the builder
 
-- Exact module split and private helper names, following current package conventions.
 - Whether the immutable score/rank value types live beside portfolio contracts or research reporting, provided no strategy module imports broker, database or network code.
-- Fixture construction helpers and parametrization style.
+- PR-3 strategy/control module split, fixture construction and parametrization style.
 - Internal performance optimizations that preserve exact Decimal results, canonical ordering and run/config hashes.
 
 ## References

@@ -7,7 +7,8 @@ import pytest
 
 from invest_engine.domain.primitives import InstrumentId, Market, Money
 from invest_engine.strategies.allocation import (
-    AllocationPolicy, allocate_targets, propose_simulated_intents,
+    AllocationPolicy, allocate_targets, propose_simulated_intent_results,
+    propose_simulated_intents,
 )
 from invest_engine.strategies.contracts import SignalDirection, StrategySignal
 from invest_engine.trading.models import DecisionStatus, TradingConfig
@@ -88,3 +89,109 @@ def test_duplicate_signal_and_policy_validation():
         allocate_targets((signal("a", "s1"), signal("b", "s1")), as_of=T)
     with pytest.raises(ValueError):
         AllocationPolicy(max_symbol_fraction=D("1.1"))
+
+
+def test_proposal_can_size_against_explicit_marked_currency_equity():
+    allocations = allocate_targets(
+        (signal("portfolio", "usd-1", symbol=US, target="0.10"),),
+        as_of=T,
+    )
+    engine, config = sim()
+    marks = (MarketMark(US, D("100"), T, "fixture"),)
+
+    legacy = propose_simulated_intents(
+        allocations.plans,
+        state=engine.state,
+        config=config,
+        marks=marks,
+        as_of=T,
+    )
+    marked = propose_simulated_intents(
+        allocations.plans,
+        state=engine.state,
+        config=config,
+        marks=marks,
+        as_of=T,
+        target_equity_by_currency=(("USD", D("2500")),),
+    )
+
+    assert legacy[0].quantity == D("1")
+    assert marked[0].quantity == D("2")
+
+
+@pytest.mark.parametrize(
+    "equity",
+    (
+        (("USD", D("2500")), ("USD", D("2500"))),
+        (("KRW", D("2500")),),
+        (("EUR", D("2500")), ("USD", D("2500"))),
+        (("USD", 2500),),
+        (("USD", D("NaN")),),
+        (("USD", D("0")),),
+        (("USD", D("-1")),),
+    ),
+)
+def test_marked_equity_requires_unique_supported_positive_currency_rows(equity):
+    allocations = allocate_targets(
+        (signal("portfolio", "usd-1", symbol=US, target="0.10"),),
+        as_of=T,
+    )
+    engine, config = sim()
+
+    with pytest.raises(ValueError):
+        propose_simulated_intents(
+            allocations.plans,
+            state=engine.state,
+            config=config,
+            marks=(MarketMark(US, D("100"), T, "fixture"),),
+            as_of=T,
+            target_equity_by_currency=equity,
+        )
+
+
+def test_omitted_marked_equity_preserves_legacy_proposal():
+    allocations = allocate_targets(
+        (signal("portfolio", "usd-1", symbol=US, target="0.10"),),
+        as_of=T,
+    )
+    engine, config = sim()
+    kwargs = {
+        "state": engine.state,
+        "config": config,
+        "marks": (MarketMark(US, D("100"), T, "fixture"),),
+        "as_of": T,
+    }
+
+    assert propose_simulated_intents(
+        allocations.plans,
+        **kwargs,
+    ) == propose_simulated_intents(
+        allocations.plans,
+        target_equity_by_currency=None,
+        **kwargs,
+    )
+
+
+def test_proposal_results_explain_sub_lot_no_action_without_changing_legacy_api():
+    allocations = allocate_targets(
+        (signal("portfolio", "usd-1", symbol=US, target="0.10"),),
+        as_of=T,
+    )
+    engine, config = sim()
+    marks = (MarketMark(US, D("20000"), T, "fixture"),)
+    kwargs = {
+        "state": engine.state,
+        "config": config,
+        "marks": marks,
+        "as_of": T,
+        "target_equity_by_currency": (("USD", D("100000")),),
+    }
+
+    results = propose_simulated_intent_results(allocations.plans, **kwargs)
+
+    assert len(results) == 1
+    assert results[0].proposal_id.startswith("allocation:")
+    assert results[0].instrument == US
+    assert results[0].intent is None
+    assert results[0].reason_codes == ("NO_ACTION_TARGET_BELOW_LOT",)
+    assert propose_simulated_intents(allocations.plans, **kwargs) == ()
