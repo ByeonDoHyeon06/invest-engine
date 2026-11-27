@@ -1,6 +1,6 @@
 # E6 multi-symbol shared-account historical replay
 
-**Status:** PR-2 candidate in stacked [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69). [CI 44984035724](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/44984035724) at `3c58002` passed 463 tests on each of Python 3.12/3.13 plus Ruff, mypy 80 files and credential guard. Synthetic contract verification only; PR #66 must merge first.
+**Status:** PR-2 candidate in stacked [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69), implementation through `6241e51`. Local verification passed 467 tests plus Ruff, mypy 80 files, credential guard and diff check. Fresh exact-head CI is pending; prior [CI 45005420204](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/45005420204) at `87e808a` passed 464 tests on each of Python 3.12/3.13 plus all static/secret checks. Synthetic contract verification only; PR #66 must merge first.
 
 **Tracking:** Issue #65 · E5 #6 · E6 #7 · [design](superpowers/specs/2026-11-20-multisymbol-intraday-slot-momentum-design.md) · [ADR-0035](adr/0035-multisymbol-portfolio-decision-boundary.md)
 
@@ -41,7 +41,7 @@ V1 requires at least two unique instruments from one market, exact `TradingConfi
 
 ## Replay and watermark order
 
-For each authoritative full session, checkpoints are scheduled from `session.start + checkpoint_interval` through `session.end - checkpoint_interval`. A checkpoint is finalized before accepting the first observation whose known clock is later than it; at EOF, a checkpoint equal to the last known clock is finalized. This allows all same-time trigger bars to enter a frame while making a delayed bar at or behind a finalized watermark fatal.
+For each authoritative full session, the regular checkpoint grid begins at `session.start + checkpoint_interval`; the flatten watermark at `session.end - checkpoint_interval` is always scheduled independently, including when it is off that grid. A checkpoint is finalized before accepting the first observation whose known clock is later than it; at EOF, a checkpoint equal to the last known clock is finalized. This allows all same-time trigger bars to enter a frame while making a delayed bar at or behind a finalized watermark fatal.
 
 At each market event the order is:
 
@@ -53,7 +53,7 @@ At each market event the order is:
 6. update the causal mark; and
 7. pass the observation to the universe coordinator.
 
-Consequently, a trigger bar never fills an order created from that trigger. Missing universe members produce a persisted `DATA_UNAVAILABLE` checkpoint, not a smaller ranking universe. Duplicate, late, mixed-session or non-universe observations fail replay.
+Consequently, a trigger bar never fills an order created from that trigger. Missing universe members produce a persisted `DATA_UNAVAILABLE` checkpoint, not a smaller ranking universe. Every allocation plan produces a deterministic proposal result; plans that cannot create an intent are persisted as `NO_ACTION` decisions with a specific reason such as missing/stale mark, open order, invalid price/stop or sub-lot target. Duplicate, late, mixed-session or non-universe observations fail replay.
 
 ## Monitored shared capital
 
@@ -66,6 +66,8 @@ Missing or stale held-symbol marks suppress account equity instead of inserting 
 ## Order lifetime and finalization
 
 An approved BUY retains its allocation plan expiry and source frame. Its instrument's bar ending exactly at expiry remains eligible; any remainder is canceled only after that bar. A bar starting at expiry is ineligible and the order is canceled before fill evaluation. A later checkpoint also cancels older replaceable BUYs in deterministic intent-ID order before allocating replacement targets.
+
+The replay keeps an intent-ID and instrument-keyed index of only accepted/partially-filled orders. Per-bar expiry and fill evaluation touches only active orders for that event's instrument; the index is reconciled against the authoritative E3 ledger at session boundaries so terminal order history is never used as the hot-path work queue.
 
 SELLs are never canceled to manufacture a flat result. An unresolved EXIT at a later checkpoint, any nonterminal order at session close, positive final inventory or virtual/account quantity mismatch invalidates the arm with `InvalidEvent`.
 
@@ -92,7 +94,7 @@ The legacy single-instrument regression keeps run hash:
 a672226e12320db5baa11b48bf408c3296fcd9df07fa89e9e15b2e23c69b3642
 ```
 
-PR-2 synthetic tests cover later-bar fills, deterministic replay, partial-fill cycles, entry expiry, replacement, incomplete/late data, unresolved exits/final inventory, shared caps, pending sale proceeds, stale marks and daily-loss exit overlay. Local full verification is recorded in `docs/STATUS.md`; stacked PR CI remains the merge gate.
+PR-2 synthetic tests cover later-bar fills, deterministic replay, partial-fill cycles, explicit proposal no-action, active-order-only fill evaluation, entry expiry, replacement, off-grid flatten, incomplete/late data, unresolved exits/final inventory, shared caps, pending sale proceeds, stale marks and daily-loss exit overlay. Local full verification is recorded in `docs/STATUS.md`; stacked PR CI remains the merge gate.
 
 PR #69 adds `feat/multisymbol-portfolio-contracts` to the Core CI `pull_request.branches` allowlist so its stacked comparison runs normally on the exact PR head. Re-evaluate that temporary branch entry when PR #66 merges and PR #69 is retargeted to `main`.
 

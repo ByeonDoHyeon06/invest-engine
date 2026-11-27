@@ -1,7 +1,7 @@
 # ADR-0035: Explicit-watermark multi-symbol portfolio decision boundary
 
 - Date: 2026-11-21
-- Status: Accepted for offline implementation; PR #66 open at `52ce1da`, CI 44894840967 passed; PR-2 candidate [#69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `289980e`, CI 44984035724 passed at `3c58002`
+- Status: Accepted for offline implementation; PR #66 open at `52ce1da`, CI 44894840967 passed; PR-2 candidate [#69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `6241e51`, fresh exact-head CI pending after 467 local tests
 
 ## Context
 
@@ -23,6 +23,8 @@ The first proposed higher-frequency study needs all required instruments observe
 10. Require a flat session boundary, a session-opening USD baseline and E3 monitoring. Re-observe before every BUY after state changes. Pending BUYs share portfolio exposure; pending SELL proceeds are unavailable. A latched daily-loss session replaces execution input with a deterministic complete EXIT set while retaining the strategy's original audit output.
 11. Preserve the allocation plan expiry for each BUY. Process its final eligible bar before canceling a remainder; reject a bar starting at expiry. Cancel older replaceable BUYs before a later decision, but never cancel an unresolved SELL to manufacture a flat result. Unresolved EXITs, orders or final inventory invalidate the arm.
 12. Wrap the unchanged account report with checkpoint lineage, exact executions, flat-to-long-to-flat position cycles, session/symbol summaries and deterministic artifacts. Fill counts remain fills and are not renamed trades.
+13. Persist one deterministic proposal outcome per allocation plan. A plan that produces no order intent remains an explicit `NO_ACTION` decision with a machine-readable reason; it is not silently omitted or misreported as a risk rejection.
+14. Use an instrument-keyed active-order index for per-bar expiry and fill work, and reconcile it against the E3 ledger at session boundaries. Append-only terminal order history remains audit state, not the replay hot-path queue.
 
 ## Consequences
 
