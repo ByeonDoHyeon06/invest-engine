@@ -1,7 +1,7 @@
 # ADR-0035: Explicit-watermark multi-symbol portfolio decision boundary
 
 - Date: 2026-11-21
-- Status: Accepted for offline implementation; PR #66 open at `52ce1da`, CI 44894840967 passed; PR-2 candidate [#69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `6241e51`, fresh exact-head CI pending after 467 local tests
+- Status: Accepted for offline implementation; PR #66 open at `52ce1da`, CI 44894840967 passed; PR-2 candidate [#69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69) through `6241e51`, CI 45970347660 passed 467 tests per Python version at `d583d53`
 
 ## Context
 

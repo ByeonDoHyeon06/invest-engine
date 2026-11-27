@@ -1,6 +1,6 @@
 # E6 multi-symbol shared-account historical replay
 
-**Status:** PR-2 candidate in stacked [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69), implementation through `6241e51`. Local verification passed 467 tests plus Ruff, mypy 80 files, credential guard and diff check. Fresh exact-head CI is pending; prior [CI 45005420204](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/45005420204) at `87e808a` passed 464 tests on each of Python 3.12/3.13 plus all static/secret checks. Synthetic contract verification only; PR #66 must merge first.
+**Status:** PR-2 candidate in stacked [PR #69](https://github.com/ByeonDoHyeon06/invest-engine/pull/69), implementation through `6241e51`. Local verification passed 467 tests plus Ruff, mypy 80 files, credential guard and diff check. [CI 45970347660](https://github.com/ByeonDoHyeon06/invest-engine/actions/runs/45970347660) at `d583d53` passed the same 467 tests on each of Python 3.12/3.13 plus all static/secret checks. Synthetic contract verification only; PR #66 must merge first.
 
 **Tracking:** Issue #65 · E5 #6 · E6 #7 · [design](superpowers/specs/2026-11-20-multisymbol-intraday-slot-momentum-design.md) · [ADR-0035](adr/0035-multisymbol-portfolio-decision-boundary.md)
 
